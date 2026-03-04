@@ -1,7 +1,7 @@
 {
   "_version": "1.82.0",
   "sap.app": {
-    "id": "capstoneproject",
+    "id": "zapp",
     "type": "application",
     "i18n": "i18n/i18n.properties",
     "applicationVersion": {
@@ -45,7 +45,7 @@
   "sap.ui5": {
     "flexEnabled": false,
     "rootView": {
-            "viewName": "capstoneproject.view.MainPage",
+            "viewName": "zapp.view.MainPage",
             "type": "XML",
             "async": false
         },
@@ -66,7 +66,7 @@
       "i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
-          "bundleName": "capstoneproject.i18n.i18n"
+          "bundleName": "zapp.i18n.i18n"
         }
       },
       "": {
@@ -91,7 +91,7 @@
         "routerClass": "sap.m.routing.Router",
         "viewType": "XML",
         "async": true,
-        "viewPath": "capstoneproject.view",
+        "viewPath": "zapp.view",
         "controlId": "container",
         "transition": "slide",
         "controlAggregation": "pages"
@@ -107,7 +107,7 @@
         "MainTarget": {
           "type": "View",
           "id": "MainView",
-          "name": "capstoneproject.view.MainPage", 
+          "name": "zapp.view.App", 
           "level": 1
         }
       }
