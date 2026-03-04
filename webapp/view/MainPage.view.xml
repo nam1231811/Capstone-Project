@@ -1,0 +1,59 @@
+<mvc:View 
+    controllerName="zapp.controller.Main" 
+    xmlns:mvc="sap.ui.core.mvc" 
+    xmlns:uxap="sap.uxap" 
+    xmlns="sap.m">
+    <App id="afds">
+        <uxap:ObjectPageLayout id="asdfsdf">
+            <uxap:headerTitle>
+                <uxap:ObjectPageHeader objectTitle="Table name: {view>/tableName}" />
+            </uxap:headerTitle>
+            <uxap:sections>
+                <uxap:ObjectPageSection title="Technical Columns">
+                    <uxap:subSections>
+                        <uxap:ObjectPageSubSection>
+                            <Table items="{displayModel>/Meta}">
+                                <columns>
+                                    <Column><Text text="Field Name"/></Column>
+                                    <Column><Text text="Data Type"/></Column>
+                                </columns>
+                                <items>
+                                    <ColumnListItem>
+                                        <cells>
+                                            <Text text="{displayModel>fieldname}"/>
+                                            <Text text="{displayModel>type}"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </uxap:ObjectPageSubSection>
+                    </uxap:subSections>
+                </uxap:ObjectPageSection>
+
+                <uxap:ObjectPageSection title="Record Data">
+                <uxap:subSections>
+                        <uxap:ObjectPageSubSection>
+                            <Table items="{displayModel>/Meta}">
+                                <columns>
+                                    <Column><Text text="ID"/></Column>
+                                    <Column><Text text="Currency"/></Column>
+                                    <Column><Text text="Name"/></Column>
+                                    <Column><Text text="City"/></Column>
+                                    <Column><Text text="Salary"/></Column>
+                                </columns>
+                                <items>
+                                    <ColumnListItem>
+                                        <cells>
+                                            <Text text="{displayModel>name}"/>
+                                            <Text text="{displayModel>type}"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </uxap:ObjectPageSubSection>
+                    </uxap:subSections>
+                </uxap:ObjectPageSection>
+            </uxap:sections>
+        </uxap:ObjectPageLayout>
+    </App>
+</mvc:View>

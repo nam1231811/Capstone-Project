@@ -2,7 +2,7 @@
 
 specVersion: "4.0"
 metadata:
-  name: capstoneproject.custommasterdatamaintenance
+  name: zapp
 type: application
 server:
   customMiddleware:
@@ -18,7 +18,7 @@ server:
         backend:
           - path: /sap
             url: http://s40lp1.ucc.cit.tum.de:8000
-            destination: MY_ABAP_SYSTEM
+            destination: S40_DATA_SOURCE
     - name: fiori-tools-appreload
       afterMiddleware: compression
       configuration:

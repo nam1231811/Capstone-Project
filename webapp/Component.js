@@ -1,12 +1,17 @@
-sap.ui.define(
-    ["sap/fe/core/AppComponent"],
-    function (Component) {
-        "use strict";
+sap.ui.define([
+    "sap/ui/core/UIComponent"
+    // Xóa dòng "capstoneproject/model/models" ở đây
+], function (UIComponent) { // Xóa biến "models" ở đây
+    "use strict";
 
-        return Component.extend("capstoneproject.custommasterdatamaintenance.Component", {
-            metadata: {
-                manifest: "json"
-            }
-        });
-    }
-);
+    return UIComponent.extend("zapp.Component", {
+        metadata: {
+            manifest: "json"
+        },
+        init: function () {
+            UIComponent.prototype.init.apply(this, arguments);
+            this.getRouter().initialize();
+            // Xóa dòng this.setModel(models.createDeviceModel(), "device");
+        }
+    });
+});

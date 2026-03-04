@@ -2,7 +2,7 @@
 
 specVersion: "4.0"
 metadata:
-  name: capstoneproject.custommasterdatamaintenance
+  name: zapp
 type: application
 framework:
   name: SAPUI5
