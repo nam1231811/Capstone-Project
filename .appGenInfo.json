@@ -1,0 +1,32 @@
+{
+  "generationParameters": {
+    "generationDate": "Wed Mar 04 2026 02:31:02 GMT+0000 (Coordinated Universal Time)",
+    "generatorPlatform": "SAP Business Application Studio",
+    "serviceType": "SAP System (ABAP On-Premise)",
+    "metadataFilename": "",
+    "serviceUrl": "http://s40lp1.ucc.cit.tum.de:8000/sap/opu/odata4/iwbep/all/srvd/sap/zsd_dynamic_meta/0001/",
+    "appName": "custom_master_data_maintenance",
+    "appTitle": "Manage Custom Master Data",
+    "appDescription": "An SAP Fiori application.",
+    "appNamespace": "capstoneproject",
+    "ui5Theme": "sap_horizon",
+    "ui5Version": "1.145.0",
+    "enableEslint": false,
+    "enableTypeScript": false,
+    "showMockDataInfo": true,
+    "generatorVersion": "1.20.4",
+    "template": "List Report Page V4",
+    "generatorName": "SAP Fiori Application Generator",
+    "entityRelatedConfig": [
+      {
+        "type": "Main Entity",
+        "value": "Meta"
+      },
+      {
+        "type": "Navigation Entity",
+        "value": "_Data"
+      }
+    ],
+    "launchText": "To launch the generated application, run the following from the generated application root folder:\n\n```\n    npm start\n```"
+  }
+}
