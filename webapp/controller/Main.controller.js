@@ -27,36 +27,88 @@ sap.ui.define([
         },
 
         _loadOData: function () {
-            var oModel = this.getOwnerComponent().getModel(); 
-            var oViewModel = this.getView().getModel("view");
-            var oDisplayModel = this.getView().getModel("displayModel");
-
-            
-            var oMetaBinding = oModel.bindList("/Meta"); 
-            oMetaBinding.requestContexts().then(function (aMetaContexts) {
+            Promise.all([
+                this._loadMeta(),
+                this._loadData()
+            ]).then(function() {
+                this._displayData(); 
+            }.bind(this));
+        },  
+        _loadMeta: function() {
+            var oModel = this.getOwnerComponent().getModel();
+            return oModel.bindList("/Meta").requestContexts().then(function (aMetaContexts) {
                 this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
-                console.log("Dữ liệu Meta:", this._oMetaRaw);
-
+                this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
                 
-                if (this._oMetaRaw.length > 0) {
-                    oViewModel.setProperty("/tableName", this._oMetaRaw[0].table_name);
-                    oDisplayModel.setProperty("/Meta", this._oMetaRaw);
-                }
-
+                console.log( this._oMetaRaw);
                 
-                return oModel.bindList("/Data").requestContexts();
+                this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
+                this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
+            }.bind(this));
+        },
 
-            }.bind(this)).then(function (aDataContexts) {
+        _loadData: function() {
+            var oModel = this.getOwnerComponent().getModel();
+            return oModel.bindList("/Data").requestContexts().then(function (aDataContexts) {
                 this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());
-                console.log("Dữ liệu Data thực tế:", this._oDataRaw);
+                this._oDataRaw = this._groupDataByRow(this._oDataRaw)
 
-                
-                oDisplayModel.setProperty("/Data", this._oDataRaw);
-                oViewModel.setProperty("/count", this._oDataRaw.length);
+                this.getView().getModel("view").setProperty("/count", this._oDataRaw.length);
+            }.bind(this));
+        },
+        
+        _groupDataByRow: function (data) {
+            if(!data || !Array.isArray(data)){
+                return [];
+            }
 
-            }.bind(this)).catch(function (oError) {
-                console.error("Lỗi khi load dữ liệu OData:", oError);
+            const groupData = data.reduce(function (acc, obj) {
+                var sKey = obj.row_id;
+                if (!acc[sKey]) {
+                    acc[sKey] = [];
+                }
+                acc[sKey].push(obj);
+                return acc;
+            }, {});
+
+            //[ [Array(5)], [ Array(5)],... ]
+            return Object.values(groupData);;
+        },
+
+        _displayData: function() {
+            var oTable = this.byId("dataTable");
+            var oTemplate = this.byId("columnTemplate")
+            var listColumns = oTable.getColumns();
+            var listColumnName = listColumns.map(column => column.getHeader().getText())
+            // chỉ có thể sửa data không thể thay thế thứ tự hiển thị 
+            
+            
+            const result = this._oDataRaw.map(record => {
+                return listColumnName.map(nameColumn => {
+                    const cell = record.find(column => column.fieldname === nameColumn)
+                    return cell;
+                })
             });
-        }
+            console.log(result);
+            
+            this.getView().getModel("displayModel").setProperty("/Data", result);
+            oTemplate.bindCells({
+                path: "displayModel>", 
+                factory: function(sId, oContext) {
+                    // oContext lúc này là từng object như {fieldname: "ID", value: "10001", ...}
+                    return new sap.m.Text({
+                        text: "{displayModel>value}" // Lấy đúng trường 'value' của object đó
+                    });
+                }
+            });
+            console.log(oTemplate);
+            
+            // Cuối cùng mới bind items cho toàn bộ bảng
+            oTable.bindItems({
+                path: "displayModel>/Data",
+                template: oTemplate
+            });
+        },
+
     });
 });

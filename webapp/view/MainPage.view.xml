@@ -15,13 +15,13 @@
                             <Table items="{displayModel>/Meta}">
                                 <columns>
                                     <Column><Text text="Field Name"/></Column>
-                                    <Column><Text text="Data Type"/></Column>
+                                    <Column><Text text="Technical Name"/></Column>
                                 </columns>
                                 <items>
                                     <ColumnListItem>
                                         <cells>
                                             <Text text="{displayModel>fieldname}"/>
-                                            <Text text="{displayModel>type}"/>
+                                            <Text text="{displayModel>datatype}"/>
                                         </cells>
                                     </ColumnListItem>
                                 </items>
@@ -31,23 +31,18 @@
                 </uxap:ObjectPageSection>
 
                 <uxap:ObjectPageSection title="Record Data">
-                <uxap:subSections>
+                    <uxap:subSections>  
                         <uxap:ObjectPageSubSection>
-                            <Table items="{displayModel>/Meta}">
-                                <columns>
-                                    <Column><Text text="ID"/></Column>
-                                    <Column><Text text="Currency"/></Column>
-                                    <Column><Text text="Name"/></Column>
-                                    <Column><Text text="City"/></Column>
-                                    <Column><Text text="Salary"/></Column>
+                            <Table columns="{displayModel>/Meta}" id="dataTable" items="{displayModel>/Data}" >
+                                <columns >
+                                    <Column>
+                                        <header>
+                                            <Text text="{displayModel>fieldname}" />
+                                        </header>
+                                    </Column>
                                 </columns>
                                 <items>
-                                    <ColumnListItem>
-                                        <cells>
-                                            <Text text="{displayModel>name}"/>
-                                            <Text text="{displayModel>type}"/>
-                                        </cells>
-                                    </ColumnListItem>
+                                    <ColumnListItem id="columnTemplate" />
                                 </items>
                             </Table>
                         </uxap:ObjectPageSubSection>

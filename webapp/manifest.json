@@ -49,6 +49,9 @@
             "type": "XML",
             "async": false
         },
+    "config": {
+            "fullWidth": true
+        },
     "dependencies": {
       "minUI5Version": "1.145.0",
       "libs": {
