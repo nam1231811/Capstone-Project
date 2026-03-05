@@ -45,9 +45,10 @@
   "sap.ui5": {
     "flexEnabled": false,
     "rootView": {
-            "viewName": "zapp.view.MainPage",
+            "viewName": "zapp.view.App",
             "type": "XML",
-            "async": false
+            "async": false,
+            "id": "root"
         },
     "config": {
             "fullWidth": true

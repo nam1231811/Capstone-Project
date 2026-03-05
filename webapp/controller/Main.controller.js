@@ -1,7 +1,8 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
-    "sap/ui/model/json/JSONModel"
-], function (Controller, JSONModel) {
+    "sap/ui/model/json/JSONModel",
+    "sap/f/library"
+], function (Controller, JSONModel, fioriLibrary) {
     "use strict";
 
     return Controller.extend("zapp.controller.Main", {
@@ -9,7 +10,7 @@ sap.ui.define([
         _oDataRaw: [], 
 
         onInit: function () {
-            
+            this.oView = this.getView();
             var oViewModel = new JSONModel({
                 count: 0,
                 tableName: "" 
@@ -39,8 +40,6 @@ sap.ui.define([
             return oModel.bindList("/Meta").requestContexts().then(function (aMetaContexts) {
                 this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
                 this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
-                
-                console.log( this._oMetaRaw);
                 
                 this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
                 this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
@@ -97,18 +96,30 @@ sap.ui.define([
                 factory: function(sId, oContext) {
                     // oContext lúc này là từng object như {fieldname: "ID", value: "10001", ...}
                     return new sap.m.Text({
-                        text: "{displayModel>value}" // Lấy đúng trường 'value' của object đó
+                        text: "{displayModel>value}"
                     });
                 }
             });
-            console.log(oTemplate);
             
-            // Cuối cùng mới bind items cho toàn bộ bảng
             oTable.bindItems({
                 path: "displayModel>/Data",
                 template: oTemplate
             });
         },
+
+        onListItemPress: function (oEvent) {
+            var oFCL = this.oView.getParent().getParent();
+            if (oFCL) {
+                oFCL.setLayout(fioriLibrary.LayoutType.TwoColumnsMidExpanded);
+                var oItem = oEvent.getSource();
+                var oBindingContext = oItem.getBindingContext("displayModel");
+                var sRowId = oBindingContext.getProperty("0/row_id");
+                console.log(sRowId);
+                
+            } else {
+                console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
+            }
+		}
 
     });
 });
