@@ -1,59 +1,81 @@
-<mvc:View 
-    controllerName="zapp.controller.Main" 
-    xmlns:mvc="sap.ui.core.mvc" 
-    xmlns:uxap="sap.uxap" 
-    xmlns="sap.m">
-    <App id="afds">
-        <uxap:ObjectPageLayout id="asdfsdf">
-            <uxap:headerTitle>
-                <uxap:ObjectPageHeader objectTitle="Table name: {view>/tableName}" />
-            </uxap:headerTitle>
-            <uxap:sections>
-                <uxap:ObjectPageSection title="Technical Columns">
-                    <uxap:subSections>
-                        <uxap:ObjectPageSubSection>
-                            <Table items="{displayModel>/Meta}">
-                                <columns>
-                                    <Column><Text text="Field Name"/></Column>
-                                    <Column><Text text="Data Type"/></Column>
-                                </columns>
-                                <items>
-                                    <ColumnListItem>
-                                        <cells>
-                                            <Text text="{displayModel>fieldname}"/>
-                                            <Text text="{displayModel>type}"/>
-                                        </cells>
-                                    </ColumnListItem>
-                                </items>
-                            </Table>
-                        </uxap:ObjectPageSubSection>
-                    </uxap:subSections>
-                </uxap:ObjectPageSection>
+<mvc:View
+    controllerName="zapp.controller.Main"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.f"
+    xmlns:fb="sap.ui.comp.filterbar"
+    displayBlock="true">
 
-                <uxap:ObjectPageSection title="Record Data">
-                <uxap:subSections>
-                        <uxap:ObjectPageSubSection>
-                            <Table items="{displayModel>/Meta}">
-                                <columns>
-                                    <Column><Text text="ID"/></Column>
-                                    <Column><Text text="Currency"/></Column>
-                                    <Column><Text text="Name"/></Column>
-                                    <Column><Text text="City"/></Column>
-                                    <Column><Text text="Salary"/></Column>
-                                </columns>
-                                <items>
-                                    <ColumnListItem>
-                                        <cells>
-                                            <Text text="{displayModel>name}"/>
-                                            <Text text="{displayModel>type}"/>
-                                        </cells>
-                                    </ColumnListItem>
-                                </items>
-                            </Table>
-                        </uxap:ObjectPageSubSection>
-                    </uxap:subSections>
-                </uxap:ObjectPageSection>
-            </uxap:sections>
-        </uxap:ObjectPageLayout>
-    </App>
+    <f:DynamicPage id="dynamicPageId" headerExpanded="true" toggleHeaderOnTitleClick="true" class="sapUiNoContentPadding">
+        
+        <f:title>
+            <f:DynamicPageTitle>
+                <f:heading>
+                    <Title text="{i18n>appTitle}" level="H2"/>
+                </f:heading>
+            </f:DynamicPageTitle>
+        </f:title>
+
+        <f:header>
+            <f:DynamicPageHeader pinnable="true">
+                <fb:FilterBar id="filterBar" search=".onSearch" useToolbar="false" showGoOnFB="true">
+                    <fb:filterGroupItems>
+                        <fb:FilterGroupItem groupName="BASIC" name="TableName" label="Table Name" visibleInFilterBar="true">
+                            <fb:control>
+                                <Input id="searchInput" placeholder="EX: ZTEST" submit=".onSearch" />
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                    </fb:filterGroupItems>
+                </fb:FilterBar>
+            </f:DynamicPageHeader>
+        </f:header>
+
+        <f:content>
+            <Table 
+                id="dynamicTable" 
+                items="{realData>/UniqueTables}"
+                noDataText="No data shown"
+                inset="false"
+                sticky="ColumnHeaders,HeaderToolbar">
+                
+                <headerToolbar>
+                    <OverflowToolbar>
+                        <Title text="{= 'List of table (' + (${realData>/UniqueTables} ? ${realData>/UniqueTables}.length : 0) + ')' }" level="H2"/>
+                        <ToolbarSpacer />
+                        
+                        <Button icon="sap-icon://excel-attachment" type="Transparent" tooltip="Export to Excel" press=".onExportExcel">
+                            <layoutData>
+                                <OverflowToolbarLayoutData priority="NeverOverflow" />
+                            </layoutData>
+                        </Button>
+
+                        <Button icon="sap-icon://action-settings" type="Transparent" tooltip="Settings" press=".onOpenSettings">
+                            <layoutData>
+                                <OverflowToolbarLayoutData priority="NeverOverflow" />
+                            </layoutData>
+                        </Button>
+                    </OverflowToolbar>
+                </headerToolbar>
+                
+                <columns>
+                    <Column><Label text="{i18n>tableName}" design="Bold"/></Column>
+                    <Column><Label text="{i18n>tableDesc}" design="Bold"/></Column>
+                    <Column><Label text="{i18n>totalCol}" design="Bold"/></Column>
+                    <Column><Label text="{i18n>createdBy}" design="Bold"/></Column>
+                </columns>
+
+                <items>
+                    <ColumnListItem type="Navigation" press=".onRowPress" vAlign="Middle">
+                        <cells>
+                            <ObjectIdentifier title="{realData>table_name}" />
+                            <Text text="{realData>table_description}" />
+                            <ObjectStatus text="{realData>field_count} column" state="Information" />
+                            <Text text="{realData>user_name}" />
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+        </f:content>
+
+    </f:DynamicPage>
 </mvc:View>

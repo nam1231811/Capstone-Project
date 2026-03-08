@@ -1,10 +1,8 @@
 <mvc:View
-	displayBlock="true"
-	height="100%"
-	xmlns="sap.f"
-	xmlns:mvc="sap.ui.core.mvc">
-	<FlexibleColumnLayout
-		id="container"
-		stateChange=".onStateChanged"
-		layout="{/layout}"/>
+    xmlns="sap.m"
+    xmlns:mvc="sap.ui.core.mvc"
+    displayBlock="true">
+    
+    <App id="appContainer" />
+        
 </mvc:View>
