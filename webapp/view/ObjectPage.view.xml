@@ -1,5 +1,104 @@
-<mvc:View controllerName="zapp.controller.ObjectPage" xmlns="sap.m" xmlns:mvc="sap.ui.core.mvc">
-    <Page title="Object Page" showNavButton="true" navButtonPress=".onCloseDetail">
-        <Text text="Waiting..." class="sapUiMargin"/>
-    </Page>
+<mvc:View 
+    controllerName="zapp.controller.ObjectPage" 
+    xmlns:mvc="sap.ui.core.mvc" 
+    xmlns:uxap="sap.uxap" 
+    xmlns:core="sap.ui.core"
+    xmlns="sap.m">
+    <App id="afds">
+        <uxap:ObjectPageLayout id="asdfsdf">
+            <uxap:headerTitle>
+                <uxap:ObjectPageHeader objectTitle="Table name: {view>/tableName}" />
+            </uxap:headerTitle>
+            
+            <uxap:sections>
+                
+                <uxap:ObjectPageSection title="Technical Columns">
+                    <uxap:subSections>
+                        <uxap:ObjectPageSubSection>
+                            <Table items="{displayModel>/Meta}">
+                                <columns>
+                                    <Column><Text text="Field Name"/></Column>
+                                    <Column><Text text="Data Type"/></Column>
+                                </columns>
+                                <items>
+                                    <ColumnListItem>
+                                        <cells>
+                                            <Text text="{displayModel>fieldname}"/>
+                                            <Text text="{displayModel>type}"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </uxap:ObjectPageSubSection>
+                    </uxap:subSections>
+                </uxap:ObjectPageSection>
+
+                <uxap:ObjectPageSection title="Record Data">
+                    <uxap:subSections>
+                        <uxap:ObjectPageSubSection>
+                            <Table items="{displayModel>/Data}">
+                                <columns>
+                                    <Column><Text text="ID"/></Column>
+                                    <Column><Text text="Currency"/></Column>
+                                    <Column><Text text="Name"/></Column>
+                                    <Column><Text text="City"/></Column>
+                                    <Column><Text text="Salary"/></Column>
+                                </columns>
+                                <items>
+                                    <ColumnListItem>
+                                        <cells>
+                                            <Text text="{displayModel>name}"/>
+                                            <Text text="{displayModel>type}"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </uxap:ObjectPageSubSection>
+                    </uxap:subSections>
+                </uxap:ObjectPageSection>
+
+                <uxap:ObjectPageSection title="Audit Log">
+                    <uxap:subSections>
+                        <uxap:ObjectPageSubSection>
+                            <Table id="auditLogTable" items="{displayModel>/AuditLogs}">
+                                <headerToolbar>
+                                    <OverflowToolbar>
+                                        <Title text="Activity Log" level="H3"/>
+                                        <ToolbarSpacer />
+                                        <SearchField placeholder="Tìm theo User hoặc Dữ liệu..." width="30%" search=".onSearchAuditLog"/>
+                                        <Button icon="sap-icon://refresh" press=".onRefreshAuditLog" tooltip="Làm mới"/>
+                                    </OverflowToolbar>
+                                </headerToolbar>
+                                <columns>
+                                    <Column width="15%"><Text text="Time"/></Column>
+                                    <Column width="10%"><Text text="User"/></Column>
+                                    <Column width="10%"><Text text="Action"/></Column>
+                                    <Column width="15%"><Text text="Record Key"/></Column>
+                                    <Column width="20%"><Text text="Old Data"/></Column>
+                                    <Column width="20%"><Text text="New Data"/></Column>
+                                    <Column width="10%" hAlign="Center"><Text text="Detail"/></Column>
+                                </columns>
+                                <items>
+                                    <ColumnListItem>
+                                        <cells>
+                                            <Text text="{displayModel>ChangedAt}"/>
+                                            <Text text="{displayModel>ChangedBy}"/>
+                                            <ObjectStatus 
+                                                text="{= ${displayModel>Action} === 'U' ? 'Update' : (${displayModel>Action} === 'I' ? 'Insert' : 'Delete') }" 
+                                                state="{= ${displayModel>Action} === 'U' ? 'Warning' : (${displayModel>Action} === 'I' ? 'Success' : 'Error') }" />
+                                            <Text text="{displayModel>RecordKey}"/>
+                                            <Text text="{displayModel>OldData}" maxLines="2" wrapping="true"/>
+                                            <Text text="{displayModel>NewData}" maxLines="2" wrapping="true"/>
+                                            <Button icon="sap-icon://sys-enter-2" type="Transparent" press=".onViewLogDetail" tooltip="Xem cấu trúc JSON chi tiết"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </uxap:ObjectPageSubSection>
+                    </uxap:subSections>
+                </uxap:ObjectPageSection>
+
+            </uxap:sections> 
+            </uxap:ObjectPageLayout>
+    </App>
 </mvc:View>
