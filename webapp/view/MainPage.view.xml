@@ -18,7 +18,7 @@
 
         <f:header>
             <f:DynamicPageHeader pinnable="true">
-                <fb:FilterBar id="filterBar" search=".onSearch" useToolbar="false" showGoOnFB="true">
+                <fb:FilterBar id="filterBar" search=".onSearch" useToolbar="false" showGoOnFB="true" showClearOnFB="true" clear=".onClear">
                     <fb:filterGroupItems>
                         <fb:FilterGroupItem groupName="BASIC" name="TableName" label="Table Name" visibleInFilterBar="true">
                             <fb:control>
@@ -44,24 +44,24 @@
                         <ToolbarSpacer />
                         
                         <Button icon="sap-icon://excel-attachment" type="Transparent" tooltip="Export to Excel" press=".onExportExcel">
-                            <layoutData>
-                                <OverflowToolbarLayoutData priority="NeverOverflow" />
-                            </layoutData>
+                            <layoutData><OverflowToolbarLayoutData priority="NeverOverflow" /></layoutData>
                         </Button>
 
-                        <Button icon="sap-icon://action-settings" type="Transparent" tooltip="Settings" press=".onOpenSettings">
-                            <layoutData>
-                                <OverflowToolbarLayoutData priority="NeverOverflow" />
-                            </layoutData>
+                        <Button icon="sap-icon://action-settings" type="Transparent" tooltip="Personalization" press=".onPersonalization">
+                            <layoutData><OverflowToolbarLayoutData priority="NeverOverflow" /></layoutData>
+                        </Button>
+
+                        <Button icon="sap-icon://globe" type="Transparent" tooltip="Language" press=".onOpenSettings">
+                            <layoutData><OverflowToolbarLayoutData priority="NeverOverflow" /></layoutData>
                         </Button>
                     </OverflowToolbar>
                 </headerToolbar>
                 
                 <columns>
-                    <Column><Label text="{i18n>tableName}" design="Bold"/></Column>
-                    <Column><Label text="{i18n>tableDesc}" design="Bold"/></Column>
-                    <Column><Label text="{i18n>totalCol}" design="Bold"/></Column>
-                    <Column><Label text="{i18n>createdBy}" design="Bold"/></Column>
+                    <Column id="colTableName"><Label text="{i18n>tableName}" design="Bold"/></Column>
+                    <Column id="colTableDesc"><Label text="{i18n>tableDesc}" design="Bold"/></Column>
+                    <Column id="colTotalCol"><Label text="{i18n>totalCol}" design="Bold"/></Column>
+                    <Column id="colCreatedBy"><Label text="{i18n>createdBy}" design="Bold"/></Column>
                 </columns>
 
                 <items>

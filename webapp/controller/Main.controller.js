@@ -5,9 +5,34 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/ui/core/BusyIndicator",
     "sap/m/MessageBox",
-    "sap/m/MessageToast"
-], function (Controller, JSONModel, Filter, FilterOperator, BusyIndicator, MessageBox, MessageToast) {
+    "sap/m/MessageToast",
+    "sap/m/TablePersoController"
+], function (Controller, JSONModel, Filter, FilterOperator, BusyIndicator, MessageBox, MessageToast, TablePersoController) {
     "use strict";
+
+    // Lưu trữ cấu hình (Local Storage)
+    var DemoPersoService = {
+        oData: { _persoSchemaVersion: "1.0", aColumns: [] },
+        getPersData: function () {
+            var oDeferred = new jQuery.Deferred();
+            var sData = window.localStorage.getItem("myAppTableConfig");
+            var oBundle = sData ? JSON.parse(sData) : this.oData;
+            oDeferred.resolve(oBundle);
+            return oDeferred.promise();
+        },
+        setPersData: function (oBundle) {
+            var oDeferred = new jQuery.Deferred();
+            window.localStorage.setItem("myAppTableConfig", JSON.stringify(oBundle));
+            oDeferred.resolve();
+            return oDeferred.promise();
+        },
+        getResetPersData: function () {
+            var oDeferred = new jQuery.Deferred();
+            window.localStorage.removeItem("myAppTableConfig");
+            setTimeout(function () { oDeferred.resolve(this.oData); }.bind(this), 500);
+            return oDeferred.promise();
+        }
+    };
 
     return Controller.extend("zapp.controller.Main", {
 
@@ -20,6 +45,18 @@ sap.ui.define([
             
             // Khai báo biến toàn cục
             this._oODataListBinding = null;
+
+            // Khởi tạo model personalization
+            this._oTPC = new TablePersoController({
+                table: this.byId("dynamicTable"),
+                componentName: "demoApp",
+                persoService: DemoPersoService
+            }).activate();
+        },
+
+        // Hàm mở personalization
+        onPersonalization: function (oEvent) {
+            this._oTPC.openDialog();
         },
 
         // Hàm mở settings chọn ngôn ngữ
@@ -51,7 +88,7 @@ sap.ui.define([
             this._oLangDialog.open();
         },
 
-        //Hàm search và gọi ODataV4
+        // Hàm search và gọi ODataV4
         onSearch: function () {
             var sQuery = this.byId("searchInput").getValue();
             
@@ -60,7 +97,7 @@ sap.ui.define([
             }
 
             sQuery = sQuery.trim().toUpperCase();
-            BusyIndicator.show(0);
+            this.byId("dynamicTable").setBusy(true);
 
             if (!this._oODataListBinding) {
                 var oModel = this.getOwnerComponent().getModel();
@@ -79,9 +116,9 @@ sap.ui.define([
             ];
             this._oODataListBinding.filter(aFilters);
 
-            //Lấy dữ liệu
+            // Lấy dữ liệu
             this._oODataListBinding.requestContexts(0, 1000).then(function (aContexts) {
-                BusyIndicator.hide();
+                this.byId("dynamicTable").setBusy(false);
 
                 if (aContexts.length === 0) {
                     return MessageBox.information("Cannot found table: " + sQuery);
@@ -91,7 +128,7 @@ sap.ui.define([
                     return oContext.getObject(); 
                 });
 
-                //Gộp bảng + Đếm cột (Tạm thời)
+                // Gộp bảng + Đếm cột (Tạm thời)
                 var oUniqueMap = {};
                 aRawData.forEach(function (item) {
                     var sTableName = item.table_name;
@@ -109,18 +146,25 @@ sap.ui.define([
                     }
                 });
 
-                //Đẩy ra màn hình
+                // Đẩy ra màn hình
                 var aUniqueTables = Object.values(oUniqueMap);
                 this.getView().getModel("realData").setProperty("/UniqueTables", aUniqueTables);
                 MessageToast.show("Load data successfully!");
 
             }.bind(this)).catch(function (oError) {
-                BusyIndicator.hide();
+                this.byId("dynamicTable").setBusy(false);
                 MessageBox.error("Error while connecting!: " + oError.message);
             });
         },
 
-        //Hàm bấm vào dòng sang Object Page
+        // Hàm xóa bộ lọc
+        onClear: function () {
+            this.byId("searchInput").setValue("");
+            this.getView().getModel("realData").setProperty("/UniqueTables", []);
+            MessageToast.show("Filter cleared");
+        },
+
+        // Hàm bấm vào dòng sang Object Page
         onRowPress: function (oEvent) {
             var oContext = oEvent.getSource().getBindingContext("realData");
             var sTableName = oContext.getProperty("table_name");
