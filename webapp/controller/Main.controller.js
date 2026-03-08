@@ -1,62 +1,138 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
-    "sap/ui/model/json/JSONModel"
-], function (Controller, JSONModel) {
+    "sap/ui/model/json/JSONModel",
+    "sap/ui/model/Filter",
+    "sap/ui/model/FilterOperator",
+    "sap/ui/core/BusyIndicator",
+    "sap/m/MessageBox",
+    "sap/m/MessageToast"
+], function (Controller, JSONModel, Filter, FilterOperator, BusyIndicator, MessageBox, MessageToast) {
     "use strict";
 
     return Controller.extend("zapp.controller.Main", {
-        _oMetaRaw: [], 
-        _oDataRaw: [], 
 
         onInit: function () {
+            // Khởi tạo Model cục bộ để chứa dữ liệu bảng đã gộp
+            var oRealDataModel = new JSONModel({ UniqueTables: [] });
+            this.getView().setModel(oRealDataModel, "realData");
+            var oSettingsModel = new JSONModel({ selectedLanguage: "E" });
+            this.getView().setModel(oSettingsModel, "settingsModel");
             
-            var oViewModel = new JSONModel({
-                count: 0,
-                tableName: "" 
-            });
-            this.getView().setModel(oViewModel, "view");
-
-            
-            var oDisplayModel = new JSONModel({
-                Meta: [],
-                Data: []
-            });
-            this.getView().setModel(oDisplayModel, "displayModel");
-
-            this._loadOData();
+            // Khai báo biến toàn cục
+            this._oODataListBinding = null;
         },
 
-        _loadOData: function () {
-            var oModel = this.getOwnerComponent().getModel(); 
-            var oViewModel = this.getView().getModel("view");
-            var oDisplayModel = this.getView().getModel("displayModel");
+        // Hàm mở settings chọn ngôn ngữ
+        onOpenSettings: function () {
+            if (!this._oLangDialog) {
+                this._oLangDialog = new sap.m.SelectDialog({
+                    title: "Select Language / Chọn ngôn ngữ",
+                    items: [
+                        new sap.m.StandardListItem({ title: "English", description: "EN", type: "Active" }),
+                        new sap.m.StandardListItem({ title: "Tiếng Việt", description: "VI", type: "Active" })
+                    ],
+                    confirm: function (oEvent) {
+                        var oSelectedItem = oEvent.getParameter("selectedItem");
+                        if (oSelectedItem) {
+                            var sLangCode = oSelectedItem.getDescription();
 
+                            sap.ui.getCore().getConfiguration().setLanguage(sLangCode);
+
+                            var sBackendLang = (sLangCode === "vi") ? "V" : "E";
+                            this.getView().getModel("settingsModel").setProperty("/selectedLanguage", sBackendLang);
+                            
+                            MessageToast.show("Switched to " + oSelectedItem.getTitle());
+                            
+                            this.onSearch();
+                        }
+                    }.bind(this)
+                });
+            }
+            this._oLangDialog.open();
+        },
+
+        //Hàm search và gọi ODataV4
+        onSearch: function () {
+            var sQuery = this.byId("searchInput").getValue();
             
-            var oMetaBinding = oModel.bindList("/Meta"); 
-            oMetaBinding.requestContexts().then(function (aMetaContexts) {
-                this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
-                console.log("Dữ liệu Meta:", this._oMetaRaw);
+            if (!sQuery || sQuery.trim() === "") {
+                return MessageToast.show("Please input table name!");
+            }
 
-                
-                if (this._oMetaRaw.length > 0) {
-                    oViewModel.setProperty("/tableName", this._oMetaRaw[0].table_name);
-                    oDisplayModel.setProperty("/Meta", this._oMetaRaw);
+            sQuery = sQuery.trim().toUpperCase();
+            BusyIndicator.show(0);
+
+            if (!this._oODataListBinding) {
+                var oModel = this.getOwnerComponent().getModel();
+                this._oODataListBinding = oModel.bindList("/Meta", null, null, null, {
+                    $$groupId: "$direct"
+                });
+            }
+
+            this.getView().getModel("realData").setProperty("/UniqueTables", []);
+
+            var sSelectedLang = this.getView().getModel("settingsModel").getProperty("/selectedLanguage");
+
+            var aFilters = [
+                new Filter("table_name", FilterOperator.Contains, sQuery),
+                //new Filter("language", FilterOperator.EQ, sSelectedLang)
+            ];
+            this._oODataListBinding.filter(aFilters);
+
+            //Lấy dữ liệu
+            this._oODataListBinding.requestContexts(0, 1000).then(function (aContexts) {
+                BusyIndicator.hide();
+
+                if (aContexts.length === 0) {
+                    return MessageBox.information("Cannot found table: " + sQuery);
                 }
 
-                
-                return oModel.bindList("/Data").requestContexts();
+                var aRawData = aContexts.map(function(oContext) { 
+                    return oContext.getObject(); 
+                });
 
-            }.bind(this)).then(function (aDataContexts) {
-                this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());
-                console.log("Dữ liệu Data thực tế:", this._oDataRaw);
+                //Gộp bảng + Đếm cột (Tạm thời)
+                var oUniqueMap = {};
+                aRawData.forEach(function (item) {
+                    var sTableName = item.table_name;
+                    if (sTableName) {
+                        if (!oUniqueMap[sTableName]) {
+                            oUniqueMap[sTableName] = {
+                                table_name: sTableName,
+                                table_description: item.table_description,
+                                field_count: 1,
+                                user_name: item.user_name 
+                            };
+                        } else {
+                            oUniqueMap[sTableName].field_count += 1;
+                        }
+                    }
+                });
 
-                
-                oDisplayModel.setProperty("/Data", this._oDataRaw);
-                oViewModel.setProperty("/count", this._oDataRaw.length);
+                //Đẩy ra màn hình
+                var aUniqueTables = Object.values(oUniqueMap);
+                this.getView().getModel("realData").setProperty("/UniqueTables", aUniqueTables);
+                MessageToast.show("Load data successfully!");
 
             }.bind(this)).catch(function (oError) {
-                console.error("Lỗi khi load dữ liệu OData:", oError);
+                BusyIndicator.hide();
+                MessageBox.error("Error while connecting!: " + oError.message);
             });
-        }
+        },
+
+        //Hàm bấm vào dòng sang Object Page
+        onRowPress: function (oEvent) {
+            var oContext = oEvent.getSource().getBindingContext("realData");
+            var sTableName = oContext.getProperty("table_name");
+
+            try {
+                var oRouter = this.getOwnerComponent().getRouter();
+                oRouter.navTo("RouteObjectPage", {
+                    tableName: sTableName
+                });
+            } catch (e) {
+                console.log("Router error: " + e.message);
+            }
+        }   
     });
 });

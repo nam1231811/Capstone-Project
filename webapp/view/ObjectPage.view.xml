@@ -1,0 +1,5 @@
+<mvc:View controllerName="zapp.controller.ObjectPage" xmlns="sap.m" xmlns:mvc="sap.ui.core.mvc">
+    <Page title="Object Page" showNavButton="true" navButtonPress=".onCloseDetail">
+        <Text text="Waiting..." class="sapUiMargin"/>
+    </Page>
+</mvc:View>

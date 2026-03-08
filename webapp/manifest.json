@@ -45,17 +45,21 @@
   "sap.ui5": {
     "flexEnabled": false,
     "rootView": {
-            "viewName": "zapp.view.MainPage",
+            "viewName": "zapp.view.App",
             "type": "XML",
             "async": false
         },
+    "config": {
+          "fullWidth": true
+    },
     "dependencies": {
       "minUI5Version": "1.145.0",
       "libs": {
         "sap.f": {},
         "sap.ui.core": {},
         "sap.m": {},
-				"sap.uxap": {}
+				"sap.uxap": {},
+        "sap.ui.comp": {}
       }
     },
     "contentDensities": {
@@ -75,7 +79,8 @@
         "settings": {
           "operationMode": "Server",
           "autoExpandSelect": true,
-          "earlyRequests": true
+          "earlyRequests": false,
+          "groupId": "$direct"
         }
       },
       "@i18n": {
@@ -90,25 +95,36 @@
       "config": {
         "routerClass": "sap.m.routing.Router",
         "viewType": "XML",
-        "async": true,
-        "viewPath": "zapp.view",
-        "controlId": "container",
+        "path": "zapp.view",
+        "controlId": "appContainer",
+        "controlAggregation": "pages",
         "transition": "slide",
-        "controlAggregation": "pages"
+        "async": true
       },
       "routes": [
         {
-          "pattern": "",
           "name": "RouteMain",
-          "target": "MainTarget"
+          "pattern": "",
+          "target": "TargetMain"
+        },
+        {
+          "name": "RouteObjectPage",
+          "pattern": "detail/{tableName}",
+          "target": "TargetObjectPage"
         }
       ],
       "targets": {
-        "MainTarget": {
+        "TargetMain": {
           "type": "View",
-          "id": "MainView",
-          "name": "zapp.view.App", 
-          "level": 1
+          "name": "MainPage",
+          "id": "MainPage",
+          "viewLevel": 1
+        },
+        "TargetObjectPage": {
+          "type": "View",
+          "name": "ObjectPage",
+          "id": "ObjectPage",
+          "viewLevel": 2
         }
       }
     }
