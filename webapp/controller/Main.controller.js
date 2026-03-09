@@ -10,21 +10,8 @@ sap.ui.define([
         _oDataRaw: [], 
 
         onInit: function () {
-            this.oView = this.getView();
-            var oViewModel = new JSONModel({
-                count: 0,
-                tableName: "" 
-            });
-            this.getView().setModel(oViewModel, "view");
-
-            
-            var oDisplayModel = new JSONModel({
-                Meta: [],
-                Data: []
-            });
-            this.getView().setModel(oDisplayModel, "displayModel");
-
             this._loadOData();
+            
         },
 
         _loadOData: function () {
@@ -37,12 +24,16 @@ sap.ui.define([
         },  
         _loadMeta: function() {
             var oModel = this.getOwnerComponent().getModel();
+            console.log(oModel);
+            
             return oModel.bindList("/Meta").requestContexts().then(function (aMetaContexts) {
+                console.log(this._oMetaRaw);
+                
                 this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
                 this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
                 
                 this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
-                this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
+                this.getView().getModel("overall").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
             }.bind(this));
         },
 
@@ -51,8 +42,9 @@ sap.ui.define([
             return oModel.bindList("/Data").requestContexts().then(function (aDataContexts) {
                 this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());
                 this._oDataRaw = this._groupDataByRow(this._oDataRaw)
+                console.log(this._oDataRaw);
 
-                this.getView().getModel("view").setProperty("/count", this._oDataRaw.length);
+                this.getView().getModel("overall").setProperty("/count", this._oDataRaw.length);
             }.bind(this));
         },
         
@@ -79,8 +71,7 @@ sap.ui.define([
             var oTemplate = this.byId("columnTemplate")
             var listColumns = oTable.getColumns();
             var listColumnName = listColumns.map(column => column.getHeader().getText())
-            // chỉ có thể sửa data không thể thay thế thứ tự hiển thị 
-            
+            // chỉ có thể sửa data không thể thay thế thứ th hhhk,qự hiển thị 
             
             const result = this._oDataRaw.map(record => {
                 return listColumnName.map(nameColumn => {
@@ -111,11 +102,12 @@ sap.ui.define([
             var oFCL = this.oView.getParent().getParent();
             if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.TwoColumnsMidExpanded);
-                var oItem = oEvent.getSource();
-                var oBindingContext = oItem.getBindingContext("displayModel");
-                var sRowId = oBindingContext.getProperty("0/row_id");
-                console.log(sRowId);
-                
+                var oItemPath = oEvent.getSource().getBindingContext("displayModel").getPath();
+                var row_id = oItemPath.split("/").slice(-1).pop();
+                this.getOwnerComponent().getRouter().navTo("detail", {
+                    layout: fioriLibrary.LayoutType.TwoColumnsMidExpanded,
+                    rowId: row_id,
+                });
             } else {
                 console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
             }

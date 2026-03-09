@@ -92,27 +92,38 @@
     },
     "routing": {
       "config": {
-        "routerClass": "sap.m.routing.Router",
+        "routerClass": "sap.f.routing.Router",
         "viewType": "XML",
-        "async": true,
         "viewPath": "zapp.view",
-        "controlId": "container",
-        "transition": "slide",
-        "controlAggregation": "pages"
+        "controlId": "flexibleColumnLayout", 
+        "controlAggregation": "beginColumnPages",
+        "async": true
       },
       "routes": [
         {
           "pattern": "",
-          "name": "RouteMain",
-          "target": "MainTarget"
+          "name": "master",
+          "target": "master"
+        },
+        {
+          "pattern": "detail/{rowId}/{layout}",
+          "name": "detail",
+          "target": ["master", "detail"]
+        },
+        {
+          "pattern": ":table:",
+          "name": "detailTable",
+          "target": ["master", "detail"]
         }
       ],
       "targets": {
-        "MainTarget": {
-          "type": "View",
-          "id": "MainView",
-          "name": "zapp.view.App", 
-          "level": 1
+        "master": {
+          "viewName": "MainPage", 
+          "controlAggregation": "beginColumnPages"
+        },
+        "detail": {
+          "viewName": "DetailRecord",
+          "controlAggregation": "midColumnPages"
         }
       }
     }

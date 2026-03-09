@@ -1,9 +1,10 @@
 <mvc:View
-	controller="zapp.controller.DetailRecord"
+	controllerName="zapp.controller.DetailRecord"
 	xmlns="sap.uxap"
 	xmlns:m="sap.m"
 	xmlns:f="sap.f"
 	xmlns:form="sap.ui.layout.form"
+	xmlns:l="sap.ui.layout"
 	xmlns:mvc="sap.ui.core.mvc">
 	<ObjectPageLayout
 		id="ObjectPageLayout"
@@ -23,37 +24,51 @@
 					<m:Button
 						text="Delete"
 						type="Transparent"/>
-					<m:Button
+					<!-- <m:Button
 						text="Copy"
-						type="Transparent"/>
+						type="Transparent"/> -->
 					<m:Button
-						icon="sap-icon://action"
-						type="Transparent"/>
+						text="Cancel"
+						type="Transparent"
+						press=".onRollback"/>
 				</actions>
 			</ObjectPageDynamicHeaderTitle>
 		</headerTitle>
 
-		<headerContent>
-			<m:FlexBox wrap="Wrap" fitContainer="true" alignItems="Stretch">
-				<m:Avatar
-					displaySize="L"
-					displayShape="Square"
-					class="sapUiTinyMarginEnd">
-				</m:Avatar>
-				<m:VBox justifyContent="Center" class="sapUiSmallMarginEnd">
-					<m:Label text="Table"/>
-				</m:VBox>
-				<m:VBox justifyContent="Center" class="sapUiSmallMarginEnd">
-					<m:Label text="User"/>
-				</m:VBox>
-				<m:VBox justifyContent="Center" class="sapUiSmallMarginEnd">
-					<m:Label text="Id"/>
-				</m:VBox>
-			</m:FlexBox>
-		</headerContent>
+         <headerContent>
+            <m:FlexBox wrap="Wrap" alignItems="Center">
 
+                <m:Avatar
+                    src="sap-icon://employee"
+                    displaySize="L"
+                    displayShape="Square"
+                    class="sapUiMediumMarginEnd"/>
+
+                <l:VerticalLayout class="sapUiMediumMarginEnd">
+                    <m:Label text="Category"/>
+                    <m:ObjectStatus
+                        text="User Table"
+                        state="Information"/>
+                </l:VerticalLayout>
+
+                <l:VerticalLayout class="sapUiMediumMarginEnd">
+                    <m:Label text="Employee ID"/>
+                    <m:ObjectStatus
+                        text="10001"
+                        state="Success"/>
+                </l:VerticalLayout>
+
+                <l:VerticalLayout>
+                    <m:Label text="City"/>
+                    <m:ObjectStatus
+                        text="Hanoi"
+                        state="None"/>
+                </l:VerticalLayout>
+
+            </m:FlexBox>
+        </headerContent>
 		<sections>
-			<ObjectPageSection title="Detail data">
+			<ObjectPageSection title="General Information">
 				<subSections>
 					<ObjectPageSubSection>
 						<blocks>
@@ -68,10 +83,25 @@
 								columnsL="1"
 								columnsM="1">
 								<form:content>
-									<m:Label text="Product ID"/>
-									<m:Label text="Description"/>
-									<m:Label text="Supplier"/>
-								</form:content>
+                                    <l:Grid 
+                                        content="{detailRecord>/Data}" 
+                                        defaultSpan="XL4 L4 M4 S12" 
+                                        vSpacing="1" 
+                                        class="sapUiSmallMargin">
+                                        <l:content>
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="{detailRecord>fieldname}" 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                                <m:Text 
+                                                    text="{detailRecord>value}" 
+                                                    width="100%" />
+                                            </m:VBox>
+                                        </l:content>
+                                    </l:Grid>
+                                </form:content>
 							</form:SimpleForm>
 						</blocks>
 					</ObjectPageSubSection>
@@ -89,12 +119,20 @@
 			</ObjectPageSection> -->
 		</sections>
 
-		<footer>
-			<m:OverflowToolbar>
-				<m:ToolbarSpacer/>
-				<m:Button type="Accept" text="Save"/>
-				<m:Button type="Reject" text="Cancel"/>
-			</m:OverflowToolbar>
-		</footer>
-	</ObjectPageLayout>
+        <!-- FOOTER -->
+        <footer>
+            <m:OverflowToolbar>
+                <m:ToolbarSpacer/>
+                <m:Button
+                    text="Save"
+                    type="Emphasized"
+                    icon="sap-icon://save"/>
+                <m:Button
+                    text="Cancel"
+                    type="Transparent"/>
+            </m:OverflowToolbar>
+        </footer>
+
+    </ObjectPageLayout>
+
 </mvc:View>

@@ -6,7 +6,8 @@
     <App id="afds">
         <uxap:ObjectPageLayout id="asdfsdf">
             <uxap:headerTitle>
-                <uxap:ObjectPageHeader objectTitle="Table name: {view>/tableName}" />
+                <uxap:ObjectPageHeader objectTitle="Table name: {overall>/tableName}" />
+                
             </uxap:headerTitle>
             <uxap:sections>
                 <uxap:ObjectPageSection title="Technical Columns">
@@ -22,7 +23,7 @@
                                     </Column>
                                 </columns>
                                 <items>
-                                    <ColumnListItem>
+                                    <ColumnListItem type="Navigation">
                                         <cells>
                                             <Text text="{displayModel>fieldname}"/>
                                             <Text text="{displayModel>datatype}"/>
@@ -34,7 +35,7 @@
                     </uxap:subSections>
                 </uxap:ObjectPageSection>
 
-                <uxap:ObjectPageSection title="Record Data">
+                <uxap:ObjectPageSection title="Record Data ({overall>/count})">
                     <uxap:subSections>  
                         <uxap:ObjectPageSubSection >
                             <VBox>
@@ -43,6 +44,7 @@
 				                	<SearchField search=".onSearch" width="17.5rem"/>
 				                	<OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
 				                	<OverflowToolbarButton icon="sap-icon://sort" text="Sort" type="Transparent" press=".onSort"/>
+				                	<OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
 				                </OverflowToolbar>
                                 <Table 
                                     columns="{displayModel>/Meta}" 
