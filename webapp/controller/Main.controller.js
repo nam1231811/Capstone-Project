@@ -104,6 +104,7 @@ sap.ui.define([
                 this._oODataListBinding = oModel.bindList("/Meta", null, null, null, {
                     $$groupId: "$direct"
                 });
+                console.log(this._oODataListBinding);
             }
 
             this.getView().getModel("realData").setProperty("/UniqueTables", []);
@@ -127,7 +128,6 @@ sap.ui.define([
                 var aRawData = aContexts.map(function(oContext) { 
                     return oContext.getObject(); 
                 });
-
                 // Gộp bảng + Đếm cột (Tạm thời)
                 var oUniqueMap = {};
                 aRawData.forEach(function (item) {
@@ -152,9 +152,11 @@ sap.ui.define([
                 MessageToast.show("Load data successfully!");
 
             }.bind(this)).catch(function (oError) {
+                console.log("loi o day");
                 this.byId("dynamicTable").setBusy(false);
                 MessageBox.error("Error while connecting!: " + oError.message);
-            });
+            }.bind(this));
+
         },
 
         // Hàm xóa bộ lọc
