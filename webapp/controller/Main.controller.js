@@ -35,17 +35,14 @@ sap.ui.define([
     };
 
     return Controller.extend("zapp.controller.Main", {
-
         onInit: function () {
             // Khởi tạo Model cục bộ để chứa dữ liệu bảng đã gộp
             var oRealDataModel = new JSONModel({ UniqueTables: [] });
             this.getView().setModel(oRealDataModel, "realData");
             var oSettingsModel = new JSONModel({ selectedLanguage: "E" });
             this.getView().setModel(oSettingsModel, "settingsModel");
-            
             // Khai báo biến toàn cục
             this._oODataListBinding = null;
-
             // Khởi tạo model personalization
             this._oTPC = new TablePersoController({
                 table: this.byId("dynamicTable"),
@@ -72,14 +69,10 @@ sap.ui.define([
                         var oSelectedItem = oEvent.getParameter("selectedItem");
                         if (oSelectedItem) {
                             var sLangCode = oSelectedItem.getDescription();
-
                             sap.ui.getCore().getConfiguration().setLanguage(sLangCode);
-
                             var sBackendLang = (sLangCode === "vi") ? "V" : "E";
                             this.getView().getModel("settingsModel").setProperty("/selectedLanguage", sBackendLang);
-                            
                             MessageToast.show("Switched to " + oSelectedItem.getTitle());
-                            
                             this.onSearch();
                         }
                     }.bind(this)
@@ -90,73 +83,60 @@ sap.ui.define([
 
         // Hàm search và gọi ODataV4
         onSearch: function () {
-            var sQuery = this.byId("searchInput").getValue();
-            
+            var oSearchInput = this.byId("searchInput");
+            var sQuery = oSearchInput.getValue();
+           
             if (!sQuery || sQuery.trim() === "") {
-                return MessageToast.show("Please input table name!");
+                sap.m.MessageToast.show("Please input table name!");
+                return;
             }
-
+       
             sQuery = sQuery.trim().toUpperCase();
-            this.byId("dynamicTable").setBusy(true);
-
-            if (!this._oODataListBinding) {
-                var oModel = this.getOwnerComponent().getModel();
-                this._oODataListBinding = oModel.bindList("/Meta", null, null, null, {
-                    $$groupId: "$direct"
-                });
-                console.log(this._oODataListBinding);
-            }
-
-            this.getView().getModel("realData").setProperty("/UniqueTables", []);
-
-            var sSelectedLang = this.getView().getModel("settingsModel").getProperty("/selectedLanguage");
-
-            var aFilters = [
-                new Filter("table_name", FilterOperator.Contains, sQuery),
-                //new Filter("language", FilterOperator.EQ, sSelectedLang)
-            ];
-            this._oODataListBinding.filter(aFilters);
-
-            // Lấy dữ liệu
-            this._oODataListBinding.requestContexts(0, 1000).then(function (aContexts) {
-                this.byId("dynamicTable").setBusy(false);
-
-                if (aContexts.length === 0) {
-                    return MessageBox.information("Cannot found table: " + sQuery);
-                }
-
-                var aRawData = aContexts.map(function(oContext) { 
-                    return oContext.getObject(); 
-                });
-                // Gộp bảng + Đếm cột (Tạm thời)
-                var oUniqueMap = {};
-                aRawData.forEach(function (item) {
-                    var sTableName = item.table_name;
-                    if (sTableName) {
-                        if (!oUniqueMap[sTableName]) {
-                            oUniqueMap[sTableName] = {
-                                table_name: sTableName,
-                                table_description: item.table_description,
-                                field_count: 1,
-                                user_name: item.user_name 
-                            };
-                        } else {
-                            oUniqueMap[sTableName].field_count += 1;
-                        }
+            var oTable = this.byId("dynamicTable");
+            oTable.setBusy(true);
+       
+            // 1. Gọi hàm tạo binding
+            this._loadMeta(sQuery);
+       
+            // 2. Kiểm tra xem binding có tồn tại không trước khi gọi requestContexts
+            if (this._oODataListBinding) {
+                this._oODataListBinding.requestContexts(0, 1000).then(function (aContexts) {
+                    oTable.setBusy(false);
+               
+                    if (!aContexts || aContexts.length === 0) {
+                        sap.m.MessageBox.information("Cannot find table: " + sQuery);
+                        return;
                     }
-                });
-
-                // Đẩy ra màn hình
-                var aUniqueTables = Object.values(oUniqueMap);
-                this.getView().getModel("realData").setProperty("/UniqueTables", aUniqueTables);
-                MessageToast.show("Load data successfully!");
-
-            }.bind(this)).catch(function (oError) {
-                console.log("loi o day");
-                this.byId("dynamicTable").setBusy(false);
-                MessageBox.error("Error while connecting!: " + oError.message);
-            }.bind(this));
-
+               
+                    // 3. LẤY DỮ LIỆU TỪ CONTEXTS (Đây là phần bạn đang thiếu)
+                    var oUniqueMap = {};
+                    aContexts.forEach(function (oContext) {
+                        var item = oContext.getObject(); // Lấy data thực tế từ Backend trả về
+                        var sTableName = item.table_name;
+                       
+                        if (sTableName) {
+                            if (!oUniqueMap[sTableName]) {
+                                oUniqueMap[sTableName] = {
+                                    table_name: sTableName,
+                                    table_description: item.table_description,
+                                    field_count: 1,
+                                    user_name: item.user_name
+                                };
+                            } else {
+                                oUniqueMap[sTableName].field_count += 1;
+                            }
+                        }
+                    });
+               
+                    var aUniqueTables = Object.values(oUniqueMap);
+                    this.getView().getModel("realData").setProperty("/UniqueTables", aUniqueTables);
+                    sap.m.MessageToast.show("Load data successfully!");
+               
+                }.bind(this)).catch(function (oError) {
+                    oTable.setBusy(false);
+                    sap.m.MessageBox.error("Backend Error: " + (oError.message || "Unknown Error"));
+                }.bind(this));
+            }
         },
 
         // Hàm xóa bộ lọc
@@ -170,7 +150,6 @@ sap.ui.define([
         onRowPress: function (oEvent) {
             var oContext = oEvent.getSource().getBindingContext("realData");
             var sTableName = oContext.getProperty("table_name");
-
             try {
                 var oRouter = this.getOwnerComponent().getRouter();
                 oRouter.navTo("RouteObjectPage", {
@@ -179,6 +158,19 @@ sap.ui.define([
             } catch (e) {
                 console.log("Router error: " + e.message);
             }
-        }   
+        },  
+
+        _loadMeta: function(sQuery) {
+        var oModel = this.getView().getModel(); // Model OData V4
+            var aFilters = [
+                new sap.ui.model.Filter("table_name", sap.ui.model.FilterOperator.EQ, sQuery)
+            ];
+            // Khởi tạo binding và gán vào biến global của controller
+            this._oODataListBinding = oModel.bindList("/Meta", null, null, aFilters, {
+                $$groupId: "$direct"
+            });
+       
+            return this._oODataListBinding;
+        },
     });
 });
