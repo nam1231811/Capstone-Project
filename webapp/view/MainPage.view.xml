@@ -2,13 +2,13 @@
     controllerName="zapp.controller.Main" 
     xmlns:mvc="sap.ui.core.mvc" 
     xmlns:uxap="sap.uxap" 
-    xmlns="sap.m">
-    <App id="afds">
+    xmlns="sap.m"
+    xmlns:u="sap.ui.unified"> <App id="afds">
         <uxap:ObjectPageLayout id="asdfsdf">
             <uxap:headerTitle>
                 <uxap:ObjectPageHeader objectTitle="Table name: {overall>/tableName}" />
-                
             </uxap:headerTitle>
+            
             <uxap:sections>
                 <uxap:ObjectPageSection title="Technical Columns">
                     <uxap:subSections>
@@ -18,7 +18,7 @@
                                     <Column>
                                         <Text text="Field Name"/>
                                     </Column>
-                                    <Column	hAlign="End">
+                                    <Column hAlign="End">
                                         <Text text="Technical Name"/>
                                     </Column>
                                 </columns>
@@ -40,12 +40,23 @@
                         <uxap:ObjectPageSubSection >
                             <VBox>
                                 <OverflowToolbar class="sapFDynamicPageAlignContent">
-				                	<ToolbarSpacer/>
-				                	<SearchField search=".onSearch" width="17.5rem"/>
-				                	<OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
-				                	<OverflowToolbarButton icon="sap-icon://sort" text="Sort" type="Transparent" press=".onSort"/>
-				                	<OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
-				                </OverflowToolbar>
+                                    <ToolbarSpacer/>
+                                    
+                                    <u:FileUploader 
+    id="excelUploader" 
+    fileType="xlsx" 
+    buttonOnly="true" 
+    icon="sap-icon://excel-attachment" 
+    buttonText="Upload Excel" 
+    style="Emphasized"
+    sameFilenameAllowed="true"
+    change=".onUploadExcelPress"/>
+                                    <SearchField search=".onSearch" width="17.5rem"/>
+                                    <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
+                                    <OverflowToolbarButton icon="sap-icon://sort" text="Sort" type="Transparent" press=".onSort"/>
+                                    <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
+                                </OverflowToolbar>
+                                
                                 <Table 
                                     columns="{displayModel>/Meta}" 
                                     id="dataTable" 
