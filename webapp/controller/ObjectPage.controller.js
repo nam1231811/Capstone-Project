@@ -9,49 +9,69 @@ sap.ui.define([
         _oMetaRaw: [], 
         _oDataRaw: [], 
 
-        onInit: function () {
+        // onInit: function () {
             
-            var oViewModel = new JSONModel({
-                count: 0,
-                tableName: "" 
-            });
-            this.getView().setModel(oViewModel, "view");
+        //     var oViewModel = new JSONModel({
+        //         count: 0,
+        //         tableName: "" 
+        //     });
+        //     this.getView().setModel(oViewModel, "view");
 
-            var oDisplayModel = new JSONModel({
-                Meta: [], // Dữ liệu thật từ Backend sẽ chèn vào đây
-                Data: [], // Dữ liệu thật từ Backend sẽ chèn vào đây
+        //     var oDisplayModel = new JSONModel({
+        //         Meta: [], // Dữ liệu thật từ Backend sẽ chèn vào đây
+        //         Data: [], // Dữ liệu thật từ Backend sẽ chèn vào đây
                 
-                AuditLogs: [
-                    {
-                        ChangedAt: "2026-03-08 10:30:00",
-                        ChangedBy: "NGUYENTP8",
-                        Action: "I", // Insert (Thêm mới)
-                        RecordKey: "SV001",
-                        OldData: "",
-                        NewData: '{"ID": "SV001", "Name": "Nguyen Van A", "City": "HCM"}'
-                    },
-                    {
-                        ChangedAt: "2026-03-08 11:15:22",
-                        ChangedBy: "MINHDH5",
-                        Action: "U", // Update (Sửa)
-                        RecordKey: "SV001",
-                        OldData: '{"ID": "SV001", "Name": "Nguyen Van A", "City": "HCM"}',
-                        NewData: '{"ID": "SV001", "Name": "Nguyen Van A", "City": "Pleiku"}'
-                    },
-                    {
-                        ChangedAt: "2026-03-08 14:00:05",
-                        ChangedBy: "ADMIN",
-                        Action: "D", // Delete (Xóa)
-                        RecordKey: "SV002",
-                        OldData: '{"ID": "SV002", "Name": "Tran Thi B", "Salary": 5000}',
-                        NewData: ""
-                    }
-                ]
-            });
+        //         AuditLogs: [
+        //             {
+        //                 ChangedAt: "2026-03-08 10:30:00",
+        //                 ChangedBy: "NGUYENTP8",
+        //                 Action: "I", // Insert (Thêm mới)
+        //                 RecordKey: "SV001",
+        //                 OldData: "",
+        //                 NewData: '{"ID": "SV001", "Name": "Nguyen Van A", "City": "HCM"}'
+        //             },
+        //             {
+        //                 ChangedAt: "2026-03-08 11:15:22",
+        //                 ChangedBy: "MINHDH5",
+        //                 Action: "U", // Update (Sửa)
+        //                 RecordKey: "SV001",
+        //                 OldData: '{"ID": "SV001", "Name": "Nguyen Van A", "City": "HCM"}',
+        //                 NewData: '{"ID": "SV001", "Name": "Nguyen Van A", "City": "Pleiku"}'
+        //             },
+        //             {
+        //                 ChangedAt: "2026-03-08 14:00:05",
+        //                 ChangedBy: "ADMIN",
+        //                 Action: "D", // Delete (Xóa)
+        //                 RecordKey: "SV002",
+        //                 OldData: '{"ID": "SV002", "Name": "Tran Thi B", "Salary": 5000}',
+        //                 NewData: ""
+        //             }
+        //         ]
+        //     });
             
-            this.getView().setModel(oDisplayModel, "displayModel");
+        //     this.getView().setModel(oDisplayModel, "displayModel");
 
-            this._loadOData();
+        //     this._loadOData();
+        // },
+
+        onInit: function () {
+            var oOwnerComponent = this.getOwnerComponent();
+
+	    	this.oRouter = oOwnerComponent.getRouter();            
+            this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
+
+            var oDetailRecord = new JSONModel({
+                    Data: []
+                });
+            this.getView().setModel(oDetailRecord, "detailRecord");
+        },
+        
+        _onObjectMatched: function (oEvent) {
+            var aData = this.getView().getModel("displayModel").getProperty("/Meta");        
+            // if (aData[this._record] != "undefined") {
+            //     this.getView().getModel("detailRecord").setProperty("/Data", aData[this._record]);
+            // }
+            console.log(this.getView().getModel("displayModel").getProperty("/Meta"));
         },
 
         _loadOData: function () {

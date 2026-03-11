@@ -153,7 +153,8 @@ sap.ui.define([
             try {
                 var oRouter = this.getOwnerComponent().getRouter();
                 oRouter.navTo("RouteObjectPage", {
-                    tableName: sTableName
+                    tableName: sTableName,
+                    layout: "OneColumn"
                 });
             } catch (e) {
                 console.log("Router error: " + e.message);
@@ -169,7 +170,7 @@ sap.ui.define([
             this._oODataListBinding = oModel.bindList("/Meta", null, null, aFilters, {
                 $$groupId: "$direct"
             });
-       
+            this.getView().getModel("displayModel").setProperty("/Meta", this._oODataListBinding);
             return this._oODataListBinding;
         },
     });

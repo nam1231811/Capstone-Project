@@ -1,0 +1,18 @@
+<mvc:View
+    controllerName="zapp.controller.TableContainer"
+    id="TwoColumnTable"
+	displayBlock="true"
+	height="100%"
+	xmlns="sap.f"
+	xmlns:mvc="sap.ui.core.mvc">
+	<FlexibleColumnLayout 
+        id="flexibleColumnLayout" 
+        layout="{view>/layout}"
+        stateChange="onStateChanged" 
+        backgroundDesign="Solid">
+        <beginColumnPages>
+            </beginColumnPages>
+        <midColumnPages>
+            </midColumnPages>
+    </FlexibleColumnLayout>
+</mvc:View>

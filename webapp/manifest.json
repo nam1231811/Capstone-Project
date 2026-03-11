@@ -97,7 +97,6 @@
         "viewType": "XML",
         "path": "zapp.view",
         "controlId": "appContainer",
-        "controlAggregation": "pages",
         "transition": "slide",
         "async": true
       },
@@ -110,21 +109,31 @@
         {
           "name": "RouteObjectPage",
           "pattern": "detail/{tableName}",
-          "target": "TargetObjectPage"
+          "target": ["TargetTwoColumnContainer", "DetailTable"]
         }
+
       ],
       "targets": {
         "TargetMain": {
           "type": "View",
           "name": "MainPage",
           "id": "MainPage",
-          "viewLevel": 1
+          "viewLevel": 1,
+          "controlAggregation": "pages"
         },
-        "TargetObjectPage": {
+        
+        "TargetTwoColumnContainer": {
           "type": "View",
-          "name": "ObjectPage",
-          "id": "ObjectPage",
-          "viewLevel": 2
+          "viewName": "TableContainer", 
+          "controlAggregation": "pages",
+          "controlId": "appContainer",
+          "viewLevel": "2"
+        },
+        "DetailTable": {
+          "viewName": "ObjectPage", 
+          "controlAggregation": "beginColumnPages",
+          "parent": "TargetTwoColumnContainer", 
+          "controlId": "flexibleColumnLayout"
         }
       }
     }

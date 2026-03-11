@@ -7,24 +7,35 @@
     <App id="afds">
         <uxap:ObjectPageLayout id="asdfsdf">
             <uxap:headerTitle>
-                <uxap:ObjectPageHeader objectTitle="Table name: {view>/tableName}" />
-            </uxap:headerTitle>
-            
-            <uxap:sections>
+                <uxap:ObjectPageHeader objectTitle="Table name: {overall>/tableName}" />
                 
+            </uxap:headerTitle>
+            <uxap:sections>
                 <uxap:ObjectPageSection title="Technical Columns">
                     <uxap:subSections>
                         <uxap:ObjectPageSubSection>
                             <Table items="{displayModel>/Meta}">
                                 <columns>
-                                    <Column><Text text="Field Name"/></Column>
-                                    <Column><Text text="Data Type"/></Column>
+                                    <Column>
+                                        <Text text="Position"/>
+                                    </Column>
+                                    <Column>
+                                        <Text text="Field Name"/>
+                                    </Column>
+                                    <Column>
+                                        <Text text="Technical Name"/>
+                                    </Column>
+                                    <Column	>
+                                        <Text text="Data Type"/>
+                                    </Column>
                                 </columns>
                                 <items>
-                                    <ColumnListItem>
+                                    <ColumnListItem type="Navigation" press=".onMedataPress">
                                         <cells>
+                                            <Text text="{displayModel>field_pos}"/>
                                             <Text text="{displayModel>fieldname}"/>
-                                            <Text text="{displayModel>type}"/>
+                                            <Text text="{displayModel>rollname}"/>
+                                            <Text text="{displayModel>datatype}"/>
                                         </cells>
                                     </ColumnListItem>
                                 </items>
