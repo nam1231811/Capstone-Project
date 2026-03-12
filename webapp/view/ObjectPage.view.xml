@@ -26,16 +26,16 @@
                                         <Text text="Technical Name"/>
                                     </Column>
                                     <Column	>
-                                        <Text text="Data Type"/>
+                                        <Text text="Roll Name"/>
                                     </Column>
                                 </columns>
                                 <items>
                                     <ColumnListItem type="Navigation" press=".onMedataPress">
                                         <cells>
                                             <Text text="{displayModel>field_pos}"/>
+                                            <Text text="{displayModel>scrtext_l}"/>
                                             <Text text="{displayModel>fieldname}"/>
                                             <Text text="{displayModel>rollname}"/>
-                                            <Text text="{displayModel>datatype}"/>
                                         </cells>
                                     </ColumnListItem>
                                 </items>
@@ -44,26 +44,35 @@
                     </uxap:subSections>
                 </uxap:ObjectPageSection>
 
-                <uxap:ObjectPageSection title="Record Data">
+                <uxap:ObjectPageSection title="Record Data ({overall>/count})">
                     <uxap:subSections>
                         <uxap:ObjectPageSubSection>
-                            <Table items="{displayModel>/Data}">
-                                <columns>
-                                    <Column><Text text="ID"/></Column>
-                                    <Column><Text text="Currency"/></Column>
-                                    <Column><Text text="Name"/></Column>
-                                    <Column><Text text="City"/></Column>
-                                    <Column><Text text="Salary"/></Column>
-                                </columns>
-                                <items>
-                                    <ColumnListItem>
-                                        <cells>
-                                            <Text text="{displayModel>name}"/>
-                                            <Text text="{displayModel>type}"/>
-                                        </cells>
-                                    </ColumnListItem>
-                                </items>
-                            </Table>
+                            <VBox>
+                                <OverflowToolbar class="sapFDynamicPageAlignContent">
+				                	<ToolbarSpacer/>
+				                	<SearchField search=".onSearch" width="17.5rem"/>
+				                	<OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
+				                	<OverflowToolbarButton icon="sap-icon://sort" text="Sort" type="Transparent" press=".onSort"/>
+				                	<OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
+				                </OverflowToolbar>
+                                <Table 
+                                    columns="{displayModel>/Meta}" 
+                                    id="dataTable" 
+                                    items="{displayModel>/Data}" 
+                                    growing="true"
+                                    growingThreshold="20">
+                                    <columns >
+                                        <Column>
+                                            <header>
+                                                <Text text="{displayModel>scrtext_l}" />
+                                            </header>
+                                        </Column>
+                                    </columns>
+                                    <items>
+                                        <ColumnListItem id="columnTemplate" type="Navigation" press=".onListItemPress"/>
+                                    </items>
+                                </Table>
+                            </VBox>
                         </uxap:ObjectPageSubSection>
                     </uxap:subSections>
                 </uxap:ObjectPageSection>

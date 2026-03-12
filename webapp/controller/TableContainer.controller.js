@@ -18,14 +18,13 @@ sap.ui.define([
             var oOwnerComponent = this.getOwnerComponent();
 	    	this.oRouter = oOwnerComponent.getRouter();            
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
-
         },
         
-        _onObjectMatched: function (oEvent) {
-            var aData = this.getView().getModel("displayModel").getProperty("/Meta");        
-
-            this._loadMeta(aData);
-            console.log(this.getView().getModel("displayModel").getProperty("/Meta"));
+        _onObjectMatched: function () {
+            var oMeta = this.getView().getModel("displayModel").getProperty("/Meta"); 
+            this._loadMeta(oMeta);
+            var oData = this.getView().getModel("displayModel").getProperty("/Data");   
+            this._loadData(oData);            
         },
         
         _loadMeta: function(meta) {
@@ -37,6 +36,37 @@ sap.ui.define([
                 this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
             }.bind(this));
         },
+        
+        _loadData: function(data) {
+            return data.requestContexts().then(function (aDataContexts) {
+                this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());
+                console.log(this._oDataRaw);
+                this._oDataRaw = this._groupDataByRow(this._oDataRaw)
+                console.log(this._oDataRaw);
+
+                this.getView().getModel("overall").setProperty("/count", this._oDataRaw.length);
+            }.bind(this));
+        },
+        
+        _groupDataByRow: function (data) {
+            if(!data || !Array.isArray(data)){
+                return [];
+            }
+
+            const groupData = data.reduce(function (acc, obj) {
+                var sKey = obj.row_id;
+                if (!acc[sKey]) {
+                    acc[sKey] = [];
+                }
+                acc[sKey].push(obj);
+                return acc;
+            }, {});
+
+            //[ [Array(5)], [ Array(5)],... ]
+            return Object.values(groupData);;
+        },
+
+        
         
     });
 });
