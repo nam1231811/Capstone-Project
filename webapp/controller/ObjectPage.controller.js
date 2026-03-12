@@ -1,12 +1,13 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
-    "sap/ui/model/json/JSONModel"
-], function (Controller, JSONModel) {
+    "sap/ui/model/json/JSONModel",
+    "sap/f/library"
+], function (Controller, JSONModel, fioriLibrary) {
     "use strict";
 
     // Đã sửa lại tên controller cho đúng với tên file ObjectPage
     return Controller.extend("zapp.controller.ObjectPage", {
-        _oMetaRaw: [], 
+        _oFieldName: [], 
         _oDataRaw: [], 
 
         // onInit: function () {
@@ -66,12 +67,21 @@ sap.ui.define([
             this.getView().setModel(oDetailRecord, "detailRecord");
         },
         
-        _onObjectMatched: function (oEvent) {
-            var aData = this.getView().getModel("displayModel").getProperty("/Meta");        
+        _onObjectMatched: function () {      
             // if (aData[this._record] != "undefined") {
             //     this.getView().getModel("detailRecord").setProperty("/Data", aData[this._record]);
             // }
-            console.log(this.getView().getModel("displayModel").getProperty("/Meta"));
+            // console.log(this.getView().getModel("displayModel").getProperty("/Meta"));
+
+            var oMeta = this.getView().getModel("displayModel").getProperty("/Meta"); 
+            var oData = this.getView().getModel("displayModel").getProperty("/Data"); 
+               
+            Promise.all([
+                this._loadMeta(oMeta),
+                this._loadData(oData)
+            ]).then(function() {
+                this._displayData(oData); 
+            }.bind(this));
         },
 
         // _loadOData: function () {
@@ -106,12 +116,9 @@ sap.ui.define([
         _displayData: function() {
             var oTable = this.byId("dataTable");
             var oTemplate = this.byId("columnTemplate")
-            var listColumns = oTable.getColumns();
-            var listColumnName = listColumns.map(column => column.getHeader().getText())
             // chỉ có thể sửa data không thể thay thế thứ th hhhk,qự hiển thị 
-            
             const result = this._oDataRaw.map(record => {
-                return listColumnName.map(nameColumn => {
+                return this._oFieldName.map(nameColumn => {
                     const cell = record.find(column => column.fieldname === nameColumn)
                     return cell;
                 })
@@ -134,6 +141,48 @@ sap.ui.define([
                 template: oTemplate
             });
         },
+        
+        _loadMeta: function(meta) {
+            return meta.requestContexts().then(function (aMetaContexts) {
+                this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
+                this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
+                console.log(this._oMetaRaw);
+                this._oFieldName = this._oMetaRaw.map( prop => prop.fieldname)
+                
+                this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
+                this.getView().getModel("overall").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
+                this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
+            }.bind(this));
+        },
+        
+        _loadData: function(data) {
+            return data.requestContexts().then(function (aDataContexts) {
+                this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());
+                this._oDataRaw = this._groupDataByRow(this._oDataRaw)
+                console.log(this._oDataRaw);
+                this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
+                this.getView().getModel("overall").setProperty("/count", this._oDataRaw.length);
+            }.bind(this));
+        },
+        
+        _groupDataByRow: function (data) {
+            if(!data || !Array.isArray(data)){
+                return [];
+            }
+
+            const groupData = data.reduce(function (acc, obj) {
+                var sKey = obj.row_id;
+                if (!acc[sKey]) {
+                    acc[sKey] = [];
+                }
+                acc[sKey].push(obj);
+                return acc;
+            }, {});
+
+            //[ [Array(5)], [ Array(5)],... ]
+            return Object.values(groupData);;
+        },
+
 
         onViewLogDetail: function (oEvent) {
             // 1. Lấy dữ liệu của dòng (Row) vừa được click
@@ -196,7 +245,39 @@ sap.ui.define([
 
             // 5. Hiển thị Popup lên màn hình
             this._oLogDialog.open();
-        }
+        },
 
+        onMedataPress: function (oEvent) {
+            var oFCL = this.oView.getParent().getParent();
+            if (oFCL) {
+                oFCL.setLayout(fioriLibrary.LayoutType.TwoColumnsMidExpanded);
+                var oItemPath = oEvent.getSource().getBindingContext("displayModel").getPath();
+                var row_id = oItemPath.split("/").slice(-1).pop();
+                var tableName = this.getView().getModel("view").getProperty("/tableName");
+                this.getOwnerComponent().getRouter().navTo("Metadata", {
+                    layout: fioriLibrary.LayoutType.TwoColumnsMidExpanded,
+                    rowId: row_id,
+                    tableName: tableName
+                });
+            } else {
+                console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
+            }
+		},
+        onListItemPress: function (oEvent) {
+            var oFCL = this.oView.getParent().getParent();
+            if (oFCL) {
+                oFCL.setLayout(fioriLibrary.LayoutType.TwoColumnsMidExpanded);
+                var oItemPath = oEvent.getSource().getBindingContext("displayModel").getPath();
+                var row_id = oItemPath.split("/").slice(-1).pop();
+                var tableName = this.getView().getModel("view").getProperty("/tableName");
+                this.getOwnerComponent().getRouter().navTo("DetailData", {
+                    layout: fioriLibrary.LayoutType.TwoColumnsMidExpanded,
+                    rowId: row_id,
+                    tableName: tableName
+                });
+            } else {
+                console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
+            }
+		}
     });
 });

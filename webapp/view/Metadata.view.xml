@@ -1,0 +1,201 @@
+<mvc:View
+	xmlns:mvc="sap.ui.core.mvc"
+	controllerName="zapp.controller.Metadata"
+	xmlns="sap.uxap"
+	xmlns:m="sap.m"
+	xmlns:f="sap.f"
+	xmlns:form="sap.ui.layout.form"
+	xmlns:l="sap.ui.layout">
+	<ObjectPageLayout
+		id="MetadataObjectPage"
+		showTitleInHeaderContent="true"
+		alwaysShowContentHeader="false"
+		preserveHeaderStateOnScroll="false"
+		headerContentPinnable="true"
+		isChildPage="true"
+		upperCaseAnchorBar="false">
+		<headerTitle>
+			
+			<ObjectPageDynamicHeaderTitle>
+				<actions>
+					<m:Button
+						text="Cancel"
+						type="Transparent"
+						press=".onRollback"/>
+				</actions>
+			</ObjectPageDynamicHeaderTitle>
+		</headerTitle>
+
+         <headerContent>
+            <m:FlexBox wrap="Wrap" alignItems="Center">
+
+                <m:Avatar
+                    src="sap-icon://employee"
+                    displaySize="L"
+                    displayShape="Square"
+                    class="sapUiMediumMarginEnd"/>
+
+                <l:VerticalLayout class="sapUiMediumMarginEnd">
+                    <m:Label text="Category"/>
+                    <m:ObjectStatus
+                        text="Z-Table"
+                        state="Information"/>
+                </l:VerticalLayout>
+
+                <l:VerticalLayout class="sapUiMediumMarginEnd" >
+                    <m:Label text="Table Name"/>
+                    <m:ObjectStatus
+                        text="{metadata>/FieldName/table_name}"
+                        state="Success"/>
+                </l:VerticalLayout>
+
+                <l:VerticalLayout class="sapUiMediumMarginEnd" >
+					<l:content >
+                    	<m:Label text="User Name"/>
+                    	<m:ObjectStatus
+                    	    text="DEV-094"
+                    	    state="None"/>
+					</l:content>
+                </l:VerticalLayout>
+
+                <l:VerticalLayout >
+					<l:content >
+                    	<m:Label text="Position"/>
+                    	<m:ObjectStatus
+                    	    text="{metadata>/FieldName/field_pos}"
+                    	    state="None"/>
+					</l:content>
+                </l:VerticalLayout>
+
+            </m:FlexBox>
+        </headerContent>
+		<sections>
+			<ObjectPageSection title="General Information">
+				<subSections>
+					<ObjectPageSubSection>
+						<blocks>
+							<form:SimpleForm
+								maxContainerCols="2"
+								editable="false"
+								layout="ResponsiveGridLayout"
+								labelSpanL="12"
+								labelSpanM="12"
+								emptySpanL="0"
+								emptySpanM="0"
+								columnsL="1"
+								columnsM="1">
+								<form:content >
+                                    <l:Grid 
+                                        binding="{metadata>/FieldName}" 
+                                        defaultSpan="XL4 L4 M4 S12" 
+                                        vSpacing="1" 
+                                        class="sapUiSmallMargin">
+                                        <l:content>
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Field Name: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                                <m:Text text="{metadata>fieldname}"/>
+                                            </m:VBox>
+
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Data Type: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                                <m:Text  text="{metadata>datatype}"/>
+                                            </m:VBox>
+
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Length: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                                <m:Text  text="{metadata>leng}"/>
+                                            </m:VBox>
+
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Decimals: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                                <m:Text  text="{metadata>decimals}"/>
+                                            </m:VBox>
+											
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Technical Name: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                                <m:Text  text="{metadata>rollname}"/>
+                                            </m:VBox>
+											
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Mandatory: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                                <m:Text  text="{metadata>mandatory}"/>
+                                            </m:VBox>
+                                        </l:content>
+                                    </l:Grid>
+                                </form:content>
+							</form:SimpleForm>
+						</blocks>
+					</ObjectPageSubSection>
+				</subSections>
+			</ObjectPageSection>
+
+			<ObjectPageSection title="Display Label">
+				<subSections>
+					<ObjectPageSubSection>
+						<blocks>
+                        	<form:SimpleForm 
+                                editable="false" 
+                                layout="ResponsiveGridLayout"
+                                labelSpanXL="2" 
+                                labelSpanL="2" 
+                                labelSpanM="3" 
+                                labelSpanS="12"
+                                adjustLabelSpan="false"
+                                emptySpanXL="6"
+                                emptySpanL="6" 
+                                emptySpanM="4" 
+                                columnsL="1"
+                                class="sapUiNoContentPadding"> 
+                                <form:content>
+                                    <m:Label text="Short Label" 
+                                             design="Bold" 
+                                             class="sapUiMediumText sapUiSmallMarginTop" />
+                                    <m:Text text="{metadata>/FieldName/scrtext_s}" 
+                                            class="sapUiMediumText sapUiSmallMarginTop" />
+
+                                    <m:Label text="Medium Label" 
+                                             design="Bold" 
+                                             class="sapUiMediumText sapUiSmallMarginTop" />
+                                    <m:Text text="{metadata>/FieldName/scrtext_m}" 
+                                            class="sapUiMediumText sapUiSmallMarginTop" />
+
+                                    <m:Label text="Long Label" 
+                                             design="Bold" 
+                                             class="sapUiMediumText sapUiSmallMarginTop" />
+                                    <m:Text text="{metadata>/FieldName/scrtext_l}" 
+                                            class="sapUiMediumText sapUiSmallMarginTop" />
+                                </form:content>
+                            </form:SimpleForm>
+						</blocks>
+					</ObjectPageSubSection>
+				</subSections>
+			</ObjectPageSection>
+
+		</sections>
+    </ObjectPageLayout>
+
+</mvc:View>
