@@ -1,59 +1,15 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
-    "sap/f/library"
-], function (Controller, JSONModel, fioriLibrary) {
+    "sap/f/library",
+    "sap/ui/table/library"
+], function (Controller, JSONModel, fioriLibrary, tableLibrary) {
     "use strict";
 
     // Đã sửa lại tên controller cho đúng với tên file ObjectPage
     return Controller.extend("zapp.controller.ObjectPage", {
         _oFieldName: [], 
         _oDataRaw: [], 
-
-        // onInit: function () {
-            
-        //     var oViewModel = new JSONModel({
-        //         count: 0,
-        //         tableName: "" 
-        //     });
-        //     this.getView().setModel(oViewModel, "view");
-
-        //     var oDisplayModel = new JSONModel({
-        //         Meta: [], // Dữ liệu thật từ Backend sẽ chèn vào đây
-        //         Data: [], // Dữ liệu thật từ Backend sẽ chèn vào đây
-                
-        //         AuditLogs: [
-        //             {
-        //                 ChangedAt: "2026-03-08 10:30:00",
-        //                 ChangedBy: "NGUYENTP8",
-        //                 Action: "I", // Insert (Thêm mới)
-        //                 RecordKey: "SV001",
-        //                 OldData: "",
-        //                 NewData: '{"ID": "SV001", "Name": "Nguyen Van A", "City": "HCM"}'
-        //             },
-        //             {
-        //                 ChangedAt: "2026-03-08 11:15:22",
-        //                 ChangedBy: "MINHDH5",
-        //                 Action: "U", // Update (Sửa)
-        //                 RecordKey: "SV001",
-        //                 OldData: '{"ID": "SV001", "Name": "Nguyen Van A", "City": "HCM"}',
-        //                 NewData: '{"ID": "SV001", "Name": "Nguyen Van A", "City": "Pleiku"}'
-        //             },
-        //             {
-        //                 ChangedAt: "2026-03-08 14:00:05",
-        //                 ChangedBy: "ADMIN",
-        //                 Action: "D", // Delete (Xóa)
-        //                 RecordKey: "SV002",
-        //                 OldData: '{"ID": "SV002", "Name": "Tran Thi B", "Salary": 5000}',
-        //                 NewData: ""
-        //             }
-        //         ]
-        //     });
-            
-        //     this.getView().setModel(oDisplayModel, "displayModel");
-
-        //     this._loadOData();
-        // },
 
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
@@ -68,11 +24,6 @@ sap.ui.define([
         },
         
         _onObjectMatched: function () {      
-            // if (aData[this._record] != "undefined") {
-            //     this.getView().getModel("detailRecord").setProperty("/Data", aData[this._record]);
-            // }
-            // console.log(this.getView().getModel("displayModel").getProperty("/Meta"));
-
             var oMeta = this.getView().getModel("displayModel").getProperty("/Meta"); 
             var oData = this.getView().getModel("displayModel").getProperty("/Data"); 
                
@@ -84,63 +35,42 @@ sap.ui.define([
             }.bind(this));
         },
 
-        // _loadOData: function () {
-        //     var oModel = this.getOwnerComponent().getModel(); 
-        //     var oViewModel = this.getView().getModel("view");
-        //     var oDisplayModel = this.getView().getModel("displayModel");
 
-        //     var oMetaBinding = oModel.bindList("/Meta"); 
-        //     oMetaBinding.requestContexts().then(function (aMetaContexts) {
-        //         this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
-        //         console.log("Dữ liệu Meta:", this._oMetaRaw);
+       _displayData: function() {
+    var oTable = this.byId("dataTable");
+    
+    // 1. Xử lý dữ liệu (Logic của bạn giữ nguyên - Rất tốt)
+    const result = this._oDataRaw.map(record => {
+        return this._oFieldName.map(nameColumn => {
+            const cell = record.find(column => column.fieldname === nameColumn);
+            return cell || { value: "" }; // Tránh lỗi nếu không tìm thấy cell
+        });
+    });
 
-        //         if (this._oMetaRaw.length > 0) {
-        //             oViewModel.setProperty("/tableName", this._oMetaRaw[0].table_name);
-        //             oDisplayModel.setProperty("/Meta", this._oMetaRaw);
-        //         }
+    // 2. Cập nhật Model
+    this.getView().getModel("displayModel").setProperty("/Data", result);
 
-        //         return oModel.bindList("/Data").requestContexts();
+    // 3. Bind Columns thay vì bindItems/bindCells
+    // Vì mỗi hàng là một mảng, cột thứ i sẽ trỏ vào phần tử thứ i của hàng đó
+    oTable.bindColumns("displayModel>/Meta", function(sId, oContext) {
+        // Lấy index của cột từ path (Vd: "/Meta/0" -> index là 0)
+        var sPath = oContext.getPath();
+        var iColumnIndex = sPath.split("/").pop(); 
+        var sLabel = oContext.getProperty("scrtext_l");
 
-        //     }.bind(this)).then(function (aDataContexts) {
-        //         this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());
-        //         console.log("Dữ liệu Data thực tế:", this._oDataRaw);
+        return new sap.ui.table.Column({
+            label: new sap.m.Label({ text: sLabel }),
+            template: new sap.m.Text({
+                // Trỏ động: index i của mảng con, lấy thuộc tính 'value'
+                text: "{displayModel>" + iColumnIndex + "/value}",
+                wrapping: false
+            })
+        });
+    });
 
-        //         oDisplayModel.setProperty("/Data", this._oDataRaw);
-        //         oViewModel.setProperty("/count", this._oDataRaw.length);
-
-        //     }.bind(this)).catch(function (oError) {
-        //         console.error("Lỗi khi load dữ liệu OData:", oError);
-        //     });
-        // },
-
-        _displayData: function() {
-            var oTable = this.byId("dataTable");
-            var oTemplate = this.byId("columnTemplate")
-            // chỉ có thể sửa data không thể thay thế thứ th hhhk,qự hiển thị 
-            const result = this._oDataRaw.map(record => {
-                return this._oFieldName.map(nameColumn => {
-                    const cell = record.find(column => column.fieldname === nameColumn)
-                    return cell;
-                })
-            });
-            console.log(result);
-            
-            this.getView().getModel("displayModel").setProperty("/Data", result);
-            oTemplate.bindCells({
-                path: "displayModel>", 
-                factory: function(sId, oContext) {
-                    // oContext lúc này là từng object như {fieldname: "ID", value: "10001", ...}
-                    return new sap.m.Text({
-                        text: "{displayModel>value}"
-                    });
-                }
-            });
-            
-            oTable.bindItems({
-                path: "displayModel>/Data",
-                template: oTemplate
-            });
-        },
+    // 4. Bind Rows (Thay cho bindItems)
+    oTable.bindRows("displayModel>/Data");
+},
         
         _loadMeta: function(meta) {
             return meta.requestContexts().then(function (aMetaContexts) {
@@ -263,6 +193,7 @@ sap.ui.define([
                 console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
             }
 		},
+
         onListItemPress: function (oEvent) {
             var oFCL = this.oView.getParent().getParent();
             if (oFCL) {

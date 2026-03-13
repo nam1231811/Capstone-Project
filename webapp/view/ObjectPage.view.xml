@@ -4,6 +4,7 @@
     xmlns:uxap="sap.uxap" 
     xmlns:core="sap.ui.core"
     xmlns:ui="sap.ui.table"
+    xmlns:rowmodes="sap.ui.table.rowmodes"
     xmlns="sap.m">
     <App id="afds">
         <uxap:ObjectPageLayout id="asdfsdf">
@@ -48,31 +49,36 @@
                 <uxap:ObjectPageSection title="Record Data ({overall>/count})">
                     <uxap:subSections>
                         <uxap:ObjectPageSubSection>
-                            <VBox>
+                           <VBox>
                                 <OverflowToolbar class="sapFDynamicPageAlignContent">
-				                	<ToolbarSpacer/>
-				                	<SearchField search=".onSearch" width="17.5rem"/>
-				                	<OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
-				                	<OverflowToolbarButton icon="sap-icon://sort" text="Sort" type="Transparent" press=".onSort"/>
-				                	<OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
-				                </OverflowToolbar>
-                                <Table 
-                                    columns="{displayModel>/Meta}" 
-                                    id="dataTable" 
-                                    items="{displayModel>/Data}" 
-                                    growing="true"
-                                    growingThreshold="20">
-                                    <columns >
-                                        <Column>
-                                            <header>
-                                                <Text text="{displayModel>scrtext_l}" />
-                                            </header>
-                                        </Column>
-                                    </columns>
-                                    <items>
-                                        <ColumnListItem id="columnTemplate" type="Navigation" press=".onListItemPress"/>
-                                    </items>
-                                </Table>
+                                    <ToolbarSpacer/>
+                                    <SearchField search=".onSearch" width="17.5rem"/>
+                                    <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
+                                    <OverflowToolbarButton icon="sap-icon://sort" text="Sort" type="Transparent" press=".onSort"/>
+                                    <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
+                                </OverflowToolbar>
+
+                                <ui:Table
+                                    id="dataTable"
+                                    rows="{displayModel>/Data}" 
+                                    columns="{displayModel>/Meta}"
+                                    selectionMode="None">
+
+                                    <ui:rowMode>
+                                        <rowmodes:Auto minRowCount="5" />
+                                    </ui:rowMode>
+
+                                    <ui:columns>
+                                        <ui:Column 
+                                            width="auto" 
+                                            resizable="true"> 
+                                            <Label text="{displayModel>scrtext_l}" />
+                                            <ui:template>
+                                                <Text text="{displayModel>VALUE}" wrapping="false" />
+                                            </ui:template>
+                                        </ui:Column>
+                                    </ui:columns>
+                                </ui:Table>
                             </VBox>
                         </uxap:ObjectPageSubSection>
                     </uxap:subSections>
