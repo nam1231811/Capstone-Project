@@ -62,10 +62,13 @@
                                     id="dataTable"
                                     rows="{displayModel>/Data}" 
                                     columns="{displayModel>/Meta}"
-                                    selectionMode="None">
+                                    class="myCustomCleanTable"
+                                    rowSelectionChange=".onListItemPress"
+                                    selectionBehavior="RowOnly"
+                                    selectionMode="MultiToggle">
 
                                     <ui:rowMode>
-                                        <rowmodes:Auto minRowCount="5" />
+                                        <rowmodes:Auto minRowCount="10" />
                                     </ui:rowMode>
 
                                     <ui:columns>

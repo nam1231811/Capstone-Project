@@ -37,40 +37,34 @@ sap.ui.define([
 
 
        _displayData: function() {
-    var oTable = this.byId("dataTable");
-    
-    // 1. Xử lý dữ liệu (Logic của bạn giữ nguyên - Rất tốt)
-    const result = this._oDataRaw.map(record => {
-        return this._oFieldName.map(nameColumn => {
-            const cell = record.find(column => column.fieldname === nameColumn);
-            return cell || { value: "" }; // Tránh lỗi nếu không tìm thấy cell
-        });
-    });
+            var oTable = this.byId("dataTable");
 
-    // 2. Cập nhật Model
-    this.getView().getModel("displayModel").setProperty("/Data", result);
-
-    // 3. Bind Columns thay vì bindItems/bindCells
-    // Vì mỗi hàng là một mảng, cột thứ i sẽ trỏ vào phần tử thứ i của hàng đó
-    oTable.bindColumns("displayModel>/Meta", function(sId, oContext) {
-        // Lấy index của cột từ path (Vd: "/Meta/0" -> index là 0)
-        var sPath = oContext.getPath();
-        var iColumnIndex = sPath.split("/").pop(); 
-        var sLabel = oContext.getProperty("scrtext_l");
-
-        return new sap.ui.table.Column({
-            label: new sap.m.Label({ text: sLabel }),
-            template: new sap.m.Text({
-                // Trỏ động: index i của mảng con, lấy thuộc tính 'value'
-                text: "{displayModel>" + iColumnIndex + "/value}",
-                wrapping: false
-            })
-        });
-    });
-
-    // 4. Bind Rows (Thay cho bindItems)
-    oTable.bindRows("displayModel>/Data");
-},
+            const result = this._oDataRaw.map(record => {
+                return this._oFieldName.map(nameColumn => {
+                    const cell = record.find(column => column.fieldname === nameColumn);
+                    return cell || { value: "" }; 
+                });
+            });
+        
+            this.getView().getModel("displayModel").setProperty("/Data", result);
+        
+            oTable.bindColumns("displayModel>/Meta", function(sId, oContext) {
+                var sPath = oContext.getPath();
+                var iColumnIndex = sPath.split("/").pop(); 
+                var sLabel = oContext.getProperty("scrtext_l");
+            
+                return new sap.ui.table.Column({
+                    label: new sap.m.Label({ text: sLabel }),
+                    template: new sap.m.Text({
+                        text: "{displayModel>" + iColumnIndex + "/value}",
+                        wrapping: false
+                    })
+                });
+            });
+        
+            // Bind Rows (Thay cho bindItems)
+            oTable.bindRows("displayModel>/Data");
+        },
         
         _loadMeta: function(meta) {
             return meta.requestContexts().then(function (aMetaContexts) {
@@ -195,20 +189,27 @@ sap.ui.define([
 		},
 
         onListItemPress: function (oEvent) {
+            var oRowContext = oEvent.getParameter("rowContext");
+            
+            // Nếu click vào khoảng trống (không có data) thì dừng
+            if (!oRowContext) {
+                return;
+            }
+        
             var oFCL = this.oView.getParent().getParent();
             if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.TwoColumnsMidExpanded);
-                var oItemPath = oEvent.getSource().getBindingContext("displayModel").getPath();
-                var row_id = oItemPath.split("/").slice(-1).pop();
-                var tableName = this.getView().getModel("view").getProperty("/tableName");
+                var sPath = oRowContext.getPath();
+                var row_id = sPath.split("/").pop();
+                var tableName = this.getView().getModel("overall").getProperty("/tableName");
                 this.getOwnerComponent().getRouter().navTo("DetailData", {
                     layout: fioriLibrary.LayoutType.TwoColumnsMidExpanded,
                     rowId: row_id,
                     tableName: tableName
                 });
             } else {
-                console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
+                console.error("Không tìm thấy đối tượng FCL");
             }
-		}
+        }
     });
 });
