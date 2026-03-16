@@ -11,7 +11,6 @@
         <uxap:ObjectPageLayout id="asdfsdf">
             <uxap:headerTitle>
                 <uxap:ObjectPageHeader objectTitle="Table name: {overall>/tableName}" />
-                
             </uxap:headerTitle>
             <uxap:sections>
                 <uxap:ObjectPageSection title="Technical Columns">
@@ -65,16 +64,28 @@
                                 <ui:Table
                                     id="dataTable"
                                     rows="{displayModel>/Data}" 
+                                    visibleRowCount="{displayModel>/visibleRowCount}"
                                     columns="{path: 'displayModel>/Meta', factory: '.createDynamicColumn'}"
                                     class="myCustomCleanTable"
                                     rowSelectionChange=".onListItemPress"
                                     selectionBehavior="RowOnly"
                                     selectionMode="MultiToggle">
-
-                                    <ui:rowMode>
-                                        <rowmodes:Auto minRowCount="10" />
-                                    </ui:rowMode>
-                                    </ui:Table>
+                                </ui:Table>
+                                
+                                <HBox justifyContent="Center" class="sapUiTinyMarginTop">
+                                    <Button 
+                                        text="Show More" 
+                                        press=".onPressLoadMore" 
+                                        visible="{displayModel>/hasMore}" 
+                                        type="Transparent" />
+                                        
+                                    <Button 
+                                        text="Show Less" 
+                                        press=".onPressShowLess" 
+                                        visible="{displayModel>/hasLess}" 
+                                        type="Transparent" 
+                                        class="sapUiTinyMarginBegin" />
+                                </HBox>
                             </VBox>
                         </uxap:ObjectPageSubSection>
                     </uxap:subSections>
