@@ -43,27 +43,36 @@
                     <uxap:subSections>
                         <uxap:ObjectPageSubSection>
                            <VBox>
-                                <OverflowToolbar class="sapFDynamicPageAlignContent">
-                                <SearchField search=".onSearch" width="17.5rem"/>
-                                    <ToolbarSpacer/>
+                                <ScrollContainer
+                                height="100%"
+                                width="100%"
+                                horizontal="true"
+                                vertical="false">
+                                <OverflowToolbar 
+                                    class="sapFDynamicPageAlignContent"
+                                    width="110rem"
+                                >
+                                    <SearchField search=".onSearch" width="17.5rem"/>
+                                        <ToolbarSpacer/>
 
-                                <u:FileUploader
-                                    id="excelUploader"
-                                    fileType="xlsx"
-                                    buttonOnly="true"
-                                    icon="sap-icon://excel-attachment"
-                                    buttonText="Upload"
-                                    style="Emphasized"
-                                    sameFilenameAllowed="true"
-                                    change=".onUploadExcelPress"/>
+                                    <u:FileUploader
+                                        id="excelUploader"
+                                        fileType="xlsx"
+                                        buttonOnly="true"
+                                        icon="sap-icon://excel-attachment"
+                                        buttonText="Upload"
+                                        style="Emphasized"
+                                        sameFilenameAllowed="true"
+                                        change=".onUploadExcelPress"/>
 
-                                    <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
-                                    <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
-                                    <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
+                                        <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
+                                        <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
+                                        <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
                                 </OverflowToolbar>
 
                                 <ui:Table
                                     id="dataTable"
+                                    width="110rem"
                                     rows="{displayModel>/Data}" 
                                     columns="{path: 'displayModel>/Meta', factory: '.createDynamicColumn'}"
                                     class="myCustomCleanTable"
@@ -74,7 +83,8 @@
                                     <ui:rowMode>
                                         <rowmodes:Auto minRowCount="10" />
                                     </ui:rowMode>
-                                    </ui:Table>
+                                </ui:Table>
+                                 </ScrollContainer>
                             </VBox>
                         </uxap:ObjectPageSubSection>
                     </uxap:subSections>
