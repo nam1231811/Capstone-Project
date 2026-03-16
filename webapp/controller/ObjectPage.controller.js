@@ -9,12 +9,12 @@ sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/ui/core/HTML"
-], function (Controller, JSONModel, fioriLibrary, tableLibrary, Filter, FilterOperator, HTML) {
+], function (Controller, JSONModel, fioriLibrary, tableLibrary, MessageToast, MessageBox, BusyIndicator, Filter, FilterOperator, HTML) {
     "use strict";
 
     return Controller.extend("zapp.controller.ObjectPage", {
         _oFieldName: [], 
-        _oDataRaw: [], 
+        _oDataRaw: [],
 
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
@@ -128,6 +128,8 @@ sap.ui.define([
         
         _loadMeta: function(meta) {
             return meta.requestContexts().then(function (aMetaContexts) {
+                this._oMetaFirstContext = aMetaContexts[0];
+
                 this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
                 this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
                 this._oFieldName = this._oMetaRaw.map( prop => prop.fieldname);
