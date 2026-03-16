@@ -5,10 +5,15 @@ sap.ui.define([
     "use strict";
 
     return {
-        onColumnHeaderPress: function(oEvent) {
-            var oButton = oEvent.getSource(); 
-            var iColIndex = oButton.data("colIndex"); 
-            var sColName = oButton.data("colName"); 
+        onColumnSelect: function(oEvent) {
+            oEvent.preventDefault();
+
+            var oColumn = oEvent.getParameter("column");
+            if (!oColumn) return;
+
+            //Rút dữ liệu trực tiếp từ cột
+            var iColIndex = oColumn.data("colIndex"); 
+            var sColName = oColumn.data("colName"); 
             var that = this;
 
             var oTable = this.byId("dataTable");
@@ -16,16 +21,24 @@ sap.ui.define([
             var aSorters = oBinding ? oBinding.aSorters : [];
             
             var sCurrentSortKey = "none"; 
+            var bIsGrouped = false; 
+
             if (aSorters && aSorters.length > 0) {
-                var oCurrentSorter = aSorters[0];
-                if (oCurrentSorter.sPath === (iColIndex + "/value")) {
+                var oCurrentSorter = aSorters.find(function(s) { return s.sPath === (iColIndex + "/value"); });
+                if (oCurrentSorter) {
                     sCurrentSortKey = oCurrentSorter.bDescending ? "desc" : "asc";
+                    bIsGrouped = !!oCurrentSorter.vGroup; 
                 }
             }
 
             if (this._oColumnPopover) {
                 this._oColumnPopover.destroy();
             }
+
+            var oMultiSortCheckBox = new sap.m.CheckBox({
+                text: "Multi-sort",
+                selected: false
+            });
 
             this._oColumnPopover = new sap.m.ResponsivePopover({
                 showHeader: true,
@@ -43,7 +56,7 @@ sap.ui.define([
                         })
                     ]
                 }),
-                contentWidth: "220px", 
+                contentWidth: "250px", 
                 placement: "Bottom",
                 content: [
                     new sap.m.VBox({
@@ -61,8 +74,9 @@ sap.ui.define([
                                             var oItem = oEventSelect.getParameter("item");
                                             var sKey = oItem ? oItem.getKey() : oEventSelect.getSource().getSelectedKey();
                                             var bDescending = (sKey === "desc");
+                                            var bMultiSort = oMultiSortCheckBox.getSelected();
                                             
-                                            that.onSortColumnDirect(bDescending, iColIndex);
+                                            that.onSortColumnDirect(bDescending, iColIndex, bMultiSort, false); 
                                         },
                                         items: [
                                             new sap.m.SegmentedButtonItem({ icon: "sap-icon://sort-ascending", key: "asc", tooltip: "Ascending" }),
@@ -70,7 +84,9 @@ sap.ui.define([
                                         ]
                                     })
                                 ]
-                            }).addStyleClass("sapUiSmallMarginBottom"),
+                            }).addStyleClass("sapUiTinyMarginBottom"),
+
+                            oMultiSortCheckBox.addStyleClass("sapUiSmallMarginBottom"),
 
                             new HTML({ content: "<hr style='border: 0; border-top: 1px solid #e5e5e5; margin: 10px 0;'/>" }),
 
@@ -82,10 +98,17 @@ sap.ui.define([
                                 items: [
                                     new sap.m.Text({ text: sColName }),
                                     new sap.m.Switch({
-                                        state: false,
+                                        state: bIsGrouped, 
                                         customTextOn: " ", customTextOff: " ",
                                         change: function(oEventSwitch) {
-                                            sap.m.MessageToast.show("Group By function is under development.");
+                                            var bState = oEventSwitch.getParameter("state");
+                                            that.onSortColumnDirect(false, iColIndex, false, bState);
+                                            
+                                            if (bState) {
+                                                sap.m.MessageToast.show("Data grouped by: " + sColName);
+                                            } else {
+                                                sap.m.MessageToast.show("Cancelled");
+                                            }
                                         }
                                     })
                                 ]
@@ -96,10 +119,11 @@ sap.ui.define([
             });
 
             this.getView().addDependent(this._oColumnPopover);
-            this._oColumnPopover.openBy(oButton);
+            
+            this._oColumnPopover.openBy(oColumn.getLabel()); //Mở popup dựa vào vị trí của label bên trong cột
         },
 
-        onSortColumnDirect: function(bDescending, iColIndex) {
+        onSortColumnDirect: function(bDescending, iColIndex, bMultiSort, bGroup) {
             var oTable = this.byId("dataTable");
             var oBinding = oTable.getBinding("rows");
 
@@ -107,9 +131,10 @@ sap.ui.define([
 
             var sPath = iColIndex + "/value";
             
-            var oSorter = new Sorter({
+            var oNewSorter = new Sorter({
                 path: sPath,
                 descending: bDescending,
+                group: bGroup ? function(oContext) { return oContext.getProperty(sPath); } : false,
                 comparator: function(a, b) {
                     if (a === b) return 0;
                     if (a === null || a === undefined) return -1;
@@ -126,7 +151,21 @@ sap.ui.define([
                 }
             });
 
-            oBinding.sort([oSorter]);
+            var aFinalSorters = [];
+
+            if (!bGroup) {
+                if (bMultiSort) {
+                    var aCurrentSorters = oBinding.aSorters || [];
+                    aFinalSorters = aCurrentSorters.filter(function(oSorter) {
+                        return oSorter.sPath !== sPath;
+                    });
+                }
+                aFinalSorters.push(oNewSorter);
+            } else {
+                aFinalSorters = [oNewSorter]; 
+            }
+
+            oBinding.sort(aFinalSorters);
         }
     };
 });

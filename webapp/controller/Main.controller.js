@@ -19,8 +19,7 @@ sap.ui.define([
             var oSettingsModel = new JSONModel({ selectedLanguage: "E" });
             this.getView().setModel(oSettingsModel, "settingsModel");
 
-            //Khởi tạo logic cá nhân hóa bảng
-            this._initPersonalization();
+            this._initPersonalization(); //Khởi tạo logic personalization
         },
 
         //Hàm search table
@@ -32,18 +31,42 @@ sap.ui.define([
 
             //Validation cơ bản
             if (!sTableName && !sTableDesc) {
-                MessageToast.show("Please input Table Name or Table Description!");
+                MessageToast.show("Please enter Table Name or Table Description!");
                 return;
             }
 
             //Security check (Chỉ Z hoặc Y)
             if (sTableName && !sTableName.startsWith("Z") && !sTableName.startsWith("Y")) {
-                MessageBox.warning("Access denied! Custom tables only (Z/Y).");
+                MessageBox.warning("Access denied! You can only search custom table (Z or Y)!");
                 return;
             }
 
-            //Gọi action
-            this.onSetTable(sTableName, sTableDesc, sLang);
+            this.onSetTable(sTableName, sTableDesc, sLang); //Gọi action
+        },
+
+        //Hàm clear
+        onClear: function () {
+            //Xóa nội dung các ô nhập liệu
+            var oSearchInput = this.byId("searchInput");
+            var oDescInput = this.byId("searchDescInput");
+            
+            if (oSearchInput) {
+                oSearchInput.setValue("");
+            }
+            if (oDescInput) {
+                oDescInput.setValue("");
+            }
+
+            this.getView().getModel("realData").setProperty("/UniqueTables", []); //Xóa dữ liệu đang hiển thị trên bảng
+
+            //Dọn cache của displayModel
+            var oDisplayModel = this.getView().getModel("displayModel");
+            if (oDisplayModel) {
+                oDisplayModel.setProperty("/Meta", null);
+                oDisplayModel.setProperty("/Data", null);
+            }
+
+            MessageToast.show("Search fields and data cleared!");
         },
 
         //Hàm gọi action
@@ -62,16 +85,16 @@ sap.ui.define([
             oAction.setParameter("table_description", sDesc);
             oAction.setParameter("language", sLang);
 
-            //Thực thi action
+            //Execute action
             oAction.execute().then(function () {
                 MessageToast.show("Table loaded successfully!");
 
-                //Load lại dữ liệu lên UI
-                this._loadDataToTable(sName);
+                this._loadDataToTable(sName); //Load lại dữ liệu lên UI
                 
             }.bind(this)).catch(function (oError) {
                 oTable.setBusy(false);
-                MessageBox.error("Error executing Action SetTable: " + oError.message);
+                MessageBox.error("Table '" + sName + "' does not found or does not exist in the system! Please check the name and try again!");
+                console.error("Backend Error Details:", oError);
             });
         },
 
@@ -83,11 +106,10 @@ sap.ui.define([
                 new Filter("table_name", FilterOperator.EQ, sTableName)
             ];
             
-            var oListBinding = this._loadMeta(aFilters)
+            var oListBinding = this._loadMeta(aFilters);
             this._loadData(aFilters);
 
             oListBinding.requestContexts(0, 1000).then(function (aContexts) {
-                console.log(aContexts),
                 oTable.setBusy(false);
                 
                 if (!aContexts || aContexts.length === 0) {
@@ -100,7 +122,6 @@ sap.ui.define([
                 var oUniqueMap = {};
                 aContexts.forEach(function (oContext) {
                     var item = oContext.getObject();
-                    console.log(item);
                     var sId = item.table_name;
                     if (sId) {
                         if (!oUniqueMap[sId]) {
@@ -117,17 +138,18 @@ sap.ui.define([
                     }
                 });
 
-                //Set dữ liệu vào Model để bảng hiển thị
+                //Set dữ liệu vào model để bảng hiển thị
                 var aUniqueTables = Object.values(oUniqueMap);
                 this.getView().getModel("realData").setProperty("/UniqueTables", aUniqueTables);
 
             }.bind(this)).catch(function(oError) {
                 oTable.setBusy(false);
-                MessageBox.error("Error reading data: " + oError.message);
+                MessageBox.error("Could not load data for table '" + sTableName + "'! Please try again later!");
+                console.error("Read Data Error:", oError);
             });
         },
 
-        //Hàm ấn nút xử lý
+        //Hàm xử lý khi ấn nút Go
         onRowPress: function (oEvent) {
             var oContext = oEvent.getSource().getBindingContext("realData");
             var sTableName = oContext.getProperty("table_name");
@@ -189,7 +211,7 @@ sap.ui.define([
                 $$groupId: "$direct"
             });
             
-            this.getView().getModel("displayModel").setProperty("/Meta", this._oODataListBinding); //Lưu vào displayModel
+            this.getView().getModel("displayModel").setProperty("/Meta", this._oODataListBinding); // Lưu vào displayModel
             
             return this._oODataListBinding;
         },
@@ -203,4 +225,4 @@ sap.ui.define([
             this.getView().getModel("displayModel").setProperty("/Data", modelData);
         }
     });
-});
+}); 
