@@ -44,6 +44,17 @@
                            <VBox>
                                 <OverflowToolbar class="sapFDynamicPageAlignContent">
                                     <ToolbarSpacer/>
+
+                                <u:FileUploader
+                                    id="excelUploader"
+                                    fileType="xlsx"
+                                    buttonOnly="true"
+                                    icon="sap-icon://excel-attachment"
+                                    buttonText="Upload"
+                                    style="Emphasized"
+                                    sameFilenameAllowed="true"
+                                    change=".onUploadExcelPress"/>
+
                                     <SearchField search=".onSearch" width="17.5rem"/>
                                     <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
                                     <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>

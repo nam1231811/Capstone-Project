@@ -3,6 +3,9 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/f/library",
     "sap/ui/table/library",
+    "sap/m/MessageToast",   
+    "sap/m/MessageBox",     
+    "sap/ui/core/BusyIndicator",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/ui/core/HTML"
@@ -26,15 +29,25 @@ sap.ui.define([
         },
         
         _onObjectMatched: function () {      
-            var oMeta = this.getView().getModel("displayModel").getProperty("/Meta"); 
-            var oData = this.getView().getModel("displayModel").getProperty("/Data"); 
+            // 1. Lấy Model OData V4 chính gốc của hệ thống
+            var oModel = this.getOwnerComponent().getModel();
+            
+            // 2. Tạo đường ống chuẩn xác tới Database (thay vì móc nhầm JSONModel)
+            var oMetaBinding = oModel.bindList("/Meta"); 
+            var oDataBinding = oModel.bindList("/Data"); 
                
+            // 3. Cất giữ đường ống Data gốc vào két sắt để hàm Upload dùng lại
+            this._oDataBindingGoc = oDataBinding; 
+
+            // 4. Kích hoạt tải dữ liệu
             Promise.all([
-                this._loadMeta(oMeta),
-                this._loadData(oData)
+                this._loadMeta(oMetaBinding),
+                this._loadData(oDataBinding)
             ]).then(function() {
-                this._displayData(oData); 
-            }.bind(this));
+                this._displayData(); 
+            }.bind(this)).catch(function(err) {
+                console.error("Lỗi sập trang khi load Meta/Data:", err);
+            });
         },
 
         _displayData: function() {
@@ -558,6 +571,73 @@ sap.ui.define([
             } else {
                 console.error("Không tìm thấy đối tượng FCL");
             }
+        },
+
+        onUploadExcelPress: function (oEvent) {
+            var aFiles = oEvent.getParameter("files");
+            var oFile = aFiles ? aFiles[0] : null;
+
+            if (!oFile) {
+                MessageToast.show("File could not be found. Please try again!");
+                return;
+            }
+
+            var oReader = new FileReader();
+            
+            oReader.onload = function (e) {
+                var sDataURL = e.target.result;
+                var sBase64String = sDataURL.split(",")[1];
+                var sTableName = this.getView().getModel("overall").getProperty("/tableName");
+
+                this._sendExcelToBackend(sTableName, sBase64String);
+                
+                // Clear tool upload để chọn lại file cũ không bị khựng
+                this.byId("excelUploader").clear();
+                
+            }.bind(this);
+
+            oReader.readAsDataURL(oFile);
+        },
+
+        _sendExcelToBackend: function (sTableName, sBase64String) {
+            var oModel = this.getOwnerComponent().getModel();
+            
+            if (!this._oMetaFirstContext) {
+                MessageBox.error("Metadata Context information not found!");
+                return;
+            }
+
+            BusyIndicator.show(0);
+
+            // Dùng Context trực tiếp, Action Odata V4
+            var sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.uploadExcel(...)";
+            var oActionContext = oModel.bindContext(sActionName, this._oMetaFirstContext);
+            
+            oActionContext.setParameter("table_name", sTableName);
+            oActionContext.setParameter("file_content", sBase64String);
+
+            // Thực thi gửi xuống Backend
+            oActionContext.execute().then(function () {
+                BusyIndicator.hide();
+                MessageToast.show("Upload file Excel và lưu Database thành công!");
+                
+                // [ĐÃ FIX CHỐT HẠ]: Ép Fiori xóa cache đệm và tải lại dữ liệu mới nhất tự động
+                if (this._oDataBindingGoc) {
+                    this._oDataBindingGoc.refresh(); // Ép hệ thống xả đệm
+                    
+                    // Đợi 0.5s để Backend chốt số (Commit) xong rồi mới vẽ lại lên màn hình
+                    setTimeout(function() {
+                        this._loadData(this._oDataBindingGoc).then(function() {
+                            this._displayData();
+                        }.bind(this));
+                    }.bind(this), 500); 
+                }
+                
+            }.bind(this)).catch(function (oError) {
+                BusyIndicator.hide();
+                MessageBox.error("Lỗi khi tải file: " + (oError.message || "Lỗi không xác định"));
+                console.error("Chi tiết lỗi Upload:", oError);
+            });
         }
     });
 });
