@@ -6,10 +6,11 @@ sap.ui.define([
     "sap/m/MessageToast",   
     "sap/m/MessageBox",     
     "sap/ui/core/BusyIndicator",
-    "sap/ui/model/Filter",
-    "sap/ui/model/FilterOperator",
-    "sap/ui/core/HTML"
-], function (Controller, JSONModel, fioriLibrary, tableLibrary, MessageToast, MessageBox, BusyIndicator, Filter, FilterOperator, HTML) {
+    "zapp/utils/SearchData",
+    "zapp/utils/FilterData",
+    "zapp/utils/SortData",
+    "zapp/utils/PersonalizationData"
+], function (Controller, JSONModel, fioriLibrary, tableLibrary, MessageToast, MessageBox, BusyIndicator, SearchData, FilterData, SortData, PersonalizationData) {
     "use strict";
 
     return Controller.extend("zapp.controller.ObjectPage", {
@@ -22,24 +23,18 @@ sap.ui.define([
             this.oRouter = oOwnerComponent.getRouter();            
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
 
-            var oDetailRecord = new JSONModel({
-                    Data: []
-                });
+            var oDetailRecord = new JSONModel({ Data: [] });
             this.getView().setModel(oDetailRecord, "detailRecord");
         },
         
         _onObjectMatched: function () {      
-            // 1. Lấy Model OData V4 chính gốc của hệ thống
             var oModel = this.getOwnerComponent().getModel();
             
-            // 2. Tạo đường ống chuẩn xác tới Database (thay vì móc nhầm JSONModel)
             var oMetaBinding = oModel.bindList("/Meta"); 
             var oDataBinding = oModel.bindList("/Data"); 
-               
-            // 3. Cất giữ đường ống Data gốc vào két sắt để hàm Upload dùng lại
+                
             this._oDataBindingGoc = oDataBinding; 
 
-            // 4. Kích hoạt tải dữ liệu
             Promise.all([
                 this._loadMeta(oMetaBinding),
                 this._loadData(oDataBinding)
@@ -87,7 +82,6 @@ sap.ui.define([
 
             var sStableId = this.getView().createId(sBaseId);
             
-            //Đọc local storage
             var sTableName = this.getView().getModel("overall").getProperty("/tableName") || "DefaultTable";
             var sStorageKey = "myApp_" + sTableName + "_GridPerso";
             var sSavedData = window.localStorage.getItem(sStorageKey);
@@ -96,7 +90,6 @@ sap.ui.define([
             if (sSavedData) {
                 try {
                     var aSavedCols = JSON.parse(sSavedData);
-                    //Tìm cấu hình lưu trữ của đúng cột
                     var oMatch = aSavedCols.find(function(c) { return c.index === iIndex; });
                     if (oMatch) {
                         bVisibleDefault = oMatch.visible;
@@ -129,7 +122,6 @@ sap.ui.define([
         _loadMeta: function(meta) {
             return meta.requestContexts().then(function (aMetaContexts) {
                 this._oMetaFirstContext = aMetaContexts[0];
-
                 this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
                 this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
                 this._oFieldName = this._oMetaRaw.map( prop => prop.fieldname);
@@ -150,331 +142,41 @@ sap.ui.define([
         },
         
         _groupDataByRow: function (data) {
-            if(!data || !Array.isArray(data)){
-                return [];
-            }
-
+            if(!data || !Array.isArray(data)){ return []; }
             const groupData = data.reduce(function (acc, obj) {
                 var sKey = obj.row_id;
-                if (!acc[sKey]) {
-                    acc[sKey] = [];
-                }
+                if (!acc[sKey]) { acc[sKey] = []; }
                 acc[sKey].push(obj);
                 return acc;
             }, {});
-
             return Object.values(groupData);
         },
 
-        //Hàm logic personalization
+        //Các hàm search, sort, filter, personalization
         onPersonalization: function () {
-            var that = this;
-            var oTable = this.byId("dataTable");
-            var aColumns = oTable.getColumns(); //Lấy mảng các cột đang có trên bảng
-
-            if (!this._oPersoDialog) {
-                this._oPersoDialog = new sap.m.Dialog({
-                    title: "Personalization",
-                    contentWidth: "400px",
-                    contentHeight: "450px",
-                    resizable: true,
-                    draggable: true,
-                    content: new sap.m.List({
-                        mode: sap.m.ListMode.MultiSelect,
-                        includeItemInSelection: true
-                    }),
-                    beginButton: new sap.m.Button({
-                        type: "Emphasized",
-                        text: "Save",
-                        press: function () {
-                            var oList = that._oPersoDialog.getContent()[0];
-                            var aItems = oList.getItems();
-                            var aSavedCols = [];
-
-                            //Quét qua danh sách để xem người dùng chọn ẩn/hiện cột nào
-                            aItems.forEach(function(oItem, index) {
-                                var bSelected = oItem.getSelected();
-                                var oColumn = aColumns[index];
-                                
-                                oColumn.setVisible(bSelected); //Ép bảng thay đổi trạng thái cột ngay lập tức
-
-                                //Ghi nhận để lưu vào ổ cứng
-                                aSavedCols.push({
-                                    index: index,
-                                    visible: bSelected
-                                });
-                            });
-
-                            //Lưu mảng cấu hình vào local storage của trình duyệt
-                            var sTableName = that.getView().getModel("overall").getProperty("/tableName") || "DefaultTable";
-                            var sStorageKey = "myApp_" + sTableName + "_GridPerso";
-                            window.localStorage.setItem(sStorageKey, JSON.stringify(aSavedCols));
-
-                            that._oPersoDialog.close();
-                        }
-                    }),
-                    endButton: new sap.m.Button({
-                        text: "Cancel",
-                        press: function () {
-                            that._oPersoDialog.close();
-                        }
-                    })
-                });
-                this.getView().addDependent(this._oPersoDialog);
-            }
-
-            //Làm mới nội dung danh sách mỗi khi mở dialog
-            var oList = this._oPersoDialog.getContent()[0];
-            oList.removeAllItems();
-            
-            aColumns.forEach(function(oColumn, index) {
-                //Trích xuất tên cột từ nút bấm header
-                var oHeaderControl = oColumn.getLabel();
-                var sText = "Column " + index;
-                if (oHeaderControl && typeof oHeaderControl.getText === "function") {
-                    sText = oHeaderControl.getText();
-                }
-                
-                //Tạo một dòng checkbox
-                var oItem = new sap.m.StandardListItem({
-                    title: sText,
-                    selected: oColumn.getVisible()
-                });
-                oList.addItem(oItem);
-            });
-
-            this._oPersoDialog.open();
+            PersonalizationData.onPersonalization.call(this);
         },
 
-        //Action sheet menu từ tiêu đề cột
         onColumnHeaderPress: function(oEvent) {
-            var oButton = oEvent.getSource(); 
-            var iColIndex = oButton.data("colIndex"); 
-            var sColName = oButton.data("colName"); 
-            var that = this;
-
-            var oTable = this.byId("dataTable");
-            var oBinding = oTable.getBinding("rows");
-            var aSorters = oBinding ? oBinding.aSorters : [];
-            
-            var sCurrentSortKey = "none"; 
-            if (aSorters && aSorters.length > 0) {
-                var oCurrentSorter = aSorters[0];
-                if (oCurrentSorter.sPath === (iColIndex + "/value")) {
-                    sCurrentSortKey = oCurrentSorter.bDescending ? "desc" : "asc";
-                }
-            }
-
-            if (this._oColumnPopover) {
-                this._oColumnPopover.destroy();
-            }
-
-            this._oColumnPopover = new sap.m.ResponsivePopover({
-                showHeader: true,
-                customHeader: new sap.m.Bar({
-                    contentMiddle: [
-                        new sap.m.Title({ text: "Column Settings" })
-                    ],
-                    contentRight: [
-                        new sap.m.Button({
-                            icon: "sap-icon://decline",
-                            type: "Transparent",
-                            press: function() {
-                                that._oColumnPopover.close();
-                            }
-                        })
-                    ]
-                }),
-                contentWidth: "220px", 
-                placement: "Bottom",
-                content: [
-                    new sap.m.VBox({
-                        items: [
-                            new sap.m.Label({ text: "Sort By", design: "Bold" }).addStyleClass("sapUiTinyMarginBottom"),
-                            new sap.m.HBox({
-                                justifyContent: "SpaceBetween", 
-                                alignItems: "Center",
-                                width: "100%",
-                                items: [
-                                    new sap.m.Text({ text: sColName }), 
-                                    new sap.m.SegmentedButton({
-                                        selectedKey: sCurrentSortKey,
-                                        selectionChange: function(oEventSelect) {
-                                            var oItem = oEventSelect.getParameter("item");
-                                            var sKey = oItem ? oItem.getKey() : oEventSelect.getSource().getSelectedKey();
-                                            var bDescending = (sKey === "desc");
-                                            
-                                            that.onSortColumnDirect(bDescending, iColIndex);
-                                        },
-                                        items: [
-                                            new sap.m.SegmentedButtonItem({ icon: "sap-icon://sort-ascending", key: "asc", tooltip: "Ascending" }),
-                                            new sap.m.SegmentedButtonItem({ icon: "sap-icon://sort-descending", key: "desc", tooltip: "Descending" })
-                                        ]
-                                    })
-                                ]
-                            }).addStyleClass("sapUiSmallMarginBottom"),
-
-                            new HTML({ content: "<hr style='border: 0; border-top: 1px solid #e5e5e5; margin: 10px 0;'/>" }),
-
-                            new sap.m.Label({ text: "Group By", design: "Bold" }).addStyleClass("sapUiTinyMarginBottom"),
-                            new sap.m.HBox({
-                                justifyContent: "SpaceBetween",
-                                alignItems: "Center",
-                                width: "100%",
-                                items: [
-                                    new sap.m.Text({ text: sColName }),
-                                    new sap.m.Switch({
-                                        state: false,
-                                        customTextOn: " ", customTextOff: " ",
-                                        change: function(oEventSwitch) {
-                                            sap.m.MessageToast.show("Group By function is under development.");
-                                        }
-                                    })
-                                ]
-                            })
-                        ]
-                    }).addStyleClass("sapUiSmallMargin") 
-                ]
-            });
-
-            this.getView().addDependent(this._oColumnPopover);
-            this._oColumnPopover.openBy(oButton);
+            SortData.onColumnHeaderPress.call(this, oEvent);
         },
 
         onSortColumnDirect: function(bDescending, iColIndex) {
-            var oTable = this.byId("dataTable");
-            var oBinding = oTable.getBinding("rows");
-
-            if (!oBinding) return;
-
-            var sPath = iColIndex + "/value";
-            
-            var oSorter = new sap.ui.model.Sorter({
-                path: sPath,
-                descending: bDescending,
-                comparator: function(a, b) {
-                    if (a === b) return 0;
-                    if (a === null || a === undefined) return -1;
-                    if (b === null || b === undefined) return 1;
-                    
-                    var numA = parseFloat(a);
-                    var numB = parseFloat(b);
-                    
-                    if (!isNaN(numA) && !isNaN(numB)) {
-                        return numA - numB;
-                    }
-                    
-                    return a.toString().localeCompare(b.toString());
-                }
-            });
-
-            oBinding.sort([oSorter]);
+            SortData.onSortColumnDirect.call(this, bDescending, iColIndex);
         },
 
-        //Hàm search 
         onSearch: function (oEvent) {
-            var sQuery = oEvent.getParameter("query");
-            var oTable = this.byId("dataTable");
-            var oBinding = oTable.getBinding("rows");
-
-            if (sQuery) {
-                var oFilter = new Filter({ 
-                    path: "",
-                    test: function (aRow) {
-                        if (!aRow || !Array.isArray(aRow)) return false;
-                        return aRow.some(function (oCell) { 
-                            return oCell && oCell.value && oCell.value.toString().toLowerCase().includes(sQuery.toLowerCase());
-                        });
-                    }
-                });
-                oBinding.filter([oFilter]);
-            } else {
-                oBinding.filter([]); 
-            }
+            SearchData.onSearch.call(this, oEvent);
         },
 
-        //Mở popup Filter
         onFilter: function () {
-            if (!this._oFilterDialog) {
-                this._oFilterDialog = new sap.m.ViewSettingsDialog({
-                    title: "Filter",
-                    confirm: this.onFilterConfirm.bind(this)
-                });
-                this.getView().addDependent(this._oFilterDialog);
-            }
-            
-            this._oFilterDialog.removeAllFilterItems();
-            var aData = this.getView().getModel("displayModel").getProperty("/Data");
-            
-            this._oFieldName.forEach(function (sFieldName, index) {
-                var oFilterItem = new sap.m.ViewSettingsFilterItem({
-                    key: index,
-                    text: sFieldName
-                });
-                
-                var aUniqueValues = [];
-                if (aData) {
-                    aData.forEach(function(aRow) {
-                        if (aRow[index] && aRow[index].value) {
-                            var sValue = aRow[index].value.toString();
-                            if (aUniqueValues.indexOf(sValue) === -1) {
-                                aUniqueValues.push(sValue);
-                            }
-                        }
-                    });
-                }
-                
-                aUniqueValues.forEach(function(sValue) {
-                    oFilterItem.addItem(new sap.m.ViewSettingsItem({
-                        key: index + "___" + sValue, 
-                        text: sValue
-                    }));
-                });
-
-                this._oFilterDialog.addFilterItem(oFilterItem);
-            }.bind(this));
-
-            this._oFilterDialog.open();
+            FilterData.onFilter.call(this);
         },
 
-        //Nếu bấm ok thì execute logic lọc
         onFilterConfirm: function (oEvent) {
-            var oTable = this.byId("dataTable"),
-                mParams = oEvent.getParameters(),
-                oBinding = oTable.getBinding("rows");
-
-            var aSelectedItems = mParams.filterItems;
-            if (aSelectedItems.length === 0) {
-                oBinding.filter([]);
-                return;
-            }
-
-            var oFilterGroups = {};
-            aSelectedItems.forEach(function(oItem) {
-                var aSplit = oItem.getKey().split("___");
-                var sColIndex = aSplit[0];
-                var sValue = aSplit[1];
-                
-                if (!oFilterGroups[sColIndex]) {
-                    oFilterGroups[sColIndex] = [];
-                }
-                oFilterGroups[sColIndex].push(new Filter(sColIndex + "/value", FilterOperator.EQ, sValue)); 
-            });
-
-            var aAndFilters = [];
-            for (var key in oFilterGroups) {
-                if (oFilterGroups[key].length > 1) {
-                    aAndFilters.push(new Filter({filters: oFilterGroups[key], and: false})); 
-                } else {
-                    aAndFilters.push(oFilterGroups[key][0]);
-                }
-            }
-
-            var oFinalFilter = new Filter({filters: aAndFilters, and: true}); 
-            oBinding.filter([oFinalFilter]);
+            FilterData.onFilterConfirm.call(this, oEvent);
         },
 
-        //Hàm add
         onAdd: function () {
             sap.m.MessageToast.show("...");
         },
@@ -593,7 +295,6 @@ sap.ui.define([
 
                 this._sendExcelToBackend(sTableName, sBase64String);
                 
-                // Clear tool upload để chọn lại file cũ không bị khựng
                 this.byId("excelUploader").clear();
                 
             }.bind(this);
@@ -611,23 +312,19 @@ sap.ui.define([
 
             BusyIndicator.show(0);
 
-            // Dùng Context trực tiếp, Action Odata V4
             var sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.uploadExcel(...)";
             var oActionContext = oModel.bindContext(sActionName, this._oMetaFirstContext);
             
             oActionContext.setParameter("table_name", sTableName);
             oActionContext.setParameter("file_content", sBase64String);
 
-            // Thực thi gửi xuống Backend
             oActionContext.execute().then(function () {
                 BusyIndicator.hide();
                 MessageToast.show("Upload file Excel và lưu Database thành công!");
                 
-                // [ĐÃ FIX CHỐT HẠ]: Ép Fiori xóa cache đệm và tải lại dữ liệu mới nhất tự động
                 if (this._oDataBindingGoc) {
-                    this._oDataBindingGoc.refresh(); // Ép hệ thống xả đệm
+                    this._oDataBindingGoc.refresh(); 
                     
-                    // Đợi 0.5s để Backend chốt số (Commit) xong rồi mới vẽ lại lên màn hình
                     setTimeout(function() {
                         this._loadData(this._oDataBindingGoc).then(function() {
                             this._displayData();

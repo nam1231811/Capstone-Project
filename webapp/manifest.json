@@ -53,9 +53,6 @@
     "config": {
             "fullWidth": true
         },
-    "config": {
-          "fullWidth": true
-    },
     "dependencies": {
       "minUI5Version": "1.145.0",
       "libs": {
