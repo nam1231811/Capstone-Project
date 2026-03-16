@@ -2,15 +2,16 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
     "sap/f/library",
-    "sap/ui/table/library",
     "sap/m/MessageToast",   
     "sap/m/MessageBox",     
     "sap/ui/core/BusyIndicator",
     "zapp/utils/SearchData",
     "zapp/utils/FilterData",
     "zapp/utils/SortData",
-    "zapp/utils/PersonalizationData"
-], function (Controller, JSONModel, fioriLibrary, tableLibrary, MessageToast, MessageBox, BusyIndicator, SearchData, FilterData, SortData, PersonalizationData) {
+    "zapp/utils/PersonalizationData",
+    "zapp/utils/TablePaginationData"
+], function (Controller, JSONModel, fioriLibrary, MessageToast, MessageBox, BusyIndicator, SearchData, FilterData, SortData, PersonalizationData, TablePaginationData
+) {
     "use strict";
 
     return Controller.extend("zapp.controller.ObjectPage", {
@@ -19,7 +20,6 @@ sap.ui.define([
 
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
-
             this.oRouter = oOwnerComponent.getRouter();            
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
 
@@ -34,6 +34,8 @@ sap.ui.define([
             var oDataBinding = oModel.bindList("/Data"); 
                 
             this._oDataBindingGoc = oDataBinding; 
+
+            this.getView().getModel("displayModel").setProperty("/searchQuery", "");
 
             Promise.all([
                 this._loadMeta(oMetaBinding),
@@ -55,16 +57,20 @@ sap.ui.define([
                 });
             });
         
-            this.getView().getModel("displayModel").setProperty("/Data", result);
+            this.getView().getModel("displayModel").setProperty("/UiData", result);
         
             oTable.destroyColumns(); 
 
             oTable.bindAggregation("columns", {
-                path: "displayModel>/Meta",
+                path: "displayModel>/UiMeta",
                 factory: this.createDynamicColumn.bind(this)
             });
 
-            oTable.bindRows("displayModel>/Data");
+            oTable.bindRows("displayModel>/UiData");
+
+            //Gắn sự kiện click toàn bộ cell vào bảng
+            oTable.detachColumnSelect(this.onColumnSelect, this); 
+            oTable.attachColumnSelect(this.onColumnSelect, this);
         },
 
         createDynamicColumn: function(sId, oContext) {
@@ -99,24 +105,42 @@ sap.ui.define([
 
             var sHeaderText = (oMeta && oMeta.scrtext_l) ? oMeta.scrtext_l : "N/A";
             
-            var oHeaderButton = new sap.m.Button({
+            //Sử dụng label thông thường để fill toàn bộ cell
+            var oHeaderLabel = new sap.m.Label({
                 text: sHeaderText,
-                type: "Transparent",
-                press: this.onColumnHeaderPress.bind(this)
+                design: "Bold"
             });
 
-            oHeaderButton.addCustomData(new sap.ui.core.CustomData({ key: "colIndex", value: iIndex }));
-            oHeaderButton.addCustomData(new sap.ui.core.CustomData({ key: "colName", value: sHeaderText }));
-
-            return new sap.ui.table.Column(sStableId, {
-                label: oHeaderButton, 
+            var oColumn = new sap.ui.table.Column(sStableId, {
+                label: oHeaderLabel, 
                 visible: bVisibleDefault,
                 width: "auto",
-                template: new sap.m.Text({
-                    text: "{displayModel>" + iIndex + "/value}",
-                    wrapping: false
+                template: new sap.m.FormattedText({
+                    htmlText: {
+                        parts: [
+                            "displayModel>" + iIndex + "/value", 
+                            "displayModel>/searchQuery"          
+                        ],
+                        formatter: function (sValue, sQuery) {
+                            if (!sValue) return "";
+                            sValue = sValue.toString();
+                            
+                            var sSafeValue = sValue.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                            if (!sQuery) return sSafeValue;
+                            
+                            var sEscapedQuery = sQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
+                            var regex = new RegExp("(" + sEscapedQuery + ")", "gi");
+                            return sSafeValue.replace(regex, "<span style='background-color: #8ce8fa; font-weight: bold;'>$1</span>");
+                        }
+                    }
                 })
             });
+
+            //Gắn định vị CustomData thẳng vào cột
+            oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colIndex", value: iIndex }));
+            oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colName", value: sHeaderText }));
+
+            return oColumn;
         },
         
         _loadMeta: function(meta) {
@@ -129,6 +153,7 @@ sap.ui.define([
                 this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
                 this.getView().getModel("overall").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
                 this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
+                this.getView().getModel("displayModel").setProperty("/UiMeta", this._oMetaRaw);
             }.bind(this));
         },
         
@@ -136,8 +161,20 @@ sap.ui.define([
             return data.requestContexts().then(function (aDataContexts) {
                 this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());
                 this._oDataRaw = this._groupDataByRow(this._oDataRaw);
-                this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
-                this.getView().getModel("overall").setProperty("/count", this._oDataRaw.length);
+                
+                const iDataLength = this._oDataRaw.length;
+                const iVisibleRowCount = iDataLength < 10 ? iDataLength : 10;
+                
+                const bHasMore = iDataLength > iVisibleRowCount;
+                const bHasLess = false;
+
+                const oDisplayModel = this.getView().getModel("displayModel");
+                oDisplayModel.setProperty("/Data", this._oDataRaw);
+                oDisplayModel.setProperty("/visibleRowCount", iVisibleRowCount);
+                oDisplayModel.setProperty("/hasMore", bHasMore); 
+                oDisplayModel.setProperty("/hasLess", bHasLess);
+                
+                this.getView().getModel("overall").setProperty("/count", iDataLength);
             }.bind(this));
         },
         
@@ -152,17 +189,25 @@ sap.ui.define([
             return Object.values(groupData);
         },
 
+        onPressLoadMore: function () {
+            TablePaginationData.onPressLoadMore.call(this);
+        },
+
+        onPressShowLess: function () {
+            TablePaginationData.onPressShowLess.call(this);
+        },
+
         //Các hàm search, sort, filter, personalization
         onPersonalization: function () {
             PersonalizationData.onPersonalization.call(this);
         },
 
-        onColumnHeaderPress: function(oEvent) {
-            SortData.onColumnHeaderPress.call(this, oEvent);
+        onColumnSelect: function(oEvent) {
+            SortData.onColumnSelect.call(this, oEvent);
         },
 
-        onSortColumnDirect: function(bDescending, iColIndex) {
-            SortData.onSortColumnDirect.call(this, bDescending, iColIndex);
+        onSortColumnDirect: function(bDescending, iColIndex, bMultiSort, bGroup) {
+            SortData.onSortColumnDirect.call(this, bDescending, iColIndex, bMultiSort, bGroup);
         },
 
         onSearch: function (oEvent) {
@@ -178,7 +223,7 @@ sap.ui.define([
         },
 
         onAdd: function () {
-            sap.m.MessageToast.show("...");
+            MessageToast.show("...");
         },
 
         onViewLogDetail: function (oEvent) {
