@@ -20,9 +20,15 @@
             <f:DynamicPageHeader pinnable="true">
                 <fb:FilterBar id="filterBar" search=".onSearch" useToolbar="false" showGoOnFB="true" showClearOnFB="true" clear=".onClear">
                     <fb:filterGroupItems>
-                        <fb:FilterGroupItem groupName="BASIC" name="TableName" label="Table Name" visibleInFilterBar="true">
+                        <fb:FilterGroupItem groupName="BASIC" name="TableName" label="{i18n>tableName}" visibleInFilterBar="true">
                             <fb:control>
-                                <Input id="searchInput" placeholder="EX: ZTEST" submit=".onSearch" />
+                                <Input id="searchInput" placeholder="{i18n>searchPlaceholder}" submit=".onSearch" />
+                            </fb:control>
+                        </fb:FilterGroupItem>
+
+                        <fb:FilterGroupItem groupName="BASIC" name="TableDescription" label="{i18n>tableDesc}" visibleInFilterBar="true">
+                            <fb:control>
+                                <Input id="searchDescInput" placeholder="Enter description..." submit=".onSearch" />
                             </fb:control>
                         </fb:FilterGroupItem>
                     </fb:filterGroupItems>
@@ -60,8 +66,9 @@
                 <columns>
                     <Column id="colTableName"><Label text="{i18n>tableName}" design="Bold"/></Column>
                     <Column id="colTableDesc"><Label text="{i18n>tableDesc}" design="Bold"/></Column>
-                    <Column id="colTotalCol"><Label text="{i18n>totalCol}" design="Bold"/></Column>
-                    <Column id="colCreatedBy"><Label text="{i18n>createdBy}" design="Bold"/></Column>
+                    <Column id="colTotalCol"><Label text="Total of Columns" design="Bold"/></Column>
+                    <Column id="colChangedBy"><Label text="Changed By" design="Bold"/></Column>
+                    <Column id="colChangedAt"><Label text="Last Changed At" design="Bold"/></Column>
                 </columns>
 
                 <items>
@@ -69,8 +76,15 @@
                         <cells>
                             <ObjectIdentifier title="{realData>table_name}" />
                             <Text text="{realData>table_description}" />
-                            <ObjectStatus text="{realData>field_count} column" state="Information" />
+                            
+                            <ObjectStatus text="{realData>field_count} columns" state="Information" />
+                            
                             <Text text="{realData>user_name}" />
+                            <Text text="{
+                                path: 'realData>change_at', 
+                                type: 'sap.ui.model.type.DateTime', 
+                                formatOptions: { pattern: 'dd/MM/yyyy HH:mm:ss' }
+                            }" />
                         </cells>
                     </ColumnListItem>
                 </items>

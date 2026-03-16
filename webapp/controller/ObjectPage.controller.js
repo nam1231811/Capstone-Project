@@ -2,11 +2,13 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
     "sap/f/library",
-    "sap/ui/table/library"
-], function (Controller, JSONModel, fioriLibrary, tableLibrary) {
+    "sap/ui/table/library",
+    "sap/ui/model/Filter",
+    "sap/ui/model/FilterOperator",
+    "sap/ui/core/HTML"
+], function (Controller, JSONModel, fioriLibrary, tableLibrary, Filter, FilterOperator, HTML) {
     "use strict";
 
-    // Đã sửa lại tên controller cho đúng với tên file ObjectPage
     return Controller.extend("zapp.controller.ObjectPage", {
         _oFieldName: [], 
         _oDataRaw: [], 
@@ -14,7 +16,7 @@ sap.ui.define([
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
 
-	    	this.oRouter = oOwnerComponent.getRouter();            
+            this.oRouter = oOwnerComponent.getRouter();            
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
 
             var oDetailRecord = new JSONModel({
@@ -35,8 +37,7 @@ sap.ui.define([
             }.bind(this));
         },
 
-
-       _displayData: function() {
+        _displayData: function() {
             var oTable = this.byId("dataTable");
 
             const result = this._oDataRaw.map(record => {
@@ -48,30 +49,75 @@ sap.ui.define([
         
             this.getView().getModel("displayModel").setProperty("/Data", result);
         
-            oTable.bindColumns("displayModel>/Meta", function(sId, oContext) {
-                var sPath = oContext.getPath();
-                var iColumnIndex = sPath.split("/").pop(); 
-                var sLabel = oContext.getProperty("scrtext_l");
-            
-                return new sap.ui.table.Column({
-                    label: new sap.m.Label({ text: sLabel }),
-                    template: new sap.m.Text({
-                        text: "{displayModel>" + iColumnIndex + "/value}",
-                        wrapping: false
-                    })
-                });
+            oTable.destroyColumns(); 
+
+            oTable.bindAggregation("columns", {
+                path: "displayModel>/Meta",
+                factory: this.createDynamicColumn.bind(this)
             });
-        
-            // Bind Rows (Thay cho bindItems)
+
             oTable.bindRows("displayModel>/Data");
+        },
+
+        createDynamicColumn: function(sId, oContext) {
+            var oMeta = oContext.getObject();
+            var sPath = oContext.getPath(); 
+            var iIndex = parseInt(sPath.split("/").pop(), 10); 
+
+            var sColName = (oMeta && oMeta.fieldname) ? oMeta.fieldname : "unknown_col";
+            var sBaseId = "col_" + sColName + "_" + iIndex;
+
+            var oExistingCol = this.getView().byId(sBaseId);
+            if (oExistingCol) {
+                oExistingCol.destroy();
+            }
+
+            var sStableId = this.getView().createId(sBaseId);
+            
+            //Đọc local storage
+            var sTableName = this.getView().getModel("overall").getProperty("/tableName") || "DefaultTable";
+            var sStorageKey = "myApp_" + sTableName + "_GridPerso";
+            var sSavedData = window.localStorage.getItem(sStorageKey);
+            
+            var bVisibleDefault = (iIndex < 10); 
+            if (sSavedData) {
+                try {
+                    var aSavedCols = JSON.parse(sSavedData);
+                    //Tìm cấu hình lưu trữ của đúng cột
+                    var oMatch = aSavedCols.find(function(c) { return c.index === iIndex; });
+                    if (oMatch) {
+                        bVisibleDefault = oMatch.visible;
+                    }
+                } catch(e) {}
+            }
+
+            var sHeaderText = (oMeta && oMeta.scrtext_l) ? oMeta.scrtext_l : "N/A";
+            
+            var oHeaderButton = new sap.m.Button({
+                text: sHeaderText,
+                type: "Transparent",
+                press: this.onColumnHeaderPress.bind(this)
+            });
+
+            oHeaderButton.addCustomData(new sap.ui.core.CustomData({ key: "colIndex", value: iIndex }));
+            oHeaderButton.addCustomData(new sap.ui.core.CustomData({ key: "colName", value: sHeaderText }));
+
+            return new sap.ui.table.Column(sStableId, {
+                label: oHeaderButton, 
+                visible: bVisibleDefault,
+                width: "auto",
+                template: new sap.m.Text({
+                    text: "{displayModel>" + iIndex + "/value}",
+                    wrapping: false
+                })
+            });
         },
         
         _loadMeta: function(meta) {
             return meta.requestContexts().then(function (aMetaContexts) {
                 this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
                 this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
-                console.log(this._oMetaRaw);
-                this._oFieldName = this._oMetaRaw.map( prop => prop.fieldname)
+                this._oFieldName = this._oMetaRaw.map( prop => prop.fieldname);
                 
                 this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
                 this.getView().getModel("overall").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
@@ -82,8 +128,7 @@ sap.ui.define([
         _loadData: function(data) {
             return data.requestContexts().then(function (aDataContexts) {
                 this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());
-                this._oDataRaw = this._groupDataByRow(this._oDataRaw)
-                console.log(this._oDataRaw);
+                this._oDataRaw = this._groupDataByRow(this._oDataRaw);
                 this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
                 this.getView().getModel("overall").setProperty("/count", this._oDataRaw.length);
             }.bind(this));
@@ -103,34 +148,342 @@ sap.ui.define([
                 return acc;
             }, {});
 
-            //[ [Array(5)], [ Array(5)],... ]
-            return Object.values(groupData);;
+            return Object.values(groupData);
         },
 
+        //Hàm logic personalization
+        onPersonalization: function () {
+            var that = this;
+            var oTable = this.byId("dataTable");
+            var aColumns = oTable.getColumns(); //Lấy mảng các cột đang có trên bảng
+
+            if (!this._oPersoDialog) {
+                this._oPersoDialog = new sap.m.Dialog({
+                    title: "Personalization",
+                    contentWidth: "400px",
+                    contentHeight: "450px",
+                    resizable: true,
+                    draggable: true,
+                    content: new sap.m.List({
+                        mode: sap.m.ListMode.MultiSelect,
+                        includeItemInSelection: true
+                    }),
+                    beginButton: new sap.m.Button({
+                        type: "Emphasized",
+                        text: "Save",
+                        press: function () {
+                            var oList = that._oPersoDialog.getContent()[0];
+                            var aItems = oList.getItems();
+                            var aSavedCols = [];
+
+                            //Quét qua danh sách để xem người dùng chọn ẩn/hiện cột nào
+                            aItems.forEach(function(oItem, index) {
+                                var bSelected = oItem.getSelected();
+                                var oColumn = aColumns[index];
+                                
+                                oColumn.setVisible(bSelected); //Ép bảng thay đổi trạng thái cột ngay lập tức
+
+                                //Ghi nhận để lưu vào ổ cứng
+                                aSavedCols.push({
+                                    index: index,
+                                    visible: bSelected
+                                });
+                            });
+
+                            //Lưu mảng cấu hình vào local storage của trình duyệt
+                            var sTableName = that.getView().getModel("overall").getProperty("/tableName") || "DefaultTable";
+                            var sStorageKey = "myApp_" + sTableName + "_GridPerso";
+                            window.localStorage.setItem(sStorageKey, JSON.stringify(aSavedCols));
+
+                            that._oPersoDialog.close();
+                        }
+                    }),
+                    endButton: new sap.m.Button({
+                        text: "Cancel",
+                        press: function () {
+                            that._oPersoDialog.close();
+                        }
+                    })
+                });
+                this.getView().addDependent(this._oPersoDialog);
+            }
+
+            //Làm mới nội dung danh sách mỗi khi mở dialog
+            var oList = this._oPersoDialog.getContent()[0];
+            oList.removeAllItems();
+            
+            aColumns.forEach(function(oColumn, index) {
+                //Trích xuất tên cột từ nút bấm header
+                var oHeaderControl = oColumn.getLabel();
+                var sText = "Column " + index;
+                if (oHeaderControl && typeof oHeaderControl.getText === "function") {
+                    sText = oHeaderControl.getText();
+                }
+                
+                //Tạo một dòng checkbox
+                var oItem = new sap.m.StandardListItem({
+                    title: sText,
+                    selected: oColumn.getVisible()
+                });
+                oList.addItem(oItem);
+            });
+
+            this._oPersoDialog.open();
+        },
+
+        //Action sheet menu từ tiêu đề cột
+        onColumnHeaderPress: function(oEvent) {
+            var oButton = oEvent.getSource(); 
+            var iColIndex = oButton.data("colIndex"); 
+            var sColName = oButton.data("colName"); 
+            var that = this;
+
+            var oTable = this.byId("dataTable");
+            var oBinding = oTable.getBinding("rows");
+            var aSorters = oBinding ? oBinding.aSorters : [];
+            
+            var sCurrentSortKey = "none"; 
+            if (aSorters && aSorters.length > 0) {
+                var oCurrentSorter = aSorters[0];
+                if (oCurrentSorter.sPath === (iColIndex + "/value")) {
+                    sCurrentSortKey = oCurrentSorter.bDescending ? "desc" : "asc";
+                }
+            }
+
+            if (this._oColumnPopover) {
+                this._oColumnPopover.destroy();
+            }
+
+            this._oColumnPopover = new sap.m.ResponsivePopover({
+                showHeader: true,
+                customHeader: new sap.m.Bar({
+                    contentMiddle: [
+                        new sap.m.Title({ text: "Column Settings" })
+                    ],
+                    contentRight: [
+                        new sap.m.Button({
+                            icon: "sap-icon://decline",
+                            type: "Transparent",
+                            press: function() {
+                                that._oColumnPopover.close();
+                            }
+                        })
+                    ]
+                }),
+                contentWidth: "220px", 
+                placement: "Bottom",
+                content: [
+                    new sap.m.VBox({
+                        items: [
+                            new sap.m.Label({ text: "Sort By", design: "Bold" }).addStyleClass("sapUiTinyMarginBottom"),
+                            new sap.m.HBox({
+                                justifyContent: "SpaceBetween", 
+                                alignItems: "Center",
+                                width: "100%",
+                                items: [
+                                    new sap.m.Text({ text: sColName }), 
+                                    new sap.m.SegmentedButton({
+                                        selectedKey: sCurrentSortKey,
+                                        selectionChange: function(oEventSelect) {
+                                            var oItem = oEventSelect.getParameter("item");
+                                            var sKey = oItem ? oItem.getKey() : oEventSelect.getSource().getSelectedKey();
+                                            var bDescending = (sKey === "desc");
+                                            
+                                            that.onSortColumnDirect(bDescending, iColIndex);
+                                        },
+                                        items: [
+                                            new sap.m.SegmentedButtonItem({ icon: "sap-icon://sort-ascending", key: "asc", tooltip: "Ascending" }),
+                                            new sap.m.SegmentedButtonItem({ icon: "sap-icon://sort-descending", key: "desc", tooltip: "Descending" })
+                                        ]
+                                    })
+                                ]
+                            }).addStyleClass("sapUiSmallMarginBottom"),
+
+                            new HTML({ content: "<hr style='border: 0; border-top: 1px solid #e5e5e5; margin: 10px 0;'/>" }),
+
+                            new sap.m.Label({ text: "Group By", design: "Bold" }).addStyleClass("sapUiTinyMarginBottom"),
+                            new sap.m.HBox({
+                                justifyContent: "SpaceBetween",
+                                alignItems: "Center",
+                                width: "100%",
+                                items: [
+                                    new sap.m.Text({ text: sColName }),
+                                    new sap.m.Switch({
+                                        state: false,
+                                        customTextOn: " ", customTextOff: " ",
+                                        change: function(oEventSwitch) {
+                                            sap.m.MessageToast.show("Group By function is under development.");
+                                        }
+                                    })
+                                ]
+                            })
+                        ]
+                    }).addStyleClass("sapUiSmallMargin") 
+                ]
+            });
+
+            this.getView().addDependent(this._oColumnPopover);
+            this._oColumnPopover.openBy(oButton);
+        },
+
+        onSortColumnDirect: function(bDescending, iColIndex) {
+            var oTable = this.byId("dataTable");
+            var oBinding = oTable.getBinding("rows");
+
+            if (!oBinding) return;
+
+            var sPath = iColIndex + "/value";
+            
+            var oSorter = new sap.ui.model.Sorter({
+                path: sPath,
+                descending: bDescending,
+                comparator: function(a, b) {
+                    if (a === b) return 0;
+                    if (a === null || a === undefined) return -1;
+                    if (b === null || b === undefined) return 1;
+                    
+                    var numA = parseFloat(a);
+                    var numB = parseFloat(b);
+                    
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                        return numA - numB;
+                    }
+                    
+                    return a.toString().localeCompare(b.toString());
+                }
+            });
+
+            oBinding.sort([oSorter]);
+        },
+
+        //Hàm search 
+        onSearch: function (oEvent) {
+            var sQuery = oEvent.getParameter("query");
+            var oTable = this.byId("dataTable");
+            var oBinding = oTable.getBinding("rows");
+
+            if (sQuery) {
+                var oFilter = new Filter({ 
+                    path: "",
+                    test: function (aRow) {
+                        if (!aRow || !Array.isArray(aRow)) return false;
+                        return aRow.some(function (oCell) { 
+                            return oCell && oCell.value && oCell.value.toString().toLowerCase().includes(sQuery.toLowerCase());
+                        });
+                    }
+                });
+                oBinding.filter([oFilter]);
+            } else {
+                oBinding.filter([]); 
+            }
+        },
+
+        //Mở popup Filter
+        onFilter: function () {
+            if (!this._oFilterDialog) {
+                this._oFilterDialog = new sap.m.ViewSettingsDialog({
+                    title: "Filter",
+                    confirm: this.onFilterConfirm.bind(this)
+                });
+                this.getView().addDependent(this._oFilterDialog);
+            }
+            
+            this._oFilterDialog.removeAllFilterItems();
+            var aData = this.getView().getModel("displayModel").getProperty("/Data");
+            
+            this._oFieldName.forEach(function (sFieldName, index) {
+                var oFilterItem = new sap.m.ViewSettingsFilterItem({
+                    key: index,
+                    text: sFieldName
+                });
+                
+                var aUniqueValues = [];
+                if (aData) {
+                    aData.forEach(function(aRow) {
+                        if (aRow[index] && aRow[index].value) {
+                            var sValue = aRow[index].value.toString();
+                            if (aUniqueValues.indexOf(sValue) === -1) {
+                                aUniqueValues.push(sValue);
+                            }
+                        }
+                    });
+                }
+                
+                aUniqueValues.forEach(function(sValue) {
+                    oFilterItem.addItem(new sap.m.ViewSettingsItem({
+                        key: index + "___" + sValue, 
+                        text: sValue
+                    }));
+                });
+
+                this._oFilterDialog.addFilterItem(oFilterItem);
+            }.bind(this));
+
+            this._oFilterDialog.open();
+        },
+
+        //Nếu bấm ok thì execute logic lọc
+        onFilterConfirm: function (oEvent) {
+            var oTable = this.byId("dataTable"),
+                mParams = oEvent.getParameters(),
+                oBinding = oTable.getBinding("rows");
+
+            var aSelectedItems = mParams.filterItems;
+            if (aSelectedItems.length === 0) {
+                oBinding.filter([]);
+                return;
+            }
+
+            var oFilterGroups = {};
+            aSelectedItems.forEach(function(oItem) {
+                var aSplit = oItem.getKey().split("___");
+                var sColIndex = aSplit[0];
+                var sValue = aSplit[1];
+                
+                if (!oFilterGroups[sColIndex]) {
+                    oFilterGroups[sColIndex] = [];
+                }
+                oFilterGroups[sColIndex].push(new Filter(sColIndex + "/value", FilterOperator.EQ, sValue)); 
+            });
+
+            var aAndFilters = [];
+            for (var key in oFilterGroups) {
+                if (oFilterGroups[key].length > 1) {
+                    aAndFilters.push(new Filter({filters: oFilterGroups[key], and: false})); 
+                } else {
+                    aAndFilters.push(oFilterGroups[key][0]);
+                }
+            }
+
+            var oFinalFilter = new Filter({filters: aAndFilters, and: true}); 
+            oBinding.filter([oFinalFilter]);
+        },
+
+        //Hàm add
+        onAdd: function () {
+            sap.m.MessageToast.show("...");
+        },
 
         onViewLogDetail: function (oEvent) {
-            // 1. Lấy dữ liệu của dòng (Row) vừa được click
             var oButton = oEvent.getSource();
             var oContext = oButton.getBindingContext("displayModel");
             var oRowData = oContext.getObject();
 
-            // 2. Hàm phụ trợ: Format chuỗi JSON cho đẹp (thụt lề 4 ô)
             var formatJson = function (sJsonString) {
                 if (!sJsonString || sJsonString === "") {
                     return "Không có dữ liệu (Blank)";
                 }
                 try {
                     var oJson = JSON.parse(sJsonString);
-                    return JSON.stringify(oJson, null, 4); // Số 4 là số khoảng trắng thụt lề
+                    return JSON.stringify(oJson, null, 4); 
                 } catch (e) {
-                    return sJsonString; // Nếu lỗi không phải JSON thì in ra chuỗi gốc
+                    return sJsonString; 
                 }
             };
 
             var sOldDataFormatted = formatJson(oRowData.OldData);
             var sNewDataFormatted = formatJson(oRowData.NewData);
 
-            // 3. Khởi tạo Giao diện Popup (Dialog) bằng JavaScript nếu chưa có
             if (!this._oLogDialog) {
                 this._oLogDialog = new sap.m.Dialog({
                     title: "Chi tiết dữ liệu thay đổi (JSON)",
@@ -156,18 +509,14 @@ sap.ui.define([
                         }.bind(this)
                     })
                 });
-                // Kết nối Popup với View hiện tại
                 this.getView().addDependent(this._oLogDialog);
             }
 
-            // 4. Đẩy dữ liệu đã format vào Popup
             var oDialogModel = new sap.ui.model.json.JSONModel({
                 oldData: sOldDataFormatted,
                 newData: sNewDataFormatted
             });
             this._oLogDialog.setModel(oDialogModel, "dialogModel");
-
-            // 5. Hiển thị Popup lên màn hình
             this._oLogDialog.open();
         },
 
@@ -186,12 +535,11 @@ sap.ui.define([
             } else {
                 console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
             }
-		},
+        },
 
         onListItemPress: function (oEvent) {
             var oRowContext = oEvent.getParameter("rowContext");
             
-            // Nếu click vào khoảng trống (không có data) thì dừng
             if (!oRowContext) {
                 return;
             }
