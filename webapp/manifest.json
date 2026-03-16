@@ -47,7 +47,11 @@
     "rootView": {
             "viewName": "zapp.view.App",
             "type": "XML",
-            "async": false
+            "async": false,
+            "id": "root"
+        },
+    "config": {
+            "fullWidth": true
         },
     "config": {
           "fullWidth": true
@@ -97,7 +101,7 @@
     },
     "routing": {
       "config": {
-        "routerClass": "sap.m.routing.Router",
+        "routerClass": "sap.f.routing.Router",
         "viewType": "XML",
         "path": "zapp.view",
         "controlId": "appContainer",

@@ -50,6 +50,11 @@ sap.ui.define([
                 persoService: DemoPersoService
             }).activate();
         },
+        
+        _groupDataByRow: function (data) {
+            if(!data || !Array.isArray(data)){
+                return [];
+            }
 
         // Hàm mở personalization
         onPersonalization: function (oEvent) {
