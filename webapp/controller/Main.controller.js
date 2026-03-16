@@ -67,6 +67,7 @@ sap.ui.define([
             if(!data || !Array.isArray(data)){
                 return [];
             }
+        },
 
         onPersonalization: function (oEvent) {
             this._oTPC.openDialog();
