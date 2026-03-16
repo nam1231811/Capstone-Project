@@ -62,6 +62,11 @@ sap.ui.define([
                 persoService: oPersoService
             }).activate();
         },
+        
+        _groupDataByRow: function (data) {
+            if(!data || !Array.isArray(data)){
+                return [];
+            }
 
         onPersonalization: function (oEvent) {
             this._oTPC.openDialog();
