@@ -44,6 +44,7 @@
                         <uxap:ObjectPageSubSection>
                            <VBox>
                                 <OverflowToolbar class="sapFDynamicPageAlignContent">
+                                <SearchField search=".onSearch" width="17.5rem"/>
                                     <ToolbarSpacer/>
 
                                 <u:FileUploader
@@ -56,7 +57,6 @@
                                     sameFilenameAllowed="true"
                                     change=".onUploadExcelPress"/>
 
-                                    <SearchField search=".onSearch" width="17.5rem"/>
                                     <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
                                     <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
                                     <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
