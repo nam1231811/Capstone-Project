@@ -5,6 +5,7 @@
     xmlns:core="sap.ui.core"
     xmlns:ui="sap.ui.table"
     xmlns:rowmodes="sap.ui.table.rowmodes"
+    xmlns:u="sap.ui.unified"
     xmlns="sap.m">
     <App id="afds">
         <uxap:ObjectPageLayout id="asdfsdf">
@@ -18,18 +19,10 @@
                         <uxap:ObjectPageSubSection>
                             <Table items="{displayModel>/Meta}">
                                 <columns>
-                                    <Column>
-                                        <Text text="Position"/>
-                                    </Column>
-                                    <Column>
-                                        <Text text="Field Name"/>
-                                    </Column>
-                                    <Column>
-                                        <Text text="Technical Name"/>
-                                    </Column>
-                                    <Column	>
-                                        <Text text="Roll Name"/>
-                                    </Column>
+                                    <Column><Text text="Position"/></Column>
+                                    <Column><Text text="Field Name"/></Column>
+                                    <Column><Text text="Technical Name"/></Column>
+                                    <Column><Text text="Roll Name"/></Column>
                                 </columns>
                                 <items>
                                     <ColumnListItem type="Navigation" press=".onMedataPress">
@@ -51,17 +44,28 @@
                         <uxap:ObjectPageSubSection>
                            <VBox>
                                 <OverflowToolbar class="sapFDynamicPageAlignContent">
+                                <SearchField search=".onSearch" width="17.5rem"/>
                                     <ToolbarSpacer/>
-                                    <SearchField search=".onSearch" width="17.5rem"/>
+
+                                <u:FileUploader
+                                    id="excelUploader"
+                                    fileType="xlsx"
+                                    buttonOnly="true"
+                                    icon="sap-icon://excel-attachment"
+                                    buttonText="Upload"
+                                    style="Emphasized"
+                                    sameFilenameAllowed="true"
+                                    change=".onUploadExcelPress"/>
+
                                     <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
-                                    <OverflowToolbarButton icon="sap-icon://sort" text="Sort" type="Transparent" press=".onSort"/>
                                     <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
+                                    <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
                                 </OverflowToolbar>
 
                                 <ui:Table
                                     id="dataTable"
                                     rows="{displayModel>/Data}" 
-                                    columns="{displayModel>/Meta}"
+                                    columns="{path: 'displayModel>/Meta', factory: '.createDynamicColumn'}"
                                     class="myCustomCleanTable"
                                     rowSelectionChange=".onListItemPress"
                                     selectionBehavior="RowOnly"
@@ -70,18 +74,7 @@
                                     <ui:rowMode>
                                         <rowmodes:Auto minRowCount="10" />
                                     </ui:rowMode>
-
-                                    <ui:columns>
-                                        <ui:Column 
-                                            width="auto" 
-                                            resizable="true"> 
-                                            <Label text="{displayModel>scrtext_l}" />
-                                            <ui:template>
-                                                <Text text="{displayModel>VALUE}" wrapping="false" />
-                                            </ui:template>
-                                        </ui:Column>
-                                    </ui:columns>
-                                </ui:Table>
+                                    </ui:Table>
                             </VBox>
                         </uxap:ObjectPageSubSection>
                     </uxap:subSections>
@@ -129,6 +122,6 @@
                 </uxap:ObjectPageSection>
 
             </uxap:sections> 
-            </uxap:ObjectPageLayout>
+        </uxap:ObjectPageLayout>
     </App>
 </mvc:View>
