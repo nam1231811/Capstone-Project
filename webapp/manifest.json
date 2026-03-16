@@ -53,13 +53,17 @@
     "config": {
             "fullWidth": true
         },
+    "config": {
+          "fullWidth": true
+    },
     "dependencies": {
       "minUI5Version": "1.145.0",
       "libs": {
         "sap.f": {},
         "sap.ui.core": {},
         "sap.m": {},
-				"sap.uxap": {}
+				"sap.uxap": {},
+        "sap.ui.comp": {}
       }
     },
     "contentDensities": {
@@ -79,7 +83,8 @@
         "settings": {
           "operationMode": "Server",
           "autoExpandSelect": true,
-          "earlyRequests": true
+          "earlyRequests": false,
+          "groupId": "$direct"
         }
       },
       "@i18n": {
@@ -88,42 +93,77 @@
       }
     },
     "resources": {
-      "css": []
+      "css": [
+        {
+          "uri": "css/style.css"
+        }
+      ]
     },
     "routing": {
       "config": {
         "routerClass": "sap.f.routing.Router",
         "viewType": "XML",
-        "viewPath": "zapp.view",
-        "controlId": "flexibleColumnLayout", 
-        "controlAggregation": "beginColumnPages",
+        "path": "zapp.view",
+        "controlId": "appContainer",
+        "transition": "slide",
         "async": true
       },
       "routes": [
         {
+          "name": "RouteMain",
           "pattern": "",
-          "name": "master",
-          "target": "master"
+          "target": "TargetMain"
         },
         {
-          "pattern": "detail/{rowId}/{layout}",
-          "name": "detail",
-          "target": ["master", "detail"]
+          "name": "RouteObjectPage",
+          "pattern": "detail/{tableName}",
+          "target": ["TargetTwoColumnContainer", "DetailTable"]
         },
         {
-          "pattern": ":table:",
-          "name": "detailTable",
-          "target": ["master", "detail"]
+          "name": "Metadata",
+          "pattern": "detail/{tableName}/metadata/{rowId}",
+          "target": ["DetailTable", "MetadataTable"]
+        },
+        {
+          "name": "DetailData",
+          "pattern": "detail/{tableName}/data/{rowId}",
+          "target": ["DetailTable", "DataTable"]
         }
+
       ],
       "targets": {
-        "master": {
-          "viewName": "MainPage", 
-          "controlAggregation": "beginColumnPages"
+        "TargetMain": {
+          "type": "View",
+          "name": "MainPage",
+          "id": "MainPage",
+          "viewLevel": 1,
+          "controlAggregation": "pages"
         },
-        "detail": {
-          "viewName": "DetailRecord",
-          "controlAggregation": "midColumnPages"
+        
+        "TargetTwoColumnContainer": {
+          "type": "View",
+          "viewName": "TableContainer", 
+          "controlAggregation": "pages",
+          "controlId": "appContainer",
+          "viewLevel": "2"
+        },
+        "DetailTable": {
+          "viewName": "ObjectPage", 
+          "controlAggregation": "beginColumnPages",
+          "parent": "TargetTwoColumnContainer", 
+          "controlId": "flexibleColumnLayout"
+        },
+        "MetadataTable": {
+          "viewName": "Metadata", 
+          "controlAggregation": "midColumnPages",
+          "parent": "TargetTwoColumnContainer", 
+          "controlId": "flexibleColumnLayout"
+        },
+        "DataTable": {
+          "viewName": "DetailData", 
+          "controlAggregation": "midColumnPages",
+          "parent": "TargetTwoColumnContainer", 
+          "controlId": "flexibleColumnLayout"
         }
       }
     }

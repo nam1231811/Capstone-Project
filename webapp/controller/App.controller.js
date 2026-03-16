@@ -6,12 +6,6 @@ sap.ui.define([
 
     return Controller.extend("zapp.controller.App", {
         onInit: function () {
-            var oViewModel = new JSONModel({
-                layout: "OneColumn"
-            });
-            this.getView().setModel(oViewModel, "view");
-
-             
             var oDisplayModel = new sap.ui.model.json.JSONModel({
                 Meta: [],
                 Data: []
@@ -24,5 +18,6 @@ sap.ui.define([
             })
             this.getView().setModel(oGeneral, "overall");
         }
+            
     });
 });

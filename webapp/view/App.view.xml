@@ -1,18 +1,9 @@
 <mvc:View
-    controllerName="zapp.controller.App"
-    id="MainView"
-	displayBlock="true"
-	height="100%"
-	xmlns="sap.f"
-	xmlns:mvc="sap.ui.core.mvc">
-	<FlexibleColumnLayout 
-        id="flexibleColumnLayout" 
-        layout="{view>/layout}"
-        stateChange="onStateChanged" 
-        backgroundDesign="Solid">
-        <beginColumnPages>
-            </beginColumnPages>
-        <midColumnPages>
-            </midColumnPages>
-    </FlexibleColumnLayout>
+    xmlns="sap.m"
+    xmlns:mvc="sap.ui.core.mvc"
+    displayBlock="true"
+    controllerName="zapp.controller.App">
+    
+    <App id="appContainer" />
+        
 </mvc:View>

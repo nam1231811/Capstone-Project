@@ -1,0 +1,134 @@
+<mvc:View 
+    controllerName="zapp.controller.ObjectPage" 
+    xmlns:mvc="sap.ui.core.mvc" 
+    xmlns:uxap="sap.uxap" 
+    xmlns:core="sap.ui.core"
+    xmlns:ui="sap.ui.table"
+    xmlns:rowmodes="sap.ui.table.rowmodes"
+    xmlns="sap.m">
+    <App id="afds">
+        <uxap:ObjectPageLayout id="asdfsdf">
+            <uxap:headerTitle>
+                <uxap:ObjectPageHeader objectTitle="Table name: {overall>/tableName}" />
+                
+            </uxap:headerTitle>
+            <uxap:sections>
+                <uxap:ObjectPageSection title="Technical Columns">
+                    <uxap:subSections>
+                        <uxap:ObjectPageSubSection>
+                            <Table items="{displayModel>/Meta}">
+                                <columns>
+                                    <Column>
+                                        <Text text="Position"/>
+                                    </Column>
+                                    <Column>
+                                        <Text text="Field Name"/>
+                                    </Column>
+                                    <Column>
+                                        <Text text="Technical Name"/>
+                                    </Column>
+                                    <Column	>
+                                        <Text text="Roll Name"/>
+                                    </Column>
+                                </columns>
+                                <items>
+                                    <ColumnListItem type="Navigation" press=".onMedataPress">
+                                        <cells>
+                                            <Text text="{displayModel>field_pos}"/>
+                                            <Text text="{displayModel>scrtext_l}"/>
+                                            <Text text="{displayModel>fieldname}"/>
+                                            <Text text="{displayModel>rollname}"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </uxap:ObjectPageSubSection>
+                    </uxap:subSections>
+                </uxap:ObjectPageSection>
+
+                <uxap:ObjectPageSection title="Record Data ({overall>/count})">
+                    <uxap:subSections>
+                        <uxap:ObjectPageSubSection>
+                           <VBox>
+                                <OverflowToolbar class="sapFDynamicPageAlignContent">
+                                    <ToolbarSpacer/>
+                                    <SearchField search=".onSearch" width="17.5rem"/>
+                                    <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
+                                    <OverflowToolbarButton icon="sap-icon://sort" text="Sort" type="Transparent" press=".onSort"/>
+                                    <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
+                                </OverflowToolbar>
+
+                                <ui:Table
+                                    id="dataTable"
+                                    rows="{displayModel>/Data}" 
+                                    columns="{displayModel>/Meta}"
+                                    class="myCustomCleanTable"
+                                    rowSelectionChange=".onListItemPress"
+                                    selectionBehavior="RowOnly"
+                                    selectionMode="MultiToggle">
+
+                                    <ui:rowMode>
+                                        <rowmodes:Auto minRowCount="10" />
+                                    </ui:rowMode>
+
+                                    <ui:columns>
+                                        <ui:Column 
+                                            width="auto" 
+                                            resizable="true"> 
+                                            <Label text="{displayModel>scrtext_l}" />
+                                            <ui:template>
+                                                <Text text="{displayModel>VALUE}" wrapping="false" />
+                                            </ui:template>
+                                        </ui:Column>
+                                    </ui:columns>
+                                </ui:Table>
+                            </VBox>
+                        </uxap:ObjectPageSubSection>
+                    </uxap:subSections>
+                </uxap:ObjectPageSection>
+
+                <uxap:ObjectPageSection title="Audit Log">
+                    <uxap:subSections>
+                        <uxap:ObjectPageSubSection>
+                            <Table id="auditLogTable" items="{displayModel>/AuditLogs}">
+                                <headerToolbar>
+                                    <OverflowToolbar>
+                                        <Title text="Activity Log" level="H3"/>
+                                        <ToolbarSpacer />
+                                        <SearchField placeholder="Tìm theo User hoặc Dữ liệu..." width="30%" search=".onSearchAuditLog"/>
+                                        <Button icon="sap-icon://refresh" press=".onRefreshAuditLog" tooltip="Làm mới"/>
+                                    </OverflowToolbar>
+                                </headerToolbar>
+                                <columns>
+                                    <Column width="15%"><Text text="Time"/></Column>
+                                    <Column width="10%"><Text text="User"/></Column>
+                                    <Column width="10%"><Text text="Action"/></Column>
+                                    <Column width="15%"><Text text="Record Key"/></Column>
+                                    <Column width="20%"><Text text="Old Data"/></Column>
+                                    <Column width="20%"><Text text="New Data"/></Column>
+                                    <Column width="10%" hAlign="Center"><Text text="Detail"/></Column>
+                                </columns>
+                                <items>
+                                    <ColumnListItem>
+                                        <cells>
+                                            <Text text="{displayModel>ChangedAt}"/>
+                                            <Text text="{displayModel>ChangedBy}"/>
+                                            <ObjectStatus 
+                                                text="{= ${displayModel>Action} === 'U' ? 'Update' : (${displayModel>Action} === 'I' ? 'Insert' : 'Delete') }" 
+                                                state="{= ${displayModel>Action} === 'U' ? 'Warning' : (${displayModel>Action} === 'I' ? 'Success' : 'Error') }" />
+                                            <Text text="{displayModel>RecordKey}"/>
+                                            <Text text="{displayModel>OldData}" maxLines="2" wrapping="true"/>
+                                            <Text text="{displayModel>NewData}" maxLines="2" wrapping="true"/>
+                                            <Button icon="sap-icon://sys-enter-2" type="Transparent" press=".onViewLogDetail" tooltip="Xem cấu trúc JSON chi tiết"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </uxap:ObjectPageSubSection>
+                    </uxap:subSections>
+                </uxap:ObjectPageSection>
+
+            </uxap:sections> 
+            </uxap:ObjectPageLayout>
+    </App>
+</mvc:View>
