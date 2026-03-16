@@ -97,6 +97,7 @@ sap.ui.define([
        
             // 1. Gọi hàm tạo binding
             this._loadMeta(sQuery);
+            this._loadData(sQuery);
        
             // 2. Kiểm tra xem binding có tồn tại không trước khi gọi requestContexts
             if (this._oODataListBinding) {
@@ -153,7 +154,8 @@ sap.ui.define([
             try {
                 var oRouter = this.getOwnerComponent().getRouter();
                 oRouter.navTo("RouteObjectPage", {
-                    tableName: sTableName
+                    tableName: sTableName,
+                    layout: "OneColumn"
                 });
             } catch (e) {
                 console.log("Router error: " + e.message);
@@ -169,8 +171,20 @@ sap.ui.define([
             this._oODataListBinding = oModel.bindList("/Meta", null, null, aFilters, {
                 $$groupId: "$direct"
             });
-       
+            this.getView().getModel("displayModel").setProperty("/Meta", this._oODataListBinding);
             return this._oODataListBinding;
+        },
+
+        _loadData: function(sQuery) {
+        var oModel = this.getView().getModel(); // Model OData V4
+            var aFilters = [
+                new sap.ui.model.Filter("table_name", sap.ui.model.FilterOperator.EQ, sQuery)
+            ];
+            // Khởi tạo binding và gán vào biến global của controller
+            var modelData = oModel.bindList("/Data", null, null, aFilters, {
+                $$groupId: "$direct"
+            });
+            this.getView().getModel("displayModel").setProperty("/Data", modelData);
         },
     });
 });
