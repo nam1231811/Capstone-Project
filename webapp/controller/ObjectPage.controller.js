@@ -11,7 +11,7 @@ sap.ui.define([
 
     return Controller.extend("zapp.controller.ObjectPage", {
         _oFieldName: [], 
-        _oDataRaw: [], 
+        _oDataRaw: [],
 
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
@@ -26,7 +26,7 @@ sap.ui.define([
         },
         
         _onObjectMatched: function () {      
-            var oMeta = this.getView().getModel("displayModel").getProperty("/Meta"); 
+            var oMeta = this.getView().getModel("displayModel").getProperty("/Meta");
             var oData = this.getView().getModel("displayModel").getProperty("/Data"); 
                
             Promise.all([
