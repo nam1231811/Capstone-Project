@@ -64,7 +64,7 @@ sap.ui.define([
 
             //Thực thi action
             oAction.execute().then(function () {
-                MessageToast.show("Backend processing completed successfully!");
+                MessageToast.show("Table loaded successfully!");
 
                 //Load lại dữ liệu lên UI
                 this._loadDataToTable(sName);
