@@ -31,10 +31,12 @@ return Controller.extend("zapp.controller.DetailData", {
 
     onRollback: function () {
         var oFCL = this.oView.getParent().getParent();
+         var tableName = this.getView().getModel("overall").getProperty("/tableName")
         if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.OneColumn)
-                this.getOwnerComponent().getRouter().navTo("master", {
-                    layout: fioriLibrary.LayoutType.OneColumn
+                this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
+                    layout: fioriLibrary.LayoutType.OneColumn,
+                    tableName: tableName
                 });
             } else {
                 console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
