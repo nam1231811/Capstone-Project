@@ -11,7 +11,8 @@ sap.ui.define([
     "zapp/utils/PersonalizationData",
     "zapp/models/DataFormatter",
     "zapp/models/GetData",
-    "zapp/utils/TablePaginationData"
+    "zapp/utils/TablePaginationData",
+    "zapp/utils/UploadExcelData"
 ], function (
     Controller, 
     JSONModel, 
@@ -25,7 +26,8 @@ sap.ui.define([
     PersonalizationData,
     DataFormatter,
     GetData,
-    TablePaginationData
+    TablePaginationData,
+    UploadExcelData
 ) {
     "use strict";
 
@@ -331,65 +333,7 @@ sap.ui.define([
         },
 
         onUploadExcelPress: function (oEvent) {
-            var aFiles = oEvent.getParameter("files");
-            var oFile = aFiles ? aFiles[0] : null;
-
-            if (!oFile) {
-                MessageToast.show("File could not be found. Please try again!");
-                return;
-            }
-
-            var oReader = new FileReader();
-            
-            oReader.onload = function (e) {
-                var sDataURL = e.target.result;
-                var sBase64String = sDataURL.split(",")[1];
-                var sTableName = this.getView().getModel("overall").getProperty("/tableName");
-
-                this._sendExcelToBackend(sTableName, sBase64String);
-                
-                this.byId("excelUploader").clear();
-                
-            }.bind(this);
-
-            oReader.readAsDataURL(oFile);
-        },
-
-        _sendExcelToBackend: function (sTableName, sBase64String) {
-            var oModel = this.getOwnerComponent().getModel();
-            
-            if (!this._oMetaFirstContext) {
-                MessageBox.error("Metadata Context information not found!");
-                return;
-            }
-
-            BusyIndicator.show(0);
-
-            var sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.uploadExcel(...)";
-            var oActionContext = oModel.bindContext(sActionName, this._oMetaFirstContext);
-            
-            oActionContext.setParameter("table_name", sTableName);
-            oActionContext.setParameter("file_content", sBase64String);
-
-            oActionContext.execute().then(function () {
-                BusyIndicator.hide();
-                MessageToast.show("Upload file Excel và lưu Database thành công!");
-                
-                if (this._oDataBindingGoc) {
-                    this._oDataBindingGoc.refresh(); 
-                    
-                    setTimeout(function() {
-                        this._loadData(this._oDataBindingGoc).then(function() {
-                            this._displayData();
-                        }.bind(this));
-                    }.bind(this), 500); 
-                }
-                
-            }.bind(this)).catch(function (oError) {
-                BusyIndicator.hide();
-                MessageBox.error("Lỗi khi tải file: " + (oError.message || "Lỗi không xác định"));
-                console.error("Chi tiết lỗi Upload:", oError);
-            });
+            UploadExcelData.onUploadExcelPress.call(this, oEvent);
         }
     });
 });
