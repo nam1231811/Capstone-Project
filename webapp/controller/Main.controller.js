@@ -5,8 +5,9 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "sap/m/TablePersoController"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, TablePersoController) {
+    "sap/m/TablePersoController",
+    "zapp/models/GetData"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, TablePersoController, GetData) {
     "use strict";
 
     return Controller.extend("zapp.controller.Main", {
@@ -108,13 +109,9 @@ sap.ui.define([
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
             if (!sTableName) return;  
-            var aFilters = [
-                new Filter("table_name", FilterOperator.EQ, sTableName)
-            ];
-            
-            var oListBinding = this._loadMeta(aFilters);
-            this._loadData(aFilters);
 
+            var oListBinding = this._loadMeta(sTableName)
+ 
             oListBinding.requestContexts(0, 1000).then(function (aContexts) {
                 oTable.setBusy(false);
                 
@@ -230,22 +227,8 @@ sap.ui.define([
         //Hàm load meta
         _loadMeta: function(aFilters) {
             var oModel = this.getView().getModel(); 
-            this._oODataListBinding = oModel.bindList("/Meta", null, null, aFilters, {
-                $$groupId: "$direct"
-            });
-            
-            this.getView().getModel("displayModel").setProperty("/Meta", this._oODataListBinding); // Lưu vào displayModel
-            
+            this._oODataListBinding = GetData.loadMeta(oModel, aFilters)
             return this._oODataListBinding;
-        },
-
-        //Hàm load data
-        _loadData: function(aFilters) {
-            var oModel = this.getView().getModel(); 
-            var modelData = oModel.bindList("/Data", null, null, aFilters, {
-                $$groupId: "$direct"
-            });
-            this.getView().getModel("displayModel").setProperty("/Data", modelData);
         }
     });
 });

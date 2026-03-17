@@ -9,8 +9,23 @@ sap.ui.define([
     "zapp/utils/FilterData",
     "zapp/utils/SortData",
     "zapp/utils/PersonalizationData",
+    "zapp/models/DataFormatter",
+    "zapp/models/GetData",
     "zapp/utils/TablePaginationData"
-], function (Controller, JSONModel, fioriLibrary, MessageToast, MessageBox, BusyIndicator, SearchData, FilterData, SortData, PersonalizationData, TablePaginationData
+], function (
+    Controller, 
+    JSONModel, 
+    fioriLibrary,
+    MessageToast, 
+    MessageBox, 
+    BusyIndicator, 
+    SearchData, 
+    FilterData, 
+    SortData, 
+    PersonalizationData,
+    DataFormatter,
+    GetData,
+    TablePaginationData
 ) {
     "use strict";
 
@@ -22,54 +37,60 @@ sap.ui.define([
             var oOwnerComponent = this.getOwnerComponent();
             this.oRouter = oOwnerComponent.getRouter();            
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
-
-            var oDetailRecord = new JSONModel({ Data: [] });
-            this.getView().setModel(oDetailRecord, "detailRecord");
         },
         
-        _onObjectMatched: function () {      
+        _onObjectMatched: function (oEvent) {
+            var aCurrentMeta = this.getView().getModel("displayModel").getProperty("/Meta"); 
+            if (aCurrentMeta && aCurrentMeta.length > 0) {
+                return; 
+            }
+             var oTable = this.byId("TablePage");
+            oTable.setBusy(true); 
+            var tableName = oEvent.getParameter("arguments").tableName|| "";
             var oModel = this.getOwnerComponent().getModel();
+            var oMeta = GetData.loadMeta(oModel,tableName)
+            var oData = GetData.loadData(oModel,tableName)
+            console.log(oMeta,oData);
             
-            var oMetaBinding = oModel.bindList("/Meta"); 
-            var oDataBinding = oModel.bindList("/Data"); 
-                
-            this._oDataBindingGoc = oDataBinding; 
-
             this.getView().getModel("displayModel").setProperty("/searchQuery", "");
 
             Promise.all([
-                this._loadMeta(oMetaBinding),
-                this._loadData(oDataBinding)
+                this._loadMeta(oMeta),
+                this._loadData(oData)
             ]).then(function() {
                 this._displayData(); 
             }.bind(this)).catch(function(err) {
-                console.error("Lỗi sập trang khi load Meta/Data:", err);
+                console.error("Load Meta/Data Error:", err);
+            }).finally(function () {
+                 oTable.setBusy(false); 
             });
         },
 
         _displayData: function() {
-            var oTable = this.byId("dataTable");
+           var oTable = this.byId("dataTable");
 
-            const result = this._oDataRaw.map(record => {
-                return this._oFieldName.map(nameColumn => {
-                    const cell = record.find(column => column.fieldname === nameColumn);
-                    return cell || { value: "" }; 
-                });
-            });
-        
-            this.getView().getModel("displayModel").setProperty("/UiData", result);
-        
-            oTable.destroyColumns(); 
 
-            oTable.bindAggregation("columns", {
-                path: "displayModel>/UiMeta",
-                factory: this.createDynamicColumn.bind(this)
-            });
+           const result = this._oDataRaw.map(record => {
+               var oRowObject = {}; 
+               this._oFieldName.forEach((nameColumn, iIndex) => {
+                   const cell = record.find(column => column.fieldname === nameColumn);
 
-            oTable.bindRows("displayModel>/UiData");
-
-            //Gắn sự kiện click toàn bộ cell vào bảng
-            oTable.detachColumnSelect(this.onColumnSelect, this); 
+                   oRowObject[iIndex] = cell || { value: "" }; 
+               });
+               return oRowObject; 
+           });
+       
+           this.getView().getModel("displayModel").setProperty("/Data", result);
+           console.log(result);
+           
+           oTable.destroyColumns(); 
+           oTable.bindAggregation("columns", {
+               path: "displayModel>/Meta",
+               factory: this.createDynamicColumn.bind(this)
+           });
+       
+           oTable.bindRows("displayModel>/Data");
+           oTable.detachColumnSelect(this.onColumnSelect, this); 
             oTable.attachColumnSelect(this.onColumnSelect, this);
         },
 
