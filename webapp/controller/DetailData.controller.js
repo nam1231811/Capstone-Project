@@ -20,23 +20,33 @@ return Controller.extend("zapp.controller.DetailData", {
 
     _onObjectMatched: function (oEvent) {
         this._record = oEvent.getParameter("arguments").rowId|| this._record || "0";
-        var aData = this.getView().getModel("displayModel").getProperty("/Data");        
-        console.log(aData[this._record]);
-        if (aData[this._record] != "undefined") {
+        var aData = this.getView().getModel("displayModel").getProperty("/Data");  
+        if (aData.length === 0) {
+            var tableName = oEvent.getParameter("arguments").tableName|| this._record || "";
+            console.log(tableName);
+            this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
+                    layout: fioriLibrary.LayoutType.OneColumn,
+                    tableName: tableName,
+                    newTable: true
+                });
+            return
+        }
+        if (aData[this._record] != undefined) {
             this.getView().getModel("detailRecord").setProperty("/Data", aData[this._record]);
         }
         console.log(this.getView().getModel("detailRecord").getProperty("/Data"));
         
     },
 
-    onRollback: function () {
+    onRollback: function (oEvent) {
         var oFCL = this.oView.getParent().getParent();
          var tableName = this.getView().getModel("overall").getProperty("/tableName")
         if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.OneColumn)
                 this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
                     layout: fioriLibrary.LayoutType.OneColumn,
-                    tableName: tableName
+                    tableName: tableName,
+                    newTable: false
                 });
             } else {
                 console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");

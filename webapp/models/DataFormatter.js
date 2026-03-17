@@ -34,11 +34,14 @@ sap.ui.define([
 
         mapDataForDisplay: function (aDataRaw, aFieldName) {
             return aDataRaw.map(record => {
-                return aFieldName.map(nameColumn => {
-                    const cell = record.find(column => column.fieldname === nameColumn);
-                    return cell || { value: "" };
-                });
-            });
+               var oRowObject = {}; 
+               aFieldName.forEach((nameColumn, iIndex) => {
+                   const cell = record.find(column => column.fieldname === nameColumn);
+
+                   oRowObject[iIndex] = cell || { value: "" }; 
+               });
+               return oRowObject; 
+           })
         }
     };
 });
