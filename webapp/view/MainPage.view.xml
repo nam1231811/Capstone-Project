@@ -28,7 +28,7 @@
 
                         <fb:FilterGroupItem groupName="BASIC" name="TableDescription" label="{i18n>tableDesc}" visibleInFilterBar="true">
                             <fb:control>
-                                <Input id="searchDescInput" placeholder="Enter description..." submit=".onSearch" />
+                                <Input id="searchDescInput" placeholder="{i18n>searchDescPlaceholder}" submit=".onSearch" />
                             </fb:control>
                         </fb:FilterGroupItem>
                     </fb:filterGroupItems>
@@ -40,24 +40,24 @@
             <Table 
                 id="dynamicTable" 
                 items="{realData>/UniqueTables}"
-                noDataText="No data shown"
+                noDataText="{i18n>noDataText}"
                 inset="false"
                 sticky="ColumnHeaders,HeaderToolbar">
                 
                 <headerToolbar>
                     <OverflowToolbar>
-                        <Title text="{= 'List of table (' + (${realData>/UniqueTables} ? ${realData>/UniqueTables}.length : 0) + ')' }" level="H2"/>
+                        <Title text="{= ${i18n>listTableTitle} + ' (' + (${realData>/UniqueTables} ? ${realData>/UniqueTables}.length : 0) + ')' }" level="H2"/>
                         <ToolbarSpacer />
                         
-                        <Button icon="sap-icon://excel-attachment" type="Transparent" tooltip="Export to Excel" press=".onExportExcel">
+                        <Button icon="sap-icon://excel-attachment" type="Transparent" tooltip="{i18n>exportExcel}" press=".onExportExcel">
                             <layoutData><OverflowToolbarLayoutData priority="NeverOverflow" /></layoutData>
                         </Button>
 
-                        <Button icon="sap-icon://action-settings" type="Transparent" tooltip="Personalization" press=".onPersonalization">
+                        <Button icon="sap-icon://action-settings" type="Transparent" tooltip="{i18n>personalization}" press=".onPersonalization">
                             <layoutData><OverflowToolbarLayoutData priority="NeverOverflow" /></layoutData>
                         </Button>
 
-                        <Button icon="sap-icon://globe" type="Transparent" tooltip="Language" press=".onOpenSettings">
+                        <Button icon="sap-icon://globe" type="Transparent" tooltip="{i18n>language}" press=".onOpenSettings">
                             <layoutData><OverflowToolbarLayoutData priority="NeverOverflow" /></layoutData>
                         </Button>
                     </OverflowToolbar>
@@ -66,9 +66,9 @@
                 <columns>
                     <Column id="colTableName"><Label text="{i18n>tableName}" design="Bold"/></Column>
                     <Column id="colTableDesc"><Label text="{i18n>tableDesc}" design="Bold"/></Column>
-                    <Column id="colTotalCol"><Label text="Total of Columns" design="Bold"/></Column>
-                    <Column id="colChangedBy"><Label text="Changed By" design="Bold"/></Column>
-                    <Column id="colChangedAt"><Label text="Last Changed At" design="Bold"/></Column>
+                    <Column id="colTotalCol"><Label text="{i18n>totalCol}" design="Bold"/></Column>
+                    <Column id="colChangedBy"><Label text="{i18n>changedBy}" design="Bold"/></Column>
+                    <Column id="colChangedAt"><Label text="{i18n>lastChangedAt}" design="Bold"/></Column>
                 </columns>
 
                 <items>
@@ -77,7 +77,7 @@
                             <ObjectIdentifier title="{realData>table_name}" />
                             <Text text="{realData>table_description}" />
                             
-                            <ObjectStatus text="{realData>field_count} columns" state="Information" />
+                            <ObjectStatus text="{realData>field_count} {i18n>columnsText}" state="Information" />
                             
                             <Text text="{realData>user_name}" />
                             <Text text="{
