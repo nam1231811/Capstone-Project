@@ -64,3 +64,8 @@
 .sapUiTable[data-sap-ui-busy="true"] .sapUiTableCtrl {
     opacity: 0 !important;
 }
+
+/* Ẩn hoàn toàn thanh cuộn dọc của ui:Table */
+.myHiddenScrollbarTable .sapUiTableVSb {
+    visibility: hidden !important;
+}

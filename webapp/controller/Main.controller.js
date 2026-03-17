@@ -20,8 +20,7 @@ sap.ui.define([
             var oSettingsModel = new JSONModel({ selectedLanguage: "E" });
             this.getView().setModel(oSettingsModel, "settingsModel");
 
-            //Khởi tạo logic cá nhân hóa bảng
-            this._initPersonalization();
+            this._initPersonalization(); //Khởi tạo logic personalization
         },
 
         //Hàm search table
@@ -30,21 +29,48 @@ sap.ui.define([
             var oDescInput = this.byId("searchDescInput");
             var sTableDesc = oDescInput ? oDescInput.getValue().trim() : "";
             var sLang = this.getView().getModel("settingsModel").getProperty("/selectedLanguage");
+            
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
             //Validation cơ bản
             if (!sTableName && !sTableDesc) {
-                MessageToast.show("Please input Table Name or Table Description!");
+                MessageToast.show(oBundle.getText("msgEnterKeyword"));
                 return;
             }
 
             //Security check (Chỉ Z hoặc Y)
             if (sTableName && !sTableName.startsWith("Z") && !sTableName.startsWith("Y")) {
-                MessageBox.warning("Access denied! Custom tables only (Z/Y).");
+                MessageBox.warning(oBundle.getText("msgAccessDenied"));
                 return;
             }
 
-            //Gọi action
-            this.onSetTable(sTableName, sTableDesc, sLang);
+            this.onSetTable(sTableName, sTableDesc, sLang); //Gọi action
+        },
+
+        //Hàm clear
+        onClear: function () {
+            //Xóa nội dung các ô nhập liệu
+            var oSearchInput = this.byId("searchInput");
+            var oDescInput = this.byId("searchDescInput");
+            
+            if (oSearchInput) {
+                oSearchInput.setValue("");
+            }
+            if (oDescInput) {
+                oDescInput.setValue("");
+            }
+
+            this.getView().getModel("realData").setProperty("/UniqueTables", []); //Xóa dữ liệu đang hiển thị trên bảng
+
+            //Dọn cache của displayModel
+            var oDisplayModel = this.getView().getModel("displayModel");
+            if (oDisplayModel) {
+                oDisplayModel.setProperty("/Meta", null);
+                oDisplayModel.setProperty("/Data", null);
+            }
+
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            MessageToast.show(oBundle.getText("msgDataCleared"));
         },
 
         //Hàm gọi action
@@ -52,6 +78,7 @@ sap.ui.define([
             var oView = this.getView();
             var oTable = this.byId("dynamicTable");
             var oModel = oView.getModel(); 
+            var oBundle = oView.getModel("i18n").getResourceBundle();
             
             oTable.setBusy(true);
 
@@ -63,22 +90,24 @@ sap.ui.define([
             oAction.setParameter("table_description", sDesc);
             oAction.setParameter("language", sLang);
 
-            //Thực thi action
+            //Execute action
             oAction.execute().then(function () {
-                MessageToast.show("Table loaded successfully!");
+                MessageToast.show(oBundle.getText("msgTableLoaded"));
 
-                //Load lại dữ liệu lên UI
-                this._loadDataToTable(sName);
+                this._loadDataToTable(sName); //Load lại dữ liệu lên UI
                 
             }.bind(this)).catch(function (oError) {
                 oTable.setBusy(false);
-                MessageBox.error("Error executing Action SetTable: " + oError.message);
+                MessageBox.error(oBundle.getText("msgTableNotFound", [sName]));
+                console.error("Backend Error Details:", oError);
             });
         },
 
         //Hàm đọc lại dữ liệu từ entity sau khi action chạy xong
         _loadDataToTable: function(sTableName) {
             var oTable = this.byId("dynamicTable");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
             if (!sTableName) return;  
 
             var oListBinding = this._loadMeta(sTableName)
@@ -88,7 +117,7 @@ sap.ui.define([
                 
                 if (!aContexts || aContexts.length === 0) {
                     this.getView().getModel("realData").setProperty("/UniqueTables", []);
-                    MessageBox.information("Action executed, but no data found in ZTEMP_META.");
+                    MessageBox.information(oBundle.getText("msgNoDataFound"));
                     return;
                 }
 
@@ -112,17 +141,18 @@ sap.ui.define([
                     }
                 });
 
-                //Set dữ liệu vào Model để bảng hiển thị
+                //Set dữ liệu vào model để bảng hiển thị
                 var aUniqueTables = Object.values(oUniqueMap);
                 this.getView().getModel("realData").setProperty("/UniqueTables", aUniqueTables);
 
             }.bind(this)).catch(function(oError) {
                 oTable.setBusy(false);
-                MessageBox.error("Error reading data: " + oError.message);
+                MessageBox.error(oBundle.getText("msgLoadError", [sTableName]));
+                console.error("Read Data Error:", oError);
             });
         },
 
-        //Hàm ấn nút xử lý
+        //Hàm xử lý khi ấn nút Go
         onRowPress: function (oEvent) {
             var oContext = oEvent.getSource().getBindingContext("realData");
             var sTableName = oContext.getProperty("table_name");
@@ -131,6 +161,7 @@ sap.ui.define([
             });
         },
 
+        //Hàm chọn ngôn ngữ
         onOpenSettings: function () {
             if (!this._oLangDialog) {
                 this._oLangDialog = new sap.m.SelectDialog({
@@ -141,9 +172,25 @@ sap.ui.define([
                     ],
                     confirm: function (oEvent) {
                         var sLangCode = oEvent.getParameter("selectedItem").getDescription();
+                        
+                        //Xử lý ngôn ngữ
                         var sBackendLang = (sLangCode === "VI") ? "V" : "E";
                         this.getView().getModel("settingsModel").setProperty("/selectedLanguage", sBackendLang);
-                        this.onSearch();
+                        
+                        //Đổi file i18n
+                        var sUiLang = (sLangCode === "VI") ? "vi" : "en";
+                        sap.ui.getCore().getConfiguration().setLanguage(sUiLang);
+                        
+                        //Kiểm tra xem người dùng đã nhập từ khóa tìm kiếm chưa
+                        var sTableName = this.byId("searchInput").getValue().trim();
+                        var oDescInput = this.byId("searchDescInput");
+                        var sTableDesc = oDescInput ? oDescInput.getValue().trim() : "";
+
+                        //Chỉ tự động gọi search nếu đã có từ khóa
+                        if (sTableName || sTableDesc) {
+                            this.onSearch();
+                        }
+                        
                     }.bind(this)
                 });
             }
