@@ -41,13 +41,10 @@
                 <uxap:ObjectPageSection title="Record Data ({overall>/count})">
                     <uxap:subSections>
                         <uxap:ObjectPageSubSection>
-                           <VBox>
-                                <OverflowToolbar 
-                                    class="sapFDynamicPageAlignContent"
-                                    width="110rem"
-                                >
+                            <VBox width="100%">
+                                <OverflowToolbar width="100%">
                                     <SearchField search=".onSearch" width="17.5rem"/>
-                                        <ToolbarSpacer/>
+                                    <ToolbarSpacer/>
 
                                     <u:FileUploader
                                         id="excelUploader"
@@ -59,14 +56,14 @@
                                         sameFilenameAllowed="true"
                                         change=".onUploadExcelPress"/>
 
-                                        <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
-                                        <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
-                                        <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
+                                    <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
+                                    <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
+                                    <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
                                 </OverflowToolbar>
 
                                 <ui:Table
                                     id="dataTable"
-                                    width="110rem"
+                                    width="100%"
                                     rows="{displayModel>/Data}" 
                                     visibleRowCount="{displayModel>/visibleRowCount}"
                                     columns="{path: 'displayModel>/Meta', factory: '.createDynamicColumn'}"
