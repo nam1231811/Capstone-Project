@@ -40,19 +40,24 @@ sap.ui.define([
         },
         
         _onObjectMatched: function (oEvent) {
-            var aCurrentMeta = this.getView().getModel("displayModel").getProperty("/Meta"); 
-            if (aCurrentMeta && aCurrentMeta.length > 0) {
+            var tableName = oEvent.getParameter("arguments").tableName || "";
+            var sCurrentLoadedTable = this.getView().getModel("overall").getProperty("/tableName");
+
+            if (sCurrentLoadedTable === tableName && this.getView().getModel("displayModel").getProperty("/Meta").length > 0) {
                 return; 
             }
-             var oTable = this.byId("TablePage");
+
+            var oTable = this.byId("TablePage");
             oTable.setBusy(true); 
-            var tableName = oEvent.getParameter("arguments").tableName|| "";
-            var oModel = this.getOwnerComponent().getModel();
-            var oMeta = GetData.loadMeta(oModel,tableName)
-            var oData = GetData.loadData(oModel,tableName)
-            console.log(oMeta,oData);
-            
+
+            //Xóa sạch dữ liệu của bảng cũ trước khi load bảng mới
             this.getView().getModel("displayModel").setProperty("/searchQuery", "");
+            this.getView().getModel("displayModel").setProperty("/Data", []);
+            this.getView().getModel("displayModel").setProperty("/Meta", []);
+
+            var oModel = this.getOwnerComponent().getModel();
+            var oMeta = GetData.loadMeta(oModel, tableName);
+            var oData = GetData.loadData(oModel, tableName);
 
             Promise.all([
                 this._loadMeta(oMeta),
@@ -62,9 +67,9 @@ sap.ui.define([
             }.bind(this)).catch(function(err) {
                 console.error("Load Meta/Data Error:", err);
             }).finally(function () {
-                 oTable.setBusy(false); 
+                oTable.setBusy(false); 
             });
-        },
+        },  
 
         _displayData: function() {
            var oTable = this.byId("dataTable");
@@ -124,7 +129,10 @@ sap.ui.define([
                 } catch(e) {}
             }
 
-            var sHeaderText = (oMeta && oMeta.scrtext_l) ? oMeta.scrtext_l : "N/A";
+            var sHeaderText = "N/A";
+            if (oMeta) {
+                sHeaderText = oMeta.scrtext_l || oMeta.scrtext_m || oMeta.scrtext_s || oMeta.fieldname || "N/A";
+            }
             
             //Sử dụng label thông thường để fill toàn bộ cell
             var oHeaderLabel = new sap.m.Label({
