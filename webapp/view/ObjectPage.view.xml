@@ -7,8 +7,8 @@
     xmlns:rowmodes="sap.ui.table.rowmodes"
     xmlns:u="sap.ui.unified"
     xmlns="sap.m">
-    <App id="afds">
-        <uxap:ObjectPageLayout id="asdfsdf">
+    <App id="TablePage">
+        <uxap:ObjectPageLayout id="TableContent">
             <uxap:headerTitle>
                 <uxap:ObjectPageHeader objectTitle="Table name: {overall>/tableName}" />
                 
@@ -17,7 +17,7 @@
                 <uxap:ObjectPageSection title="Technical Columns">
                     <uxap:subSections>
                         <uxap:ObjectPageSubSection>
-                            <Table items="{displayModel>/Meta}">
+                            <Table items="{displayModel>/Meta}" id="metadata">
                                 <columns>
                                     <Column><Text text="Position"/></Column>
                                     <Column><Text text="Field Name"/></Column>

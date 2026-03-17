@@ -41,3 +41,26 @@
     outline: none !important;
     box-shadow: inset 0 0 0 1px transparent !important;
 }
+/* 1. Ép lớp phủ Busy Indicator thành màu trắng đặc */
+.sapUiLocalBusyIndicator {
+    background-color: white !important;
+    opacity: 1 !important;
+}
+
+/* 2. Đảm bảo phần animation (3 dấu chấm) vẫn hiển thị trên nền trắng */
+.sapUiLocalBusyIndicatorAnimation > div {
+    background-color: #0070f2 !important; /* Màu xanh chuẩn SAP */
+}
+
+/* 3. Chặn hoàn toàn việc nhìn xuyên qua lớp phủ của Table */
+.sapUiTableBusyCovers {
+    background-color: white !important;
+    opacity: 1 !important;
+    z-index: 10; /* Đẩy lên trên cùng */
+}
+
+/* 4. Ẩn nội dung bên dưới để chắc chắn không bị lộ */
+.sapUiTable[data-sap-ui-busy="true"] .sapUiTableCCnt,
+.sapUiTable[data-sap-ui-busy="true"] .sapUiTableCtrl {
+    opacity: 0 !important;
+}

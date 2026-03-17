@@ -2,15 +2,29 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
     "sap/f/library",
-    "sap/ui/table/library",
     "sap/m/MessageToast",   
     "sap/m/MessageBox",     
     "sap/ui/core/BusyIndicator",
     "zapp/utils/SearchData",
     "zapp/utils/FilterData",
     "zapp/utils/SortData",
-    "zapp/utils/PersonalizationData"
-], function (Controller, JSONModel, fioriLibrary, tableLibrary, MessageToast, MessageBox, BusyIndicator, SearchData, FilterData, SortData, PersonalizationData) {
+    "zapp/utils/PersonalizationData",
+    "zapp/models/DataFormatter",
+    "zapp/models/GetData"
+], function (
+    Controller, 
+    JSONModel, 
+    fioriLibrary,
+    MessageToast, 
+    MessageBox, 
+    BusyIndicator, 
+    SearchData, 
+    FilterData, 
+    SortData, 
+    PersonalizationData,
+    DataFormatter,
+    GetData
+) {
     "use strict";
 
     return Controller.extend("zapp.controller.ObjectPage", {
@@ -19,52 +33,71 @@ sap.ui.define([
 
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
-
             this.oRouter = oOwnerComponent.getRouter();            
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
-
-            var oDetailRecord = new JSONModel({ Data: [] });
-            this.getView().setModel(oDetailRecord, "detailRecord");
         },
         
-        _onObjectMatched: function () {      
-            var oModel = this.getOwnerComponent().getModel();
-            
-            var oMetaBinding = oModel.bindList("/Meta"); 
-            var oDataBinding = oModel.bindList("/Data"); 
-                
-            this._oDataBindingGoc = oDataBinding; 
+        _onObjectMatched: function (oEvent) {
+            // var loadingStatus = oEvent.getParameter("arguments").loading|| false;
+             
 
+            // if(loadingStatus){
+            //     
+            // }
+
+            
+            // var oMetaBinding = oModel.bindList("/Meta"); 
+            // var oDataBinding = oModel.bindList("/Data"); 
+            
+            var aCurrentMeta = this.getView().getModel("displayModel").getProperty("/Meta"); 
+            if (aCurrentMeta && aCurrentMeta.length > 0) {
+                return; 
+            }
+             var oTable = this.byId("TablePage");
+            // this._oDataBindingGoc = oDataBinding; 
+            oTable.setBusy(true); 
+            var tableName = oEvent.getParameter("arguments").tableName|| "";
+            var oModel = this.getOwnerComponent().getModel();
+            var oMeta = GetData.loadMeta(oModel,tableName)
+            var oData = GetData.loadData(oModel,tableName)
+            console.log(oMeta,oData);
+            
             Promise.all([
-                this._loadMeta(oMetaBinding),
-                this._loadData(oDataBinding)
+                this._loadMeta(oMeta),
+                this._loadData(oData)
             ]).then(function() {
                 this._displayData(); 
             }.bind(this)).catch(function(err) {
-                console.error("Lỗi sập trang khi load Meta/Data:", err);
+                console.error("Load Meta/Data Error:", err);
+            }).finally(function () {
+                 oTable.setBusy(false); 
             });
         },
 
         _displayData: function() {
-            var oTable = this.byId("dataTable");
+           var oTable = this.byId("dataTable");
 
-            const result = this._oDataRaw.map(record => {
-                return this._oFieldName.map(nameColumn => {
-                    const cell = record.find(column => column.fieldname === nameColumn);
-                    return cell || { value: "" }; 
-                });
-            });
-        
-            this.getView().getModel("displayModel").setProperty("/Data", result);
-        
-            oTable.destroyColumns(); 
 
-            oTable.bindAggregation("columns", {
-                path: "displayModel>/Meta",
-                factory: this.createDynamicColumn.bind(this)
-            });
+           const result = this._oDataRaw.map(record => {
+               var oRowObject = {}; 
+               this._oFieldName.forEach((nameColumn, iIndex) => {
+                   const cell = record.find(column => column.fieldname === nameColumn);
 
-            oTable.bindRows("displayModel>/Data");
+                   oRowObject[iIndex] = cell || { value: "" }; 
+               });
+               return oRowObject; 
+           });
+       
+           this.getView().getModel("displayModel").setProperty("/Data", result);
+           console.log(result);
+           
+           oTable.destroyColumns(); 
+           oTable.bindAggregation("columns", {
+               path: "displayModel>/Meta",
+               factory: this.createDynamicColumn.bind(this)
+           });
+       
+           oTable.bindRows("displayModel>/Data");
         },
 
         createDynamicColumn: function(sId, oContext) {
