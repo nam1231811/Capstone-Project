@@ -1,51 +1,79 @@
-sap.ui.define([], function() {
+sap.ui.define([
+    "sap/m/Dialog",
+    "sap/m/Button",
+    "sap/m/List",
+    "sap/m/StandardListItem",
+    "sap/m/MessageToast"
+], function (Dialog, Button, List, StandardListItem, MessageToast) {
     "use strict";
 
     return {
         onPersonalization: function () {
             var that = this;
             var oTable = this.byId("dataTable");
-            var aColumns = oTable.getColumns(); 
+            var aColumns = oTable.getColumns();
+
+            //Lấy index của cột từ CustomData
+            var getColIndex = function(oCol) {
+                var aCustomData = oCol.getCustomData();
+                var oData = aCustomData.find(function(d) { return d.getKey() === "colIndex"; });
+                return oData ? parseInt(oData.getValue(), 10) : -1;
+            };
 
             if (!this._oPersoDialog) {
-                this._oPersoDialog = new sap.m.Dialog({
+                this._oPersoList = new List({
+                    mode: "MultiSelect"
+                });
+
+                this._oPersoDialog = new Dialog({
                     title: "Personalization",
-                    contentWidth: "400px",
-                    contentHeight: "450px",
-                    resizable: true,
-                    draggable: true,
-                    content: new sap.m.List({
-                        mode: sap.m.ListMode.MultiSelect,
-                        includeItemInSelection: true
-                    }),
-                    beginButton: new sap.m.Button({
+                    contentWidth: "300px",
+                    content: [this._oPersoList],
+                    beginButton: new Button({
                         type: "Emphasized",
-                        text: "Save",
+                        text: "OK",
                         press: function () {
-                            var oList = that._oPersoDialog.getContent()[0];
-                            var aItems = oList.getItems();
-                            var aSavedCols = [];
+                            //Lấy danh sách các cột được tích
+                            var aSelectedItems = that._oPersoList.getSelectedItems();
+                            var aPersoState = [];
+                            
+                            //Ẩn tất cả đi
+                            aColumns.forEach(function (oCol) {
+                                oCol.setVisible(false);
+                            });
 
-                            aItems.forEach(function(oItem, index) {
-                                var bSelected = oItem.getSelected();
-                                var oColumn = aColumns[index];
-                                
-                                oColumn.setVisible(bSelected); 
+                            //Hiện lại những cột được tích
+                            aSelectedItems.forEach(function (oItem) {
+                                var iItemKey = parseInt(oItem.data("colIndex"), 10);
+                                var oTargetCol = aColumns.find(function(c) { return getColIndex(c) === iItemKey; });
+                                if (oTargetCol) {
+                                    oTargetCol.setVisible(true);
+                                }
+                            });
 
-                                aSavedCols.push({
-                                    index: index,
-                                    visible: bSelected
+                            //Quét lại để lấy trạng thái mới nhất
+                            aColumns.forEach(function(oCol) {
+                                aPersoState.push({
+                                    index: getColIndex(oCol),
+                                    visible: oCol.getVisible()
                                 });
                             });
 
+                            //Lưu vào local storage
                             var sTableName = that.getView().getModel("overall").getProperty("/tableName") || "DefaultTable";
                             var sStorageKey = "myApp_" + sTableName + "_GridPerso";
-                            window.localStorage.setItem(sStorageKey, JSON.stringify(aSavedCols));
+                            
+                            try {
+                                window.localStorage.setItem(sStorageKey, JSON.stringify(aPersoState));
+                                MessageToast.show("Saved!");
+                            } catch (e) {
+                                console.error("Error!:", e);
+                            }
 
                             that._oPersoDialog.close();
                         }
                     }),
-                    endButton: new sap.m.Button({
+                    endButton: new Button({
                         text: "Cancel",
                         press: function () {
                             that._oPersoDialog.close();
@@ -55,22 +83,24 @@ sap.ui.define([], function() {
                 this.getView().addDependent(this._oPersoDialog);
             }
 
-            var oList = this._oPersoDialog.getContent()[0];
-            oList.removeAllItems();
-            
-            aColumns.forEach(function(oColumn, index) {
-                var oHeaderControl = oColumn.getLabel();
-                var sText = "Column " + index;
-                if (oHeaderControl && typeof oHeaderControl.getText === "function") {
-                    sText = oHeaderControl.getText();
+            this._oPersoList.removeAllItems();
+
+            //Nạp lại danh sách cột hiện tại vào list
+            aColumns.forEach(function (oCol) {
+                var sColName = oCol.getLabel() ? oCol.getLabel().getText() : "Column";
+                var iColIndex = getColIndex(oCol);
+
+                if (iColIndex !== -1) {
+                    var oItem = new StandardListItem({
+                        title: sColName,
+                        selected: oCol.getVisible()
+                    });
+                    
+                    oItem.data("colIndex", iColIndex.toString());
+                    
+                    this._oPersoList.addItem(oItem);
                 }
-                
-                var oItem = new sap.m.StandardListItem({
-                    title: sText,
-                    selected: oColumn.getVisible()
-                });
-                oList.addItem(oItem);
-            });
+            }.bind(this));
 
             this._oPersoDialog.open();
         }
