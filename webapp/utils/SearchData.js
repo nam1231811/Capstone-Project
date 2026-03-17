@@ -40,6 +40,10 @@ sap.ui.define([
             oDisplayModel.setProperty("/visibleRowCount", iNewVisibleRows);
             oDisplayModel.setProperty("/hasMore", bHasMore);
             oDisplayModel.setProperty("/hasLess", bHasLess);
+
+            sap.ui.require(["zapp/utils/TablePaginationData"], function(TablePaginationData) {
+                TablePaginationData.applyScrollLock(oTable, true);
+            });
         }
     };
 });

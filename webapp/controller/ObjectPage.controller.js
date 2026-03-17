@@ -175,6 +175,7 @@ sap.ui.define([
                 oDisplayModel.setProperty("/hasLess", bHasLess);
                 
                 this.getView().getModel("overall").setProperty("/count", iDataLength);
+                TablePaginationData.applyScrollLock(this.byId("dataTable"), true);
             }.bind(this));
         },
         
