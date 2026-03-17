@@ -7,8 +7,8 @@
     xmlns:rowmodes="sap.ui.table.rowmodes"
     xmlns:u="sap.ui.unified"
     xmlns="sap.m">
-    <App id="afds">
-        <uxap:ObjectPageLayout id="asdfsdf">
+    <App id="TablePage">
+        <uxap:ObjectPageLayout id="TableContent">
             <uxap:headerTitle>
                 <uxap:ObjectPageHeader objectTitle="Table name: {overall>/tableName}" />
             </uxap:headerTitle>
@@ -16,7 +16,7 @@
                 <uxap:ObjectPageSection title="Technical Columns">
                     <uxap:subSections>
                         <uxap:ObjectPageSubSection>
-                            <Table items="{displayModel>/Meta}">
+                            <Table items="{displayModel>/Meta}" id="metadata">
                                 <columns>
                                     <Column><Text text="Position"/></Column>
                                     <Column><Text text="Field Name"/></Column>
@@ -42,27 +42,31 @@
                     <uxap:subSections>
                         <uxap:ObjectPageSubSection>
                            <VBox>
-                                <OverflowToolbar class="sapFDynamicPageAlignContent">
-                                <SearchField search=".onSearch" width="17.5rem"/>
-                                    <ToolbarSpacer/>
+                                <OverflowToolbar 
+                                    class="sapFDynamicPageAlignContent"
+                                    width="110rem"
+                                >
+                                    <SearchField search=".onSearch" width="17.5rem"/>
+                                        <ToolbarSpacer/>
 
-                                <u:FileUploader
-                                    id="excelUploader"
-                                    fileType="xlsx"
-                                    buttonOnly="true"
-                                    icon="sap-icon://excel-attachment"
-                                    buttonText="Upload"
-                                    style="Emphasized"
-                                    sameFilenameAllowed="true"
-                                    change=".onUploadExcelPress"/>
+                                    <u:FileUploader
+                                        id="excelUploader"
+                                        fileType="xlsx"
+                                        buttonOnly="true"
+                                        icon="sap-icon://excel-attachment"
+                                        buttonText="Upload"
+                                        style="Emphasized"
+                                        sameFilenameAllowed="true"
+                                        change=".onUploadExcelPress"/>
 
-                                    <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
-                                    <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
-                                    <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
+                                        <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
+                                        <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
+                                        <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
                                 </OverflowToolbar>
 
                                 <ui:Table
                                     id="dataTable"
+                                    width="110rem"
                                     rows="{displayModel>/Data}" 
                                     visibleRowCount="{displayModel>/visibleRowCount}"
                                     columns="{path: 'displayModel>/Meta', factory: '.createDynamicColumn'}"
