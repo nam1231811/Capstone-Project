@@ -95,7 +95,7 @@ sap.ui.define([
                 MessageToast.show(oBundle.getText("msgTableLoaded"));
 
                 this._loadDataToTable(sName); //Load lại dữ liệu lên UI
-                
+                // this.getModel().refresh(true)
             }.bind(this)).catch(function (oError) {
                 oTable.setBusy(false);
                 MessageBox.error(oBundle.getText("msgTableNotFound", [sName]));

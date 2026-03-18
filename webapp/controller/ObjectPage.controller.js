@@ -42,25 +42,31 @@ sap.ui.define([
         },
         
         _onObjectMatched: function (oEvent) {
-            
-            var aCurrentMeta = this.getView().getModel("displayModel").getProperty("/Meta"); 
-            
-            if (aCurrentMeta && aCurrentMeta.length > 0) {
+            var oDisplayModel = this.getView().getModel("displayModel");
+            var sNewTableName = oEvent.getParameter("arguments").tableName || "";
+            var sCurrentTableName = oDisplayModel.getProperty("/CurrentTable"); // Giả sử bạn lưu tên bảng hiện tại vào đây
+
+            // 1. Kiểm tra nếu vẫn là bảng cũ thì mới return để tránh load thừa
+            if (sCurrentTableName === sNewTableName && oDisplayModel.getProperty("/Meta")?.length > 0) {
                 return; 
             }
-
-            var state = oEvent.getParameter("arguments").newTable|| false;
+        
+            var state = oEvent.getParameter("arguments").newTable || false;
             if (!state) {
                 return; 
             }
+        
+            // 2. Reset data cũ để tránh "râu ông nọ cắm cằm bà kia" trong khi chờ load
+            oDisplayModel.setProperty("/Meta", []);
+            oDisplayModel.setProperty("/Data", []);
+            oDisplayModel.setProperty("/CurrentTable", sNewTableName); // Lưu lại tên bảng mới
+            oDisplayModel.setProperty("/searchQuery", "");
             var oTable = this.byId("TablePage");
             oTable.setBusy(true); 
-            var tableName = oEvent.getParameter("arguments").tableName|| "";
-            var oModel = this.getOwnerComponent().getModel();
-            var oMeta = GetData.loadMeta(oModel,tableName)
-            var oData = GetData.loadData(oModel,tableName)
 
-            this.getView().getModel("displayModel").setProperty("/searchQuery", "");
+            var oModel = this.getOwnerComponent().getModel();
+            var oMeta = GetData.loadMeta(oModel,sNewTableName)
+            var oData = GetData.loadData(oModel,sNewTableName)
 
             Promise.all([
                 this._loadMeta(oMeta),
@@ -191,7 +197,7 @@ sap.ui.define([
                 if(this._oDataRaw.length < 10){
                     this.getView().getModel("overall").setProperty("/minRecord", this._oDataRaw.length); 
                 }else{
-                    this.getView().getModel("overall").setProperty("/minRecord", "10");
+                    this.getView().getModel("overall").setProperty("/minRecord", 10);
                 }
                 this.getView().getModel("overall").setProperty("/count", this._oDataRaw.length);
                 this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
@@ -233,7 +239,28 @@ sap.ui.define([
         },
 
         onAdd: function () {
-            MessageToast.show("...");
+            var oModel = this.getView().getModel("displayModel");
+            var aData = oModel.getProperty("/Data") || [];
+            var aFieldName = this._oFieldName; // Mảng tên field gốc
+
+            // 1. Tạo Row mới với cấu trúc { "0": {value: ""}, "1": {value: ""} }
+            var oNewRow = {};
+            aFieldName.forEach((nameColumn, iIndex) => {
+                oNewRow[iIndex] = { 
+                    fieldname: nameColumn, 
+                    value: "",
+                    isNew: true // Đánh dấu đây là dòng đang tạo mới
+                };
+            });
+        
+            // 2. Đưa dòng mới vào đầu mảng dữ liệu
+            aData.unshift(oNewRow);
+        
+            // 3. Cập nhật lại Model để bảng nhận dữ liệu mới
+            oModel.setProperty("/Data", aData);
+        
+            // 4. Cuộn bảng lên đầu để người dùng thấy dòng vừa thêm
+            this.byId("dataTable").setFirstVisibleRow(0);
         },
 
         onViewLogDetail: function (oEvent) {
