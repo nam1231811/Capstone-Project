@@ -56,7 +56,16 @@
                                         sameFilenameAllowed="true"
                                         change=".onUploadExcelPress"/>
 
+                                    <Button 
+                                        id="btnDownload" 
+                                        icon="sap-icon://download" 
+                                        type="Success" 
+                                        text="Download" 
+                                        press=".onDownloadExcelPress" 
+                                        tooltip="Xuất dữ liệu ra file Excel"/>
+
                                     <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
+                                    
                                     <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
                                     <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
                                 </OverflowToolbar>
