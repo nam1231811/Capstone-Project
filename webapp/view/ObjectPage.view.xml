@@ -71,7 +71,8 @@
 
                                     <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
                                     
-                                    <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/>
+                                    <OverflowToolbarButton icon="" text="Save" type="Transparent" press=".onSave"/> 
+                                    <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/> 
                                     <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
                                 </OverflowToolbar>
 

@@ -46,9 +46,7 @@ sap.ui.define([
         _onObjectMatched: function (oEvent) {
             var oDisplayModel = this.getView().getModel("displayModel");
             var sNewTableName = oEvent.getParameter("arguments").tableName || "";
-            var sCurrentTableName = oDisplayModel.getProperty("/CurrentTable"); // Giả sử bạn lưu tên bảng hiện tại vào đây
-
-            // 1. Kiểm tra nếu vẫn là bảng cũ thì mới return để tránh load thừa
+            var sCurrentTableName = oDisplayModel.getProperty("/CurrentTable"); 
             if (sCurrentTableName === sNewTableName && oDisplayModel.getProperty("/Meta")?.length > 0) {
                 return; 
             }
@@ -57,11 +55,10 @@ sap.ui.define([
             if (!state) {
                 return; 
             }
-        
-            // 2. Reset data cũ để tránh "râu ông nọ cắm cằm bà kia" trong khi chờ load
+
             oDisplayModel.setProperty("/Meta", []);
             oDisplayModel.setProperty("/Data", []);
-            oDisplayModel.setProperty("/CurrentTable", sNewTableName); // Lưu lại tên bảng mới
+            oDisplayModel.setProperty("/CurrentTable", sNewTableName); 
             oDisplayModel.setProperty("/searchQuery", "");
             var oTable = this.byId("TablePage");
             oTable.setBusy(true); 
@@ -116,7 +113,6 @@ sap.ui.define([
             }
 
             var sStableId = this.getView().createId(sBaseId);
-            
             var sTableName = this.getView().getModel("overall").getProperty("/tableName") || "DefaultTable";
             var sStorageKey = "myApp_" + sTableName + "_GridPerso";
             var sSavedData = window.localStorage.getItem(sStorageKey);
@@ -138,36 +134,85 @@ sap.ui.define([
             }
             
             //Sử dụng label thông thường để fill toàn bộ cell
-            var oHeaderLabel = new sap.m.Label({
-                text: sHeaderText,
-                design: "Bold"
-            });
+            // var oHeaderLabel = new sap.m.Label({
+            //     text: sHeaderText,
+            //     design: "Bold"
+            // });
 
+            // var oColumn = new sap.ui.table.Column(sStableId, {
+            //     label: new sap.m.Label({ text: sHeaderText, design: "Bold" }), 
+            //     visible: bVisibleDefault,
+            //     width: "auto",
+            //     template: new sap.m.FormattedText({
+            //         htmlText: {
+            //             parts: [
+            //                 "displayModel>" + iIndex + "/value", 
+            //                 "displayModel>/searchQuery"          
+            //             ],
+            //             formatter: function (sValue, sQuery) {
+            //                 if (!sValue) return "";
+            //                 sValue = sValue.toString();
+                            
+            //                 var sSafeValue = sValue.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            //                 if (!sQuery) return sSafeValue;
+                            
+            //                 var sEscapedQuery = sQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
+            //                 var regex = new RegExp("(" + sEscapedQuery + ")", "gi");
+            //                 return sSafeValue.replace(regex, "<span style='background-color: #8ce8fa; font-weight: bold;'>$1</span>");
+            //             }
+            //         }
+            //     })
+            // });
             var oColumn = new sap.ui.table.Column(sStableId, {
-                label: oHeaderLabel, 
+                label: new sap.m.Label({ text: sHeaderText, design: "Bold" }), 
                 visible: bVisibleDefault,
                 width: "auto",
-                template: new sap.m.FormattedText({
-                    htmlText: {
-                        parts: [
-                            "displayModel>" + iIndex + "/value", 
-                            "displayModel>/searchQuery"          
-                        ],
-                        formatter: function (sValue, sQuery) {
-                            if (!sValue) return "";
-                            sValue = sValue.toString();
-                            
-                            var sSafeValue = sValue.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                            if (!sQuery) return sSafeValue;
-                            
-                            var sEscapedQuery = sQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
-                            var regex = new RegExp("(" + sEscapedQuery + ")", "gi");
-                            return sSafeValue.replace(regex, "<span style='background-color: #8ce8fa; font-weight: bold;'>$1</span>");
-                        }
-                    }
+                template: new sap.m.VBox({
+                    items: [
+                        new sap.m.FormattedText({
+                            visible: "{= !${displayModel>" + iIndex + "/isEditable} }",
+                            htmlText: {
+                                parts: [
+                                    "displayModel>" + iIndex + "/value", 
+                                    "displayModel>/searchQuery"          
+                                ],
+                                formatter: function (sValue, sQuery) {
+                                    if (!sValue) 
+                                        return "";
+                                    sValue = sValue.toString();
+                                    var sSafeValue = sValue.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                                    if (!sQuery) 
+                                        return sSafeValue;
+                                    var sEscapedQuery = sQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
+                                    var regex = new RegExp("(" + sEscapedQuery + ")", "gi");
+                                    return sSafeValue.replace(regex, "<span style='background-color: #8ce8fa; font-weight: bold;'>$1</span>");
+                                }
+                            }
+                        }),
+                        // new sap.m.Input({
+                        //     value: "{displayModel>" + iIndex + "/value}",
+                        //     visible: "{= ${displayModel>" + iIndex + "/isEditable} === true }", // Hiện nếu là dòng mới
+                        //     width: "100%"
+                        // })
+                        new sap.m.Input({
+                            value: "{displayModel>" + iIndex + "/value}",
+                            visible: "{= ${displayModel>" + iIndex + "/isEditable} === true }",
+                            change: function(oEvent) {
+                                // Lấy giá trị vừa nhập
+                                var sNewValue = oEvent.getParameter("value");
+                                // Lấy UUID của cột từ Meta (đã có sẵn trong context của factory)
+                                var sColUUID = oMeta.uuid; 
+
+                                // Cập nhật UUID vào model Data để khi Save có cái mà dùng
+                                var oModel = this.getView().getModel("displayModel");
+                                var sPath = oEvent.getSource().getBindingContext("displayModel").getPath();
+                                oModel.setProperty(sPath + "/uuid", sColUUID);
+                                oModel.setProperty(sPath + "/fieldname", oMeta.fieldname);
+                            }.bind(this)
+                        })
+                    ]
                 })
             });
-
             //Gắn định vị CustomData thẳng vào cột
             oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colIndex", value: iIndex }));
             oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colName", value: sHeaderText }));
@@ -181,6 +226,7 @@ sap.ui.define([
                 this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
                 this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
                 this._oFieldName = this._oMetaRaw.map( prop => prop.fieldname);
+                console.log(this._oMetaRaw);
                 
                 this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
                 this.getView().getModel("overall").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
@@ -190,8 +236,6 @@ sap.ui.define([
         },
         
         _loadData: function(data) {
-            console.log(data);
-            
             return data.requestContexts().then(function (aDataContexts) {
                 this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());
                 
@@ -203,7 +247,6 @@ sap.ui.define([
                 }
                 this.getView().getModel("overall").setProperty("/count", this._oDataRaw.length);
                 this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
-                // TablePaginationData.applyScrollLock(this.byId("dataTable"), true);
             }.bind(this));
         },
         
@@ -240,30 +283,105 @@ sap.ui.define([
             FilterData.onFilterConfirm.call(this, oEvent);
         },
 
-        // onAdd: function () {
-        //     var oModel = this.getView().getModel("displayModel");
-        //     var aData = oModel.getProperty("/Data") || [];
-        //     var aFieldName = this._oFieldName; // Mảng tên field gốc
+        onAdd: function() {
+            var oModel = this.getView().getModel("displayModel");
+            var aData = oModel.getProperty("/Data") || [];
+            var aMeta = oModel.getProperty("/Meta"); 
+            var oNewRow = {};
+            var sCommonRowId = (aData.length + 1);
 
-        //     // 1. Tạo Row mới với cấu trúc { "0": {value: ""}, "1": {value: ""} }
-        //     var oNewRow = {};
-        //     aFieldName.forEach((nameColumn, iIndex) => {
-        //         oNewRow[iIndex] = { 
-        //             fieldname: nameColumn, 
-        //             value: "",
-        //             isNew: true // Đánh dấu đây là dòng đang tạo mới
-        //         };
-        //     });
+            // Duyệt qua từng cột trong Meta để copy thông tin định danh
+            aMeta.forEach(function(colMeta, iIndex) {
+                var sNewRowUUID = DataFormatter.generateUUID();
+                oNewRow[iIndex] = {
+                    value: "",               
+                    isEditable: true,        
+                    isNew: true,             
+                    uuid: sNewRowUUID, 
+                    fieldname: colMeta.fieldname,
+                    table_name: colMeta.table_name,
+                    field_pos: colMeta.field_pos,
+                    datatype: colMeta.datatype,
+                    row_id: sCommonRowId,
+
+                };
+            }.bind(this));
         
-        //     // 2. Đưa dòng mới vào đầu mảng dữ liệu
-        //     aData.unshift(oNewRow);
+            aData.unshift(oNewRow);
         
-        //     // 3. Cập nhật lại Model để bảng nhận dữ liệu mới
-        //     oModel.setProperty("/Data", aData);
+            oModel.setProperty("/Data", aData);
+
+            var oTable = this.byId("dataTable");
+            oTable.setFirstVisibleRow(0);
+            sap.m.MessageToast.show("add row successful.");
+        },
+
+        onSave: function() {
+            var aData = this.getView().getModel("displayModel").getProperty("/Data");
+
+            // 1. Lọc lấy các dòng mới
+            var aNewRows = aData.filter(row => row[0] && row[0].isNew);
+
+            aNewRows.forEach(oRow => {
+                // 2. Lấy tất cả các key (0, 1, 2...) trong dòng oRow
+                Object.keys(oRow).forEach(key => {
+                    // Chỉ xử lý các key là số (đại diện cho các cột dữ liệu)
+                    if (!isNaN(key)) {
+                        var oCell = oRow[key];
+
+                        // 3. Kiểm tra dữ liệu trước khi gửi để tránh lỗi 'undefined'
+                        if (oCell && oCell.uuid && oCell.fieldname) {
+                            var oCellPayload = {
+                                "uuid": oCell.uuid,
+                                "fieldname": oCell.fieldname,
+                                "table_name": oCell.table_name,
+                                "field_pos": oCell.field_pos,
+                                "datatype": oCell.datatype,
+                                "row_id": oCell.row_id,
+                                "fieldname": oCell.fieldname,
+                                "table_name": oCell.table_name,
+                                "value": oCell.value,
+                            }
+                            console.log("Đang gửi ô:", oCell.fieldname, "với UUID:", oCell.uuid, oCellPayload);
+                            this._sendToBackend(oCellPayload);
+                        } else {
+                            console.warn("Bỏ qua ô tại cột " + key + " do thiếu thông tin định danh.");
+                        }
+                    }
+                });
+            });  
+        },
+
+        _sendToBackend: function(oCellPayload) {
+            var oModel = this.getView().getModel();
+                
+            // Gửi trực tiếp vào đầu mục /Meta
+            var oListBinding = oModel.bindList("/Meta", null, null, null, {
+                "$$groupId": "$direct"
+            });
+            // Cấu trúc Payload 
+            var oFinalPayload = {
+                "uuid": oCellPayload.uuid, 
+                "fieldname": oCellPayload.fieldname,
+                "table_name": oCellPayload.table_name,
+                "field_pos": oCellPayload.field_pos,
+                "datatype": oCellPayload.datatype,
+                "_Data": [{
+                    "row_id": oCellPayload.row_id,
+                    "fieldname": oCellPayload.fieldname,
+                    "table_name": oCellPayload.table_name,
+                    "value": oCellPayload.value
+                }]
+            };
+
+            var oContext = oListBinding.create(oFinalPayload);
         
-        //     // 4. Cuộn bảng lên đầu để người dùng thấy dòng vừa thêm
-        //     this.byId("dataTable").setFirstVisibleRow(0);
-        // },
+            oContext.created().then(function() {
+                console.log("Đã tạo nháp Meta & Data thành công cho: " + oCellPayload.fieldname);
+            }.bind(this)).catch(function(oError) {
+                console.error("Lỗi khi tạo nháp: ", oError);
+            });
+        },
 
         onViewLogDetail: function (oEvent) {
             var oButton = oEvent.getSource();
