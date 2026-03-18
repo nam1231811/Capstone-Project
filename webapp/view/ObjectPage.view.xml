@@ -70,8 +70,6 @@
                                         tooltip="Xuất dữ liệu ra file Excel"/>
 
                                     <OverflowToolbarButton icon="sap-icon://add" text="Add" type="Transparent" press=".onAdd"/>
-                                    
-                                    <OverflowToolbarButton icon="" text="Save" type="Transparent" press=".onSave"/> 
                                     <OverflowToolbarButton icon="sap-icon://filter" text="Filter" type="Transparent" press=".onFilter"/> 
                                     <OverflowToolbarButton icon="sap-icon://action-settings" text="Personalization" type="Transparent" press=".onPersonalization"/>
                                 </OverflowToolbar>
@@ -138,8 +136,15 @@
                         </uxap:ObjectPageSubSection>
                     </uxap:subSections>
                 </uxap:ObjectPageSection>
-
-            </uxap:sections> 
+            </uxap:sections>
+             
+            <uxap:footer>
+		    	<OverflowToolbar>
+		    		<ToolbarSpacer/>
+		    		<Button type="Accept" text="Save" press=".onSave" width="5rem"/>
+		    		<Button type="Reject" text="Cancel" press=".onEditToggleButtonPress" width="5rem"/>
+		    	</OverflowToolbar>
+		    </uxap:footer>
         </uxap:ObjectPageLayout>
     </App>
 </mvc:View>
