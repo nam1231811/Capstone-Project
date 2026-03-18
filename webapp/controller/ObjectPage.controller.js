@@ -42,24 +42,25 @@ sap.ui.define([
         },
         
         _onObjectMatched: function (oEvent) {
-            var tableName = oEvent.getParameter("arguments").tableName || "";
-            var sCurrentLoadedTable = this.getView().getModel("overall").getProperty("/tableName");
-
-            if (sCurrentLoadedTable === tableName && this.getView().getModel("displayModel").getProperty("/Meta").length > 0) {
+            
+            var aCurrentMeta = this.getView().getModel("displayModel").getProperty("/Meta"); 
+            
+            if (aCurrentMeta && aCurrentMeta.length > 0) {
                 return; 
             }
 
+            var state = oEvent.getParameter("arguments").newTable|| false;
+            if (!state) {
+                return; 
+            }
             var oTable = this.byId("TablePage");
             oTable.setBusy(true); 
-
-            //Xóa sạch dữ liệu của bảng cũ trước khi load bảng mới
-            this.getView().getModel("displayModel").setProperty("/searchQuery", "");
-            this.getView().getModel("displayModel").setProperty("/Data", []);
-            this.getView().getModel("displayModel").setProperty("/Meta", []);
-
+            var tableName = oEvent.getParameter("arguments").tableName|| "";
             var oModel = this.getOwnerComponent().getModel();
-            var oMeta = GetData.loadMeta(oModel, tableName);
-            var oData = GetData.loadData(oModel, tableName);
+            var oMeta = GetData.loadMeta(oModel,tableName)
+            var oData = GetData.loadData(oModel,tableName)
+
+            this.getView().getModel("displayModel").setProperty("/searchQuery", "");
 
             Promise.all([
                 this._loadMeta(oMeta),
@@ -75,18 +76,10 @@ sap.ui.define([
 
         _displayData: function() {
            var oTable = this.byId("dataTable");
-
-
-           const result = this._oDataRaw.map(record => {
-               var oRowObject = {}; 
-               this._oFieldName.forEach((nameColumn, iIndex) => {
-                   const cell = record.find(column => column.fieldname === nameColumn);
-
-                   oRowObject[iIndex] = cell || { value: "" }; 
-               });
-               return oRowObject; 
-           });
-       
+          
+           
+           const result = DataFormatter.mapDataForDisplay(this._oDataRaw,this._oFieldName)
+                  
            this.getView().getModel("displayModel").setProperty("/Data", result);
            console.log(result);
            
@@ -189,38 +182,23 @@ sap.ui.define([
         },
         
         _loadData: function(data) {
+            console.log(data);
+            
             return data.requestContexts().then(function (aDataContexts) {
                 this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());
-                this._oDataRaw = this._groupDataByRow(this._oDataRaw);
                 
-                const iDataLength = this._oDataRaw.length;
-                const iVisibleRowCount = iDataLength < 10 ? iDataLength : 10;
-                
-                const bHasMore = iDataLength > iVisibleRowCount;
-                const bHasLess = false;
-
-                const oDisplayModel = this.getView().getModel("displayModel");
-                oDisplayModel.setProperty("/Data", this._oDataRaw);
-                oDisplayModel.setProperty("/visibleRowCount", iVisibleRowCount);
-                oDisplayModel.setProperty("/hasMore", bHasMore); 
-                oDisplayModel.setProperty("/hasLess", bHasLess);
-                
-                this.getView().getModel("overall").setProperty("/count", iDataLength);
-                TablePaginationData.applyScrollLock(this.byId("dataTable"), true);
+                this._oDataRaw = DataFormatter.groupDataByRow(this._oDataRaw);
+                if(this._oDataRaw.length < 10){
+                    this.getView().getModel("overall").setProperty("/minRecord", this._oDataRaw.length); 
+                }else{
+                    this.getView().getModel("overall").setProperty("/minRecord", "10");
+                }
+                this.getView().getModel("overall").setProperty("/count", this._oDataRaw.length);
+                this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
+                // TablePaginationData.applyScrollLock(this.byId("dataTable"), true);
             }.bind(this));
         },
         
-        _groupDataByRow: function (data) {
-            if(!data || !Array.isArray(data)){ return []; }
-            const groupData = data.reduce(function (acc, obj) {
-                var sKey = obj.row_id;
-                if (!acc[sKey]) { acc[sKey] = []; }
-                acc[sKey].push(obj);
-                return acc;
-            }, {});
-            return Object.values(groupData);
-        },
-
         onPressLoadMore: function () {
             TablePaginationData.onPressLoadMore.call(this);
         },

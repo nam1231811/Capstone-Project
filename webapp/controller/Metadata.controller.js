@@ -18,21 +18,31 @@ return Controller.extend("zapp.controller.Metadata", {
 
     _onObjectMatched: function (oEvent) {
         this._record = oEvent.getParameter("arguments").rowId|| this._record || "0";
-        var aData = this.getView().getModel("displayModel").getProperty("/Meta"); 
+        var aData = this.getView().getModel("displayModel").getProperty("/Meta");
+         if (aData.length === 0) {
+            var tableName = oEvent.getParameter("arguments").tableName|| this._record || "";
+            this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
+                    layout: fioriLibrary.LayoutType.OneColumn,
+                    tableName: tableName,
+                    newTable: true
+                });
+            return
+        }       
         if (aData[this._record] != "undefined") {
             this.getView().getModel("metadata").setProperty("/FieldName", aData[this._record]);
-            console.log(this.getView().getModel("metadata").getProperty("/FieldName"));
         }
     },
 
     onRollback: function () {
         var oFCL = this.oView.getParent().getParent();
         var tableName = this.getView().getModel("overall").getProperty("/tableName")
+        console.log(tableName);
         if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.OneColumn)
                 this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
                     layout: fioriLibrary.LayoutType.OneColumn,
-                    tableName: tableName
+                    tableName: tableName,
+                    newTable: false
                 });
             } else {
                 console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");

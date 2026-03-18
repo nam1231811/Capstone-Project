@@ -157,7 +157,8 @@ sap.ui.define([
             var oContext = oEvent.getSource().getBindingContext("realData");
             var sTableName = oContext.getProperty("table_name");
             this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
-                tableName: sTableName
+                tableName: sTableName,
+                newTable: true
             });
         },
 
