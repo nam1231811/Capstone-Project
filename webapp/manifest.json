@@ -113,7 +113,7 @@
         },
         {
           "name": "RouteObjectPage",
-          "pattern": "detail/{tableName}",
+          "pattern": "detail/{tableName}/{newTable}",
           "target": ["TargetTwoColumnContainer", "DetailTable"]
         },
         {
