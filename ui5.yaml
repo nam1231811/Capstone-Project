@@ -18,11 +18,7 @@ server:
         backend:
           - path: /sap
             url: http://s40lp1.ucc.cit.tum.de:8000
-<<<<<<< HEAD
-            destination: S40_DATA_SOURCE
-=======
             destination: Nguyen
->>>>>>> d0e1b1e9cfa2757789b703d11ed3513110a6568e
     - name: fiori-tools-appreload
       afterMiddleware: compression
       configuration:
