@@ -12,7 +12,8 @@ sap.ui.define([
     "zapp/models/DataFormatter",
     "zapp/models/GetData",
     "zapp/utils/TablePaginationData",
-    "zapp/utils/UploadExcelData"
+    "zapp/utils/UploadExcelData",
+    "zapp/utils/DownloadExcelData"
 ], function (
     Controller, 
     JSONModel, 
@@ -27,7 +28,8 @@ sap.ui.define([
     DataFormatter,
     GetData,
     TablePaginationData,
-    UploadExcelData
+    UploadExcelData,
+    DownloadExcelData
 ) {
     "use strict";
 
@@ -361,6 +363,11 @@ sap.ui.define([
 
         onUploadExcelPress: function (oEvent) {
             UploadExcelData.onUploadExcelPress.call(this, oEvent);
+        },
+
+        onDownloadExcelPress: function () {
+            DownloadExcelData.onDownloadExcelPress(this);
         }
+        
     });
 });
