@@ -69,3 +69,31 @@
 .myHiddenScrollbarTable .sapUiTableVSb {
     visibility: hidden !important;
 }
+
+/* 1. Bo tròn và tạo viền cho toàn bộ khối bao gồm cả Toolbar và Table */
+.roundedTableWrapper {
+    border-radius: 12px; /* Độ bo tròn của toàn khối */
+    overflow: hidden; /* Cắt phần góc nhọn bị thừa ra */
+    border: 1px solid #d9d9d9; /* Viền bao quanh toàn khối */
+    background-color: #ffffff; /* Nền trắng */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Bóng đổ nhẹ nhàng */
+    margin: 1rem 0; /* Khoảng cách trên dưới cho thoáng (tùy chỉnh theo ý bạn) */
+}
+
+/* 2. Bỏ viền thừa của Toolbar để tránh bị viền đè lên nhau */
+.roundedTableWrapper .sapMTB {
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid #e5e5e5; /* Kẻ 1 vạch mỏng ngăn cách giữa Toolbar và header của Table */
+    background: transparent; /* Đồng bộ nền với Wrapper */
+}
+
+/* 3. Bỏ viền ngoài của UI5 Table bên trong để không bị viền kép với Wrapper */
+.roundedTableWrapper .sapUiTable {
+    border: none !important;
+}
+
+.roundedTableWrapper .sapUiTableCnt {
+    border: none !important;
+}

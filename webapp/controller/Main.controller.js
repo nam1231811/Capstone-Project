@@ -5,9 +5,8 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "sap/m/TablePersoController",
     "zapp/models/GetData"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, TablePersoController, GetData) {
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData) {
     "use strict";
 
     return Controller.extend("zapp.controller.Main", {
@@ -19,7 +18,7 @@ sap.ui.define([
             var oSettingsModel = new JSONModel({ selectedLanguage: "E" });
             this.getView().setModel(oSettingsModel, "settingsModel");
 
-            this._initPersonalization(); 
+            this._loadColumnState(); 
         },
 
         onValueHelpRequest: function (oEvent) {
@@ -29,11 +28,8 @@ sap.ui.define([
             if (!this._pValueHelpDialog) {
                 this._pValueHelpDialog = new sap.m.TableSelectDialog({
                     title: oBundle.getText("listTableTitle"), 
-                    
                     busyIndicatorDelay: 0, 
-                    
                     noDataText: oBundle.getText("noDataText"), 
-
                     contentWidth: "50%",
                     growing: true,                           
                     growingThreshold: 20,                    
@@ -160,21 +156,17 @@ sap.ui.define([
             oTable.setBusyIndicatorDelay(0);
             oTable.setBusy(true);
 
-            //Gọi action
             var sActionPath = "/Meta/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.SetTable(...)";
             var oAction = oModel.bindContext(sActionPath); 
 
-            //Đóng gói gửi xuống backend
             oAction.setParameter("table_name", sName || "");
             oAction.setParameter("table_description", sDesc || "");
             oAction.setParameter("language", sLang);
 
             oAction.execute().then(function () {
                 MessageToast.show(oBundle.getText("msgTableLoaded"));
-                
                 oModel.refresh();
                 this._loadDataToTable(sName); 
-
             }.bind(this)).catch(function (oError) {
                 oTable.setBusy(false); 
                 var sErrorMsg = oError.message || oBundle.getText("msgTableNotFound", [sName || sDesc]);
@@ -231,8 +223,10 @@ sap.ui.define([
         },
 
         onRowPress: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext("realData");
-            var sTableName = oContext.getProperty("table_name");
+            var oRowContext = oEvent.getParameter("rowContext");
+            if (!oRowContext) return;
+            
+            var sTableName = oRowContext.getProperty("table_name");
             this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
                 tableName: sTableName,
                 newTable: true
@@ -255,7 +249,6 @@ sap.ui.define([
                         var sUiLang = (sLangCode === "VI") ? "vi" : "en";
                         sap.ui.getCore().getConfiguration().setLanguage(sUiLang);
                         
-                        //Lấy lại Input
                         var oTableInput = this.byId("searchInput");
                         var oDescInput = this.byId("searchDescInput");
                         var sName = oTableInput ? oTableInput.getValue().trim() : "";
@@ -270,32 +263,88 @@ sap.ui.define([
             this._oLangDialog.open();
         },
 
-        _initPersonalization: function () {
-            var oPersoService = {
-                getPersData: function () {
-                    var oDeferred = new jQuery.Deferred();
-                    var sData = window.localStorage.getItem("myAppTableConfig");
-                    var oParsedData = sData ? JSON.parse(sData) : { _persoSchemaVersion: "1.0", aColumns: [] };
-                    oDeferred.resolve(oParsedData);
-                    return oDeferred.promise();
-                },
-                setPersData: function (oBundle) {
-                    var oDeferred = new jQuery.Deferred();
-                    window.localStorage.setItem("myAppTableConfig", JSON.stringify(oBundle));
-                    oDeferred.resolve();
-                    return oDeferred.promise();
-                }
-            };
+        _loadColumnState: function() {
+            var sData = window.localStorage.getItem("myAppTableConfig_UI");
+            if (sData) {
+                var aColStates = JSON.parse(sData);
+                var oTable = this.byId("dynamicTable");
+                
+                setTimeout(function() {
+                    var aColumns = oTable.getColumns();
+                    aColStates.forEach(function(state, idx) {
+                        if (aColumns[idx]) {
+                            aColumns[idx].setVisible(state.visible);
+                        }
+                    });
+                }, 100);
+            }
+        },
 
-            this._oTPC = new TablePersoController({
-                table: this.byId("dynamicTable"),
-                componentName: "demoApp",
-                persoService: oPersoService
-            }).activate();
+        _saveColumnState: function() {
+            var oTable = this.byId("dynamicTable");
+            var aColumns = oTable.getColumns();
+            var aColStates = aColumns.map(function(col) {
+                return { visible: col.getVisible() };
+            });
+            window.localStorage.setItem("myAppTableConfig_UI", JSON.stringify(aColStates));
         },
 
         onPersonalization: function () {
-            this._oTPC.openDialog();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            
+            if (!this._oPersoDialog) {
+                this._oPersoDialog = new sap.m.Dialog({
+                    title: oBundle.getText("personalization") || "Personalization",
+                    contentWidth: "300px",
+                    content: new sap.m.List({
+                        mode: "MultiSelect",
+                        includeItemInSelection: true
+                    }),
+                    beginButton: new sap.m.Button({
+                        text: "OK",
+                        type: "Emphasized",
+                        press: function() {
+                            var oList = this._oPersoDialog.getContent()[0];
+                            var aItems = oList.getItems();
+                            var oTable = this.byId("dynamicTable");
+                            var aColumns = oTable.getColumns();
+                            
+                            aItems.forEach(function(item, idx) {
+                                if (aColumns[idx]) {
+                                    aColumns[idx].setVisible(item.getSelected());
+                                }
+                            });
+                            
+                            this._saveColumnState();
+                            this._oPersoDialog.close();
+                        }.bind(this)
+                    }),
+                    endButton: new sap.m.Button({
+                        text: "Cancel",
+                        press: function() {
+                            this._oPersoDialog.close();
+                        }.bind(this)
+                    })
+                });
+                this.getView().addDependent(this._oPersoDialog);
+            }
+            
+            var oList = this._oPersoDialog.getContent()[0];
+            oList.removeAllItems();
+            var oTable = this.byId("dynamicTable");
+            
+            oTable.getColumns().forEach(function(col) {
+                var oLabel = col.getLabel();
+                var sText = oLabel ? oLabel.getText() : "Column";
+                var bVisible = col.getVisible();
+                
+                oList.addItem(new sap.m.StandardListItem({
+                    title: sText,
+                    selected: bVisible
+                }));
+            });
+            
+            this._oPersoDialog.open();
         },
 
         _loadMeta: function(sTableName) {
