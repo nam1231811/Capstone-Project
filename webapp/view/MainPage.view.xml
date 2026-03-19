@@ -4,6 +4,7 @@
     xmlns="sap.m"
     xmlns:f="sap.f"
     xmlns:fb="sap.ui.comp.filterbar"
+    xmlns:core="sap.ui.core"
     displayBlock="true">
 
     <f:DynamicPage id="dynamicPageId" headerExpanded="true" toggleHeaderOnTitleClick="true" class="sapUiNoContentPadding">
@@ -22,13 +23,31 @@
                     <fb:filterGroupItems>
                         <fb:FilterGroupItem groupName="BASIC" name="TableName" label="{i18n>tableName}" visibleInFilterBar="true">
                             <fb:control>
-                                <Input id="searchInput" placeholder="{i18n>searchPlaceholder}" submit=".onSearch" />
+                                <Input id="searchInput" 
+                                       placeholder="{i18n>searchPlaceholder}" 
+                                       showValueHelp="true" 
+                                       valueHelpRequest=".onValueHelpRequest" 
+                                       submit=".onSearch" />
                             </fb:control>
                         </fb:FilterGroupItem>
 
                         <fb:FilterGroupItem groupName="BASIC" name="TableDescription" label="{i18n>tableDesc}" visibleInFilterBar="true">
                             <fb:control>
-                                <Input id="searchDescInput" placeholder="{i18n>searchDescPlaceholder}" submit=".onSearch" />
+                                <Input id="searchDescInput" 
+                                    placeholder="{i18n>searchDescPlaceholder}" 
+                                    showSuggestion="true"
+                                    suggestionItems="{/TableLookup}"
+                                    suggestionItemSelected=".onSuggestionSelect"
+                                    submit=".onSearch"
+                                    showValueHelp="true" 
+                                    valueHelpRequest=".onValueHelpRequest">
+                                    <suggestionItems>
+                                        <core:ListItem 
+                                            key="{TableName}" 
+                                            text="{Description}" 
+                                            additionalText="{TableName}"/>
+                                    </suggestionItems>
+                                </Input>
                             </fb:control>
                         </fb:FilterGroupItem>
                     </fb:filterGroupItems>
@@ -48,10 +67,6 @@
                     <OverflowToolbar>
                         <Title text="{= ${i18n>listTableTitle} + ' (' + (${realData>/UniqueTables} ? ${realData>/UniqueTables}.length : 0) + ')' }" level="H2"/>
                         <ToolbarSpacer />
-                        
-                        <Button icon="sap-icon://excel-attachment" type="Transparent" tooltip="{i18n>exportExcel}" press=".onExportExcel">
-                            <layoutData><OverflowToolbarLayoutData priority="NeverOverflow" /></layoutData>
-                        </Button>
 
                         <Button icon="sap-icon://action-settings" type="Transparent" tooltip="{i18n>personalization}" press=".onPersonalization">
                             <layoutData><OverflowToolbarLayoutData priority="NeverOverflow" /></layoutData>
@@ -75,15 +90,16 @@
                     <ColumnListItem type="Navigation" press=".onRowPress" vAlign="Middle">
                         <cells>
                             <ObjectIdentifier title="{realData>table_name}" />
-                            <Text text="{realData>table_description}" />
-                            
+                            <Text text="{
+                                path: 'realData>table_description',
+                                type: 'sap.ui.model.type.String'
+                            }" />
                             <ObjectStatus text="{realData>field_count} {i18n>columnsText}" state="Information" />
-                            
                             <Text text="{realData>user_name}" />
                             <Text text="{
                                 path: 'realData>change_at', 
                                 type: 'sap.ui.model.type.DateTime', 
-                                formatOptions: { pattern: 'dd/MM/yyyy HH:mm:ss' }
+                                formatOptions: { pattern: 'HH:mm:ss || dd/MM/yyyy' }
                             }" />
                         </cells>
                     </ColumnListItem>
