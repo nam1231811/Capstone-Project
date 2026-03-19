@@ -5,10 +5,11 @@
     xmlns:f="sap.f"
     xmlns:fb="sap.ui.comp.filterbar"
     xmlns:core="sap.ui.core"
+    xmlns:ui="sap.ui.table"
+    xmlns:rowmodes="sap.ui.table.rowmodes"
     displayBlock="true">
 
-    <f:DynamicPage id="dynamicPageId" headerExpanded="true" toggleHeaderOnTitleClick="true" class="sapUiNoContentPadding">
-        
+    <f:DynamicPage id="dynamicPageId" headerExpanded="true" toggleHeaderOnTitleClick="true" class="sapUiResponsiveContentPadding">
         <f:title>
             <f:DynamicPageTitle>
                 <f:heading>
@@ -16,7 +17,7 @@
                 </f:heading>
             </f:DynamicPageTitle>
         </f:title>
-
+        
         <f:header>
             <f:DynamicPageHeader pinnable="true">
                 <fb:FilterBar id="filterBar" search=".onSearch" useToolbar="false" showGoOnFB="true" showClearOnFB="true" clear=".onClear">
@@ -56,15 +57,14 @@
         </f:header>
 
         <f:content>
-            <Table 
-                id="dynamicTable" 
-                items="{realData>/UniqueTables}"
-                noDataText="{i18n>noDataText}"
-                inset="false"
-                sticky="ColumnHeaders,HeaderToolbar">
-                
-                <headerToolbar>
-                    <OverflowToolbar>
+            <VBox fitContainer="true" class="roundedTableWrapper">
+                <ScrollContainer
+                    height="100%"
+                    width="100%"
+                    horizontal="true"
+                    vertical="false">
+                    
+                    <OverflowToolbar width="100%" class="sapFDynamicPageAlignContent">
                         <Title text="{= ${i18n>listTableTitle} + ' (' + (${realData>/UniqueTables} ? ${realData>/UniqueTables}.length : 0) + ')' }" level="H2"/>
                         <ToolbarSpacer />
 
@@ -76,36 +76,67 @@
                             <layoutData><OverflowToolbarLayoutData priority="NeverOverflow" /></layoutData>
                         </Button>
                     </OverflowToolbar>
-                </headerToolbar>
-                
-                <columns>
-                    <Column id="colTableName"><Label text="{i18n>tableName}" design="Bold"/></Column>
-                    <Column id="colTableDesc"><Label text="{i18n>tableDesc}" design="Bold"/></Column>
-                    <Column id="colTotalCol"><Label text="{i18n>totalCol}" design="Bold"/></Column>
-                    <Column id="colChangedBy"><Label text="{i18n>changedBy}" design="Bold"/></Column>
-                    <Column id="colChangedAt"><Label text="{i18n>lastChangedAt}" design="Bold"/></Column>
-                </columns>
 
-                <items>
-                    <ColumnListItem type="Navigation" press=".onRowPress" vAlign="Middle">
-                        <cells>
-                            <ObjectIdentifier title="{realData>table_name}" />
-                            <Text text="{
-                                path: 'realData>table_description',
-                                type: 'sap.ui.model.type.String'
-                            }" />
-                            <ObjectStatus text="{realData>field_count} {i18n>columnsText}" state="Information" />
-                            <Text text="{realData>user_name}" />
-                            <Text text="{
-                                path: 'realData>change_at', 
-                                type: 'sap.ui.model.type.DateTime', 
-                                formatOptions: { pattern: 'HH:mm:ss || dd/MM/yyyy' }
-                            }" />
-                        </cells>
-                    </ColumnListItem>
-                </items>
-            </Table>
+                    <ui:Table
+                        id="dynamicTable"
+                        width="100%"
+                        rows="{realData>/UniqueTables}"
+                        noData="{i18n>noDataText}"
+                        class="myCustomCleanTable" 
+                        rowSelectionChange=".onRowPress"
+                        selectionBehavior="RowOnly"
+                        selectionMode="Single">
+
+                        <ui:rowMode>
+                            <rowmodes:Fixed rowCount="{= ${realData>/UniqueTables} ? (${realData>/UniqueTables}.length === 0 ? 1 : (${realData>/UniqueTables}.length > 15 ? 15 : ${realData>/UniqueTables}.length)) : 1 }" />
+                        </ui:rowMode>
+
+                        <ui:columns>
+                            <ui:Column id="colTableName" width="25%">
+                                <Label text="{i18n>tableName}" design="Bold"/>
+                                <ui:template>
+                                    <ObjectIdentifier title="{realData>table_name}" />
+                                </ui:template>
+                            </ui:Column>
+
+                            <ui:Column id="colTableDesc" width="30%">
+                                <Label text="{i18n>tableDesc}" design="Bold"/>
+                                <ui:template>
+                                    <Text text="{
+                                        path: 'realData>table_description',
+                                        type: 'sap.ui.model.type.String'
+                                    }" />
+                                </ui:template>
+                            </ui:Column>
+
+                            <ui:Column id="colTotalCol" width="15%">
+                                <Label text="{i18n>totalCol}" design="Bold"/>
+                                <ui:template>
+                                    <ObjectStatus text="{realData>field_count} {i18n>columnsText}" state="Information" />
+                                </ui:template>
+                            </ui:Column>
+
+                            <ui:Column id="colChangedBy" width="15%">
+                                <Label text="{i18n>changedBy}" design="Bold"/>
+                                <ui:template>
+                                    <Text text="{realData>user_name}" />
+                                </ui:template>
+                            </ui:Column>
+
+                            <ui:Column id="colChangedAt" width="15%">
+                                <Label text="{i18n>lastChangedAt}" design="Bold"/>
+                                <ui:template>
+                                    <Text text="{
+                                        path: 'realData>change_at', 
+                                        type: 'sap.ui.model.type.DateTime', 
+                                        formatOptions: { pattern: 'HH:mm:ss || dd/MM/yyyy' }
+                                    }" />
+                                </ui:template>
+                            </ui:Column>
+                        </ui:columns>
+                    </ui:Table>
+                </ScrollContainer>
+            </VBox>
         </f:content>
-
     </f:DynamicPage>
 </mvc:View>
