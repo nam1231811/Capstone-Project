@@ -142,7 +142,7 @@
 		    	<OverflowToolbar>
 		    		<ToolbarSpacer/>
 		    		<Button type="Accept" text="Save" press=".onSave" width="5rem"/>
-		    		<Button type="Reject" text="Cancel" press=".onEditToggleButtonPress" width="5rem"/>
+		    		<Button type="Reject" text="Cancel" press="._onEditToggleButtonPress" width="5rem"/>
 		    	</OverflowToolbar>
 		    </uxap:footer>
         </uxap:ObjectPageLayout>

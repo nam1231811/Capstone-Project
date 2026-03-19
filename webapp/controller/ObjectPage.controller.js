@@ -13,7 +13,8 @@ sap.ui.define([
     "zapp/models/GetData",
     "zapp/utils/TablePaginationData",
     "zapp/utils/UploadExcelData",
-    "zapp/utils/DownloadExcelData"
+    "zapp/utils/DownloadExcelData",
+    "zapp/api/ActivateCreate"
 ], function (
     Controller, 
     JSONModel, 
@@ -29,7 +30,8 @@ sap.ui.define([
     GetData,
     TablePaginationData,
     UploadExcelData,
-    DownloadExcelData
+    DownloadExcelData,
+    ActivateCreate
 ) {
     "use strict";
 
@@ -138,7 +140,7 @@ sap.ui.define([
                 template: new sap.m.VBox({
                     items: [
                         new sap.m.FormattedText({
-                            visible: "{= !${displayModel>" + iIndex + "/isEditable} }",
+                            visible: "{= ${displayModel>" + iIndex + "/isEditable} !== true }",
                             htmlText: {
                                 parts: [
                                     "displayModel>" + iIndex + "/value", 
@@ -149,6 +151,7 @@ sap.ui.define([
                                         return "";
                                     sValue = sValue.toString();
                                     var sSafeValue = sValue.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
                                     if (!sQuery) 
                                         return sSafeValue;
                                     var sEscapedQuery = sQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
@@ -163,7 +166,6 @@ sap.ui.define([
                             visible: "{= ${displayModel>" + iIndex + "/isEditable} === true }",
                             change: function(oEvent) {
                                 var sColUUID = oMeta.uuid; 
-
                                 var oModel = this.getView().getModel("displayModel");
                                 var sPath = oEvent.getSource().getBindingContext("displayModel").getPath();
                                 oModel.setProperty(sPath + "/uuid", sColUUID);
@@ -184,7 +186,14 @@ sap.ui.define([
         _loadMeta: function(meta) {
             return meta.requestContexts().then(function (aMetaContexts) {
                 this._oMetaFirstContext = aMetaContexts[0];
-                this._oMetaRaw = aMetaContexts.map(oContext => oContext.getObject());
+                var aRawData = aMetaContexts.map(oContext => oContext.getObject()); 
+                var oUniqueMap = new Map();
+                aRawData.forEach(item => {
+                    if (item && item.fieldname && !oUniqueMap.has(item.fieldname)) {
+                        oUniqueMap.set(item.fieldname, item);
+                    }
+                });
+                this._oMetaRaw = Array.from(oUniqueMap.values())
                 this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
                 this._oFieldName = this._oMetaRaw.map( prop => prop.fieldname);
                 this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
@@ -198,6 +207,8 @@ sap.ui.define([
             return data.requestContexts().then(function (aDataContexts) {
                 this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());                
                 this._oDataRaw = DataFormatter.groupDataByRow(this._oDataRaw);
+                console.log(this._oDataRaw);
+                
                 if(this._oDataRaw.length < 10){
                     this.getView().getModel("overall").setProperty("/minRecord", this._oDataRaw.length); 
                 }else{
@@ -242,7 +253,7 @@ sap.ui.define([
         },
 
         onAdd: function() {
-            var footer = this.onEditToggleButtonPress()
+            var footer = this._onEditToggleButtonPress()
             var oModel = this.getView().getModel("displayModel");
             var aData = oModel.getProperty("/Data") || [];
             console.log(footer);
@@ -254,9 +265,9 @@ sap.ui.define([
             var aMeta = oModel.getProperty("/Meta"); 
             var oNewRow = {};
             var sCommonRowId = (aData.length + 1);
+            var sNewRowUUID = DataFormatter.generateUUID();
 
             aMeta.forEach(function(colMeta, iIndex) {
-                var sNewRowUUID = DataFormatter.generateUUID();
                 oNewRow[iIndex] = {
                     value: "",               
                     isEditable: true,        
@@ -269,12 +280,15 @@ sap.ui.define([
                     row_id: sCommonRowId,
 
                 };
+                console.log(oNewRow[iIndex]);
+                
             }.bind(this));
         
             aData.unshift(oNewRow);
         
             oModel.setProperty("/Data", aData);
-
+            console.log(aData);
+            
             var oTable = this.byId("dataTable");
             oTable.setFirstVisibleRow(0);
         },
@@ -282,7 +296,8 @@ sap.ui.define([
         onSave: function() {
             var aData = this.getView().getModel("displayModel").getProperty("/Data");
             var aNewRows = aData.filter(row => row[0] && row[0].isNew);
-
+            var oTable = this.byId("dataTable");
+            oTable.setBusy(true);
             aNewRows.forEach(oRow => {
                 Object.keys(oRow).forEach(key => {
                     if (!isNaN(key)) {
@@ -295,8 +310,6 @@ sap.ui.define([
                                 "field_pos": oCell.field_pos,
                                 "datatype": oCell.datatype,
                                 "row_id": oCell.row_id,
-                                "fieldname": oCell.fieldname,
-                                "table_name": oCell.table_name,
                                 "value": oCell.value,
                             }
                             this._sendToBackend(oCellPayload);
@@ -305,10 +318,11 @@ sap.ui.define([
                         }
                     }
                 });
-            });  
+            }); 
+            this._onEditToggleButtonPress(); 
         },
 
-        onEditToggleButtonPress: function() {
+        _onEditToggleButtonPress: function() {
 			var oObjectPage = this.getView().byId("TableContent"),
 				bCurrentShowFooterState = oObjectPage.getShowFooter(),
                 oModel = this.getView().getModel("displayModel"),
@@ -326,11 +340,9 @@ sap.ui.define([
 
         _sendToBackend: function(oCellPayload) {
             var oModel = this.getView().getModel();
-
             var oListBinding = oModel.bindList("/Meta", null, null, null, {
                 "$$groupId": "$direct"
             });
-
             var oFinalPayload = {
                 "uuid": oCellPayload.uuid, 
                 "fieldname": oCellPayload.fieldname,
@@ -344,13 +356,26 @@ sap.ui.define([
                     "value": oCellPayload.value
                 }]
             };
-
-            var oContext = oListBinding.create(oFinalPayload);
+   
+            var oContext = oListBinding.create(oFinalPayload); 
             oContext.created().then(function() {
-                console.log("Đã tạo nháp Meta & Data thành công cho: " + oCellPayload.fieldname);
-                this._triggerActivate(oContext , oCellPayload.fieldname);
-            }.bind(this)).catch(function(oError) {
-                console.error("Lỗi khi tạo nháp: ", oError);
+                var sPath = oContext.getPath();
+                var oBinding = oModel.bindContext(sPath)
+                oBinding.requestObject().then(function () {
+                    var oNewContext = oBinding.getBoundContext();
+                    var sEtag = oNewContext.getProperty("@odata.etag");
+                    var sUuid = oContext.getProperty("uuid");
+                    var sFieldname = oContext.getProperty("fieldname");
+                    ActivateCreate.postActivate(sUuid, sFieldname, sEtag)
+                        .then(function() {
+                            this._updateUIAfterSave(oCellPayload.row_id, oCellPayload.fieldname);
+                        }.bind(this)) 
+                        .catch(function(oError) {
+                            console.error(oError);
+                        });
+                    }.bind(this));
+                }.bind(this)).catch(function (error) {
+                    console.log("error created " + error);
             });
         },
 
@@ -457,27 +482,26 @@ sap.ui.define([
         onDownloadExcelPress: function () {
             DownloadExcelData.onDownloadExcelPress(this);
         },
-        
 
-        _triggerActivate: function(oContext, sFieldName) {
-            var oModel = this.getView().getModel();
-            
-            var sUUID = oContext.getProperty("uuid");
-            var sActionPath =   "/Meta(uuid=" + sUUID + 
-                                ",fieldname='" + sFieldName + 
-                                "',IsActiveEntity=false)/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.Activate(...)";
-        
-            // Khởi tạo binding đơn giản
-            var oAction = oModel.bindContext(sActionPath, oContext, {
-        "$$groupId": "$direct"
+        _updateUIAfterSave: function(sRowId, sFieldName) {
+            var oView = this.getView(); // Khai báo oView ở đây
+            var oDisplayModel = oView.getModel("displayModel");
+            var aData = oDisplayModel.getProperty("/Data");
+            var oBundle = oView.getModel("i18n").getResourceBundle();
+            var oTable = this.byId("dataTable");
+            aData.forEach(function(oRow) {
+                if (oRow[0] && oRow[0].row_id === sRowId) {
+                    Object.keys(oRow).forEach(function(key) {
+                        var oCell = oRow[key];
+                        if (oCell && oCell.fieldname === sFieldName) {
+                            oCell.isEditable = false;
+                            sap.m.MessageToast.show(oBundle.getText("msgAddRow") + ": " + sFieldName);
+                        }
+                    });
+                }
             });
-        
-            oAction.execute("$direct").then(function() {
-        console.log("add to z_temp done " + sFieldName);
-            }).catch(function(oError) {
-        console.error("header block", oError);
-            });
-        }
-
+            oTable.setBusy(false);
+            oDisplayModel.refresh(true); 
+        },
     });
 });
