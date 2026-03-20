@@ -38,7 +38,7 @@ return Controller.extend("zapp.controller.DetailData", {
         
     },
 
-    onRollback: function (oEvent) {
+    onRollback: function () {
         var oFCL = this.oView.getParent().getParent();
          var tableName = this.getView().getModel("overall").getProperty("/tableName")
         if (oFCL) {
@@ -49,8 +49,61 @@ return Controller.extend("zapp.controller.DetailData", {
                     newTable: false
                 });
             } else {
-                console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
+                console.error("unknown fcl id");
             }
-        }
-    });
+    },
+
+    onDeleteRow: function () {
+        var oView = this.getView();
+        var oModel = oView.getModel();
+        var oDetailModel = oView.getModel("detailRecord");
+        var oDataRaw = oDetailModel.getProperty("/Data");
+    
+        var aCells = Object.values(oDataRaw).filter(i => typeof i === 'object' && i.uuid);
+    
+        sap.m.MessageBox.confirm("Do you want to delete this record?", {
+            onClose: function (sAction) {
+                if (sAction !== sap.m.MessageBox.Action.OK) 
+                    return;
+            
+                oView.setBusy(true);
+                var aPromises = aCells.map(function (oCell) {
+                    var sPath = "/Data(uuid=" + oCell.uuid + 
+                                ",fieldname='" + oCell.fieldname + 
+                                "',row_id=" + oCell.row_id +
+                                ",IsActiveEntity=" + oCell.IsActiveEntity + ")";
+                
+                    console.log("Path: " + sPath);
+                
+                    return oModel.delete(sPath, "$direct"); 
+                });
+            
+                Promise.all(aPromises).then(function () {
+                    this._cleanUpAfterDelete(oDataRaw[0].row_id);
+                }.bind(this)).catch(function (oError) {
+                    console.error( oError);
+                    sap.m.MessageBox.error("Delete fail " + oError.message);
+                }).finally(function () {
+                    oView.setBusy(false);
+                });
+            }.bind(this)
+        });
+    
+    },
+    _cleanUpAfterDelete: function(sRowId) {
+        var oDisplayModel = this.getView().getModel("displayModel");
+        var aData = oDisplayModel.getProperty("/Data");
+        var aNewData = aData.filter(function(row) {
+            return !(row[0] && row[0].row_id === sRowId);
+        });
+        oDisplayModel.setProperty("/Data", aNewData);
+        oDisplayModel.refresh(true);
+        sap.m.MessageBox.success("Delete record " + sRowId + "successfully", {
+            title: "Successfull",
+            onClose: function() {
+                this.onRollback(); 
+            }.bind(this)
+        });
+    }
+});
 });

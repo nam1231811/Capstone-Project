@@ -23,7 +23,8 @@
 						press=".onEditToggleButtonPress"/>
 					<m:Button
 						text="Delete"
-						type="Transparent"/>
+						type="Transparent"
+						press=".onDeleteRow"/>
 					<!-- <m:Button
 						text="Copy"
 						type="Transparent"/> -->

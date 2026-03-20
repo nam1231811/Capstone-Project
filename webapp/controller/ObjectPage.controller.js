@@ -70,7 +70,7 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var oMeta = GetData.loadMeta(oModel,sNewTableName)
             var oData = GetData.loadData(oModel,sNewTableName)
-
+            this._oDataBinding = oData;
             Promise.all([
                 this._loadMeta(oMeta),
                 this._loadData(oData)
