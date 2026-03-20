@@ -8,7 +8,8 @@ sap.ui.define([
 
         loadMeta: function (oModel, tableName) {
             var aFilters = [
-                new Filter("table_name", FilterOperator.EQ, tableName)
+                new Filter("table_name", FilterOperator.EQ, tableName),
+                new sap.ui.model.Filter("IsActiveEntity", "EQ", true)
             ];
             return oModel.bindList("/Meta", null, null, aFilters, {
                 $$groupId: "$direct"

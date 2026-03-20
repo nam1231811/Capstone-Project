@@ -20,16 +20,12 @@ sap.ui.define([
             return Object.values(groupData);
         },
 
-        formatJson: function (sJsonString) {
-            if (!sJsonString || sJsonString === "") {
-                return "No Data (Blank)";
-            }
-            try {
-                var oJson = JSON.parse(sJsonString);
-                return JSON.stringify(oJson, null, 4);
-            } catch (e) {
-                return sJsonString;
-            }
+        generateUUID: function() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0,
+                    v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            }).toUpperCase();
         },
 
         mapDataForDisplay: function (aDataRaw, aFieldName) {
