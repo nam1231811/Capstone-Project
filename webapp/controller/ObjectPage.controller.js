@@ -15,6 +15,7 @@ sap.ui.define([
     "zapp/utils/UploadExcelData",
     "zapp/utils/DownloadExcelData",
     "zapp/api/ActivateCreate"
+    "zapp/utils/LogDialogHelper"
 ], function (
     Controller, 
     JSONModel, 
@@ -32,6 +33,7 @@ sap.ui.define([
     UploadExcelData,
     DownloadExcelData,
     ActivateCreate
+    LogDialogHelper
 ) {
     "use strict";
 
@@ -380,13 +382,15 @@ sap.ui.define([
         },
 
         onViewLogDetail: function (oEvent) {
+            // 1. Lấy dữ liệu từ cái nút vừa bấm
             var oButton = oEvent.getSource();
             var oContext = oButton.getBindingContext("displayModel");
             var oRowData = oContext.getObject();
 
+            // 2. Khai báo hàm format định dạng JSON 
             var formatJson = function (sJsonString) {
                 if (!sJsonString || sJsonString === "") {
-                    return "Không có dữ liệu (Blank)";
+                    return "No data available";
                 }
                 try {
                     var oJson = JSON.parse(sJsonString);
@@ -396,43 +400,12 @@ sap.ui.define([
                 }
             };
 
+            // 3. Thực hiện Format dữ liệu Cũ và Mới
             var sOldDataFormatted = formatJson(oRowData.OldData);
             var sNewDataFormatted = formatJson(oRowData.NewData);
 
-            if (!this._oLogDialog) {
-                this._oLogDialog = new sap.m.Dialog({
-                    title: "Chi tiết dữ liệu thay đổi (JSON)",
-                    contentWidth: "600px",
-                    resizable: true,
-                    draggable: true,
-                    content: [
-                        new sap.m.VBox({
-                            items: [
-                                new sap.m.Label({ text: "Dữ liệu CŨ (Old Data):", design: "Bold" }).addStyleClass("sapUiTinyMarginTop"),
-                                new sap.m.TextArea({ value: "{dialogModel>/oldData}", width: "100%", rows: 6, editable: false }),
-                                
-                                new sap.m.Label({ text: "Dữ liệu MỚI (New Data):", design: "Bold" }).addStyleClass("sapUiSmallMarginTop"),
-                                new sap.m.TextArea({ value: "{dialogModel>/newData}", width: "100%", rows: 6, editable: false })
-                            ]
-                        }).addStyleClass("sapUiMediumMargin")
-                    ],
-                    beginButton: new sap.m.Button({
-                        type: "Emphasized",
-                        text: "Đóng",
-                        press: function () {
-                            this._oLogDialog.close();
-                        }.bind(this)
-                    })
-                });
-                this.getView().addDependent(this._oLogDialog);
-            }
-
-            var oDialogModel = new sap.ui.model.json.JSONModel({
-                oldData: sOldDataFormatted,
-                newData: sNewDataFormatted
-            });
-            this._oLogDialog.setModel(oDialogModel, "dialogModel");
-            this._oLogDialog.open();
+            // 4. Bàn giao phần việc vẽ vời cho Utils xử lý
+            LogDialogHelper.onViewLogDetail(this, sOldDataFormatted, sNewDataFormatted);
         },
 
         onMedataPress: function (oEvent) {
@@ -448,7 +421,7 @@ sap.ui.define([
                     tableName: tableName
                 });
             } else {
-                console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
+                console.error("FCL object with ID not found 'fcl'");
             }
         },
 
@@ -471,7 +444,7 @@ sap.ui.define([
                     tableName: tableName
                 });
             } else {
-                console.error("Không tìm thấy đối tượng FCL");
+                console.error("FCL object not found");
             }
         },
 
