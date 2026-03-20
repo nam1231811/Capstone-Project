@@ -14,7 +14,7 @@ sap.ui.define([
     "zapp/utils/TablePaginationData",
     "zapp/utils/UploadExcelData",
     "zapp/utils/DownloadExcelData",
-    "zapp/api/ActivateCreate"
+    "zapp/api/ActivateCreate",
     "zapp/utils/LogDialogHelper"
 ], function (
     Controller, 
@@ -32,7 +32,7 @@ sap.ui.define([
     TablePaginationData,
     UploadExcelData,
     DownloadExcelData,
-    ActivateCreate
+    ActivateCreate,
     LogDialogHelper
 ) {
     "use strict";
