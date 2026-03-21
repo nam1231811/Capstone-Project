@@ -1,8 +1,9 @@
 sap.ui.define([
 	"sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
-    "sap/f/library"
-], function (Controller,JSONModel,fioriLibrary) {
+    "sap/f/library",
+    "zapp/api/DeleteFromDatabase"
+], function (Controller,JSONModel,fioriLibrary, DeleteFromDatabase) {
 	"use strict";
 
 return Controller.extend("zapp.controller.DetailData", {
@@ -40,7 +41,7 @@ return Controller.extend("zapp.controller.DetailData", {
 
     onRollback: function () {
         var oFCL = this.oView.getParent().getParent();
-         var tableName = this.getView().getModel("overall").getProperty("/tableName")
+        var tableName = this.getView().getModel("overall").getProperty("/tableName")
         if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.OneColumn)
                 this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
@@ -58,7 +59,7 @@ return Controller.extend("zapp.controller.DetailData", {
         var oModel = oView.getModel();
         var oDetailModel = oView.getModel("detailRecord");
         var oDataRaw = oDetailModel.getProperty("/Data");
-    
+        var tableName = this.getView().getModel("overall").getProperty("/tableName")
         var aCells = Object.values(oDataRaw).filter(i => typeof i === 'object' && i.uuid);
     
         sap.m.MessageBox.confirm("Do you want to delete this record?", {
@@ -66,6 +67,7 @@ return Controller.extend("zapp.controller.DetailData", {
                 if (sAction !== sap.m.MessageBox.Action.OK) 
                     return;
             
+                // DeleteFromDatabase.postDelete(tableName, aCells[0].row_id)
                 oView.setBusy(true);
                 var aPromises = aCells.map(function (oCell) {
                     var sPath = "/Data(uuid=" + oCell.uuid + 
@@ -77,7 +79,6 @@ return Controller.extend("zapp.controller.DetailData", {
                 
                     return oModel.delete(sPath, "$direct"); 
                 });
-            
                 Promise.all(aPromises).then(function () {
                     this._cleanUpAfterDelete(oDataRaw[0].row_id);
                 }.bind(this)).catch(function (oError) {
