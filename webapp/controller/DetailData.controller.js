@@ -3,9 +3,10 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/f/library",
     "sap/m/MessageBox",
-    "sap/m/MessageToast"
-], function (Controller, JSONModel, fioriLibrary, MessageBox, MessageToast) {
-    "use strict";
+    "sap/m/MessageToast",
+    "zapp/api/DeleteFromDatabase"
+], function (Controller,JSONModel,fioriLibrary, DeleteFromDatabase) {
+	"use strict";
 
     return Controller.extend("zapp.controller.DetailData", {
         onInit: function () {
@@ -161,6 +162,7 @@ sap.ui.define([
             var tableName = this.getView().getModel("overall").getProperty("/tableName");
             if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.OneColumn);
+
                 this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
                     layout: fioriLibrary.LayoutType.OneColumn,
                     tableName: tableName,
@@ -171,55 +173,68 @@ sap.ui.define([
             }
         },
 
-        onDeleteRow: function () {
-            var oView = this.getView();
-            var oModel = oView.getModel();
-            var oDetailModel = oView.getModel("detailRecord");
-            var oDataRaw = oDetailModel.getProperty("/Data");
-        
-            var aCells = Object.values(oDataRaw).filter(i => typeof i === 'object' && i.uuid);
-        
-            MessageBox.confirm("Do you want to delete this record?", {
-                onClose: function (sAction) {
-                    if (sAction !== MessageBox.Action.OK) 
-                        return;
-                
-                    oView.setBusy(true);
+    onDeleteRow: function () {
+        var oView = this.getView();
+        var oModel = oView.getModel();
+        var oDetailModel = oView.getModel("detailRecord");
+        var oDataRaw = oDetailModel.getProperty("/Data");
+        var tableName = this.getView().getModel("overall").getProperty("/tableName")
+        var aCells = Object.values(oDataRaw).filter(i => typeof i === 'object' && i.uuid);
+    
+        sap.m.MessageBox.confirm("Do you want to delete this record?", {
+            onClose: function (sAction) {
+                oView.setBusy(true); 
+                if (sAction !== sap.m.MessageBox.Action.OK) 
+                    return;
+
+                if (aCells[0].IsActiveEntity) {
+                    DeleteFromDatabase.postDelete(tableName, aCells[0].row_id).then(function () {
+                        this._cleanUpAfterDelete(oDataRaw[0].row_id);
+                    }.bind(this)).catch(function (oError) {
+                        console.error( oError);
+                        sap.m.MessageBox.error("Delete fail " + oError.message);
+                    }).finally(function () {
+                        oView.setBusy(false);
+                    });
+
+                } else {
                     var aPromises = aCells.map(function (oCell) {
-                        var sPath = "/Data(uuid=" + oCell.uuid + 
-                                    ",fieldname='" + oCell.fieldname + 
-                                    "',row_id=" + oCell.row_id +
-                                    ",IsActiveEntity=" + oCell.IsActiveEntity + ")";
-                    
+                    var sPath = "/Data(uuid=" + oCell.uuid + 
+                                ",fieldname='" + oCell.fieldname + 
+                                "',row_id=" + oCell.row_id +
+                                ",IsActiveEntity=" + oCell.IsActiveEntity + ")";
+                
+                        console.log("Path: " + sPath);
                         return oModel.delete(sPath, "$direct"); 
                     });
-                
                     Promise.all(aPromises).then(function () {
                         this._cleanUpAfterDelete(oDataRaw[0].row_id);
                     }.bind(this)).catch(function (oError) {
                         console.error( oError);
-                        MessageBox.error("Delete fail " + oError.message);
+                        sap.m.MessageBox.error("Delete fail " + oError.message);
                     }).finally(function () {
                         oView.setBusy(false);
                     });
-                }.bind(this)
-            });
-        },
-
-        _cleanUpAfterDelete: function(sRowId) {
-            var oDisplayModel = this.getView().getModel("displayModel");
-            var aData = oDisplayModel.getProperty("/Data");
-            var aNewData = aData.filter(function(row) {
-                return !(row[0] && row[0].row_id === sRowId);
-            });
-            oDisplayModel.setProperty("/Data", aNewData);
-            oDisplayModel.refresh(true);
-            MessageBox.success("Delete record " + sRowId + " successfully", {
-                title: "Successfull",
-                onClose: function() {
-                    this.onRollback(); 
-                }.bind(this)
-            });
-        }
-    });
+                }
+            }.bind(this)
+        });
+    },
+    
+    _cleanUpAfterDelete: function(sRowId) {
+        var oDisplayModel = this.getView().getModel("displayModel");
+        var aData = oDisplayModel.getProperty("/Data");
+        var aNewData = aData.filter(function(row) {
+            return !(row[0] && row[0].row_id === sRowId);
+        });
+        this.getView().getModel("overall").setProperty("/count", aNewData.length);
+        oDisplayModel.setProperty("/Data", aNewData);
+        oDisplayModel.refresh(true);
+        sap.m.MessageBox.success("Delete record " + sRowId + " successfully", {
+            title: "Successfull",
+            onClose: function() {
+                this.onRollback(); 
+            }.bind(this)
+        });
+    }
+});
 });

@@ -177,7 +177,6 @@ sap.ui.define([
                 })
             });
 
-            //Gắn định vị CustomData thẳng vào cột
             oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colIndex", value: iIndex }));
             oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colName", value: sHeaderText }));
 
@@ -326,12 +325,12 @@ sap.ui.define([
                 });
             });
             Promise.all(aPromises).then(function() {
-                console.log("Đã Active xong toàn bộ các field!");
-                this._updateUIAfterSave(); 
+                console.log("Activate all");
                 this._onEditToggleButtonPress();
+                this._updateUIAfterSave(); 
                     
             }.bind(this)).catch(function(oError) {
-                console.error("Có ít nhất 1 field bị lỗi khi Active:", oError);
+                console.error("Something is error", oError);
                 oTable.setBusy(false);
             }.bind(this));
         },
@@ -470,9 +469,9 @@ sap.ui.define([
             this._loadData(oDataPromise).then(function() {
                 this._displayData(); 
                 oTable.setBusy(false); 
-                sap.m.MessageToast.show("Đã lưu và kích hoạt dữ liệu thành công!");
+                sap.m.MessageToast.show("Add new row successfull");
             }.bind(this)).catch(function(err) {
-                console.error("Lỗi nạp lại dữ liệu:", err);
+                console.error("error in load data", err);
                 oTable.setBusy(false);
             }.bind(this));
         },
