@@ -264,7 +264,15 @@ sap.ui.define([
 
             var aMeta = oModel.getProperty("/Meta"); 
             var oNewRow = {};
-            var sCommonRowId = (aData.length + 1);
+            var iMaxRowId = 0;
+            if (aData.length > 0) {
+                iMaxRowId = aData.reduce(function(max, row) {
+
+                    var currentRowId = parseInt(row[0].row_id) || 0; 
+                    return currentRowId > max ? currentRowId : max;
+                }, 0);
+            }
+            var sCommonRowId = (iMaxRowId + 1);
             var sNewRowUUID = DataFormatter.generateUUID();
 
             aMeta.forEach(function(colMeta, iIndex) {
