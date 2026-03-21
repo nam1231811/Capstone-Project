@@ -16,16 +16,16 @@ sap.ui.define([
                         "Content-Type": "application/json",
                         "X-CSRF-Token": sCsrfToken,
                     },
-                    body: {
+                    body: JSON.stringify({
                         table_name: tableName,
                         row_id: rowId
-                    }
+                    })
                 }).then(function(oResponse) {
-                    if (oResponse.ok) {
+                    if (oResponse) {
                         console.log("Delete successful!");
                         return true;
                     }
-                    throw new Error("Delete failed");
+                    throw new Error("Delete 500");
                 });
             }.bind(this));
         },

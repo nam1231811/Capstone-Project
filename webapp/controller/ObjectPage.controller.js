@@ -326,8 +326,8 @@ sap.ui.define([
             });
             Promise.all(aPromises).then(function() {
                 console.log("Activate all");
-                this._updateUIAfterSave(); 
                 this._onEditToggleButtonPress();
+                this._updateUIAfterSave(); 
                     
             }.bind(this)).catch(function(oError) {
                 console.error("Something is error", oError);
