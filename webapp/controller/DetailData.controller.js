@@ -59,11 +59,10 @@ sap.ui.define([
                 return;
             }
 
+            oView.getModel("viewModel").setProperty("/isEditMode", true);
+
             //viết 1 cái if-else
             if (aCells[0].IsActiveEntity === false) {
-            
-                oView.getModel("viewModel").setProperty("/isEditMode", true);
-
                 try {
                     for (let i = 0; i < aCells.length; i++) {
                         let oCell = aCells[i];
