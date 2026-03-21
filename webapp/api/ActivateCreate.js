@@ -23,11 +23,24 @@ sap.ui.define([
                     },
                     body: JSON.stringify({})
                 }).then(function(oResponse) {
-                    if (oResponse.ok) {
-                        console.log("Activate successful!");
-                        return true;
+                    if (!oResponse.ok) {
+                        throw new Error("Activate failed");
                     }
-                    throw new Error("Activate failed");
+                    var sActiveEtag = oResponse.headers.get("ETag");
+                    var sSaveDbUrl = sBaseUrl 
+                        + "/Meta(uuid=" + sUuid 
+                        + ",fieldname='" + sFieldname 
+                        + "',IsActiveEntity=true)/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase";
+
+                    return fetch(sSaveDbUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-Token": sCsrfToken,
+                            "If-Match": sActiveEtag || "*"
+                        },
+                        body: JSON.stringify({})
+                    });
                 });
             }.bind(this));
         },
