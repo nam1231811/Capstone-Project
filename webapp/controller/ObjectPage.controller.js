@@ -358,7 +358,7 @@ sap.ui.define([
                         var oCell = oRow[key];
                         if (oCell && oCell.fieldname) {
                             tableName = oCell.table_name
-                            aPromises[oCell.fieldname] = this._formatValueByType(oCell.value, oCell.datatype);
+                            aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                         } else {
                             console.warn("On Save" + key + "error");
                         }
@@ -516,20 +516,6 @@ sap.ui.define([
                 });
         },
 
-        _formatValueByType: function(vValue, sType) {
-            if (vValue === undefined || vValue === null) return "";
-
-            var sTypeUpper = sType ? sType.toUpperCase() : "";
-                
-            if (["INT1", "INT2", "INT4", "DEC", "CURR", "QUAN", "FLTP"].includes(sTypeUpper)) {
-                if (vValue === "" || isNaN(vValue)) return 0; 
-                return Number(vValue);
-            }
-
-            if (sTypeUpper === "DATS" && vValue instanceof Date) {
-                return vValue.toISOString().split('T')[0].replace(/-/g, '');
-            }
-            return String(vValue).trim();
-        },
+        
     });
 });
