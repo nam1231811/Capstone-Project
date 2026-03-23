@@ -4,8 +4,9 @@ sap.ui.define([
     "sap/f/library",
     "zapp/api/DeleteFromDatabase",
     "zapp/models/DataFormatter",
-    "zapp/api/ActivateCreate"
-], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, DataFormatter, ActivateCreate) {
+    "zapp/api/ActivateCreate",
+    "zapp/models/GetData",
+], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, DataFormatter, ActivateCreate, GetData) {
     "use strict";
 
     return Controller.extend("zapp.controller.DetailData", {
@@ -71,6 +72,7 @@ sap.ui.define([
                         oActionBinding.setParameter("PreserveChanges", true);
                         await oActionBinding.execute();
                     }
+
                 } catch (oError) {
                     sap.m.MessageBox.error("Hệ thống từ chối tạo Draft");
                 } finally {
@@ -173,40 +175,6 @@ sap.ui.define([
             }
         },
 
-        _sendToBackend: function(oCellPayload) {
-            var oModel = this.getView().getModel();
-            var oListBinding = oModel.bindList("/Meta", null, null, null, {
-                "$$groupId": "$direct"
-            });
-            var oFinalPayload = {
-                "uuid": oCellPayload.uuid, 
-                "fieldname": oCellPayload.fieldname,
-                "table_name": oCellPayload.table_name,
-                "field_pos": oCellPayload.field_pos,
-                "datatype": oCellPayload.datatype,
-                "_Data": [{
-                    "row_id": oCellPayload.row_id,
-                    "fieldname": oCellPayload.fieldname,
-                    "table_name": oCellPayload.table_name,
-                    "value": oCellPayload.value
-                }]
-            };
-   
-            var oContext = oListBinding.create(oFinalPayload); 
-            return oContext.created().then(function() {
-                var sPath = oContext.getPath();
-                var oBinding = oModel.bindContext(sPath)
-                return oBinding.requestObject().then(function () {
-                    var oNewContext = oBinding.getBoundContext();
-                    var sEtag = oNewContext.getProperty("@odata.etag");
-                    var sUuid = oContext.getProperty("uuid");
-                    var sFieldname = oContext.getProperty("fieldname");
-
-                    return ActivateCreate.postActivate(sUuid, sFieldname, sEtag);
-                });
-            });
-        },
-
         onCancelEdit: function() {
             var oView = this.getView();
             oView.getModel("viewModel").setProperty("/isEditMode", false);
@@ -260,10 +228,22 @@ sap.ui.define([
                         oView.setBusy(false);
                         return;
                     }
+                    
+                    var aPromises = {};
 
-                    if (aCells[0].IsActiveEntity) {
-                        DeleteFromDatabase.postDelete(tableName, aCells[0].row_id).then(function () {
-                            this._cleanUpAfterDelete(oDataRaw[0].row_id);
+                    aCells.forEach(oRow => {
+                        console.log(oRow);
+                        if (oRow && oRow.fieldname) {
+                            aPromises[oRow.fieldname] = DataFormatter.formatValueByType(oRow.value, oRow.datatype);
+                        } else {
+                            console.warn("On Save" + key + "error");
+                        }
+                    });
+
+                    if (aPromises && tableName) {
+                        var codeData = GetData.encodeFunction(aPromises)
+                        DeleteFromDatabase.postDelete(tableName, codeData, aCells[0].uuid).then(function () {                      
+                            this._cleanUpAfterDelete(aCells[0].row_id);
                         }.bind(this)).catch(function (oError) {
                             console.error(oError);
                             sap.m.MessageBox.error("Delete fail " + oError.message);
@@ -271,24 +251,6 @@ sap.ui.define([
                             oView.setBusy(false);
                         });
 
-                    } else {
-                        var aPromises = aCells.map(function (oCell) {
-                        var sPath = "/Data(uuid=" + oCell.uuid + 
-                                    ",fieldname='" + oCell.fieldname + 
-                                    "',row_id=" + oCell.row_id +
-                                    ",IsActiveEntity=" + oCell.IsActiveEntity + ")";
-                
-                        console.log("Path: " + sPath);
-                        return oModel.delete(sPath, "$direct"); 
-                        });
-                        Promise.all(aPromises).then(function () {
-                            this._cleanUpAfterDelete(oDataRaw[0].row_id);
-                        }.bind(this)).catch(function (oError) {
-                            console.error(oError);
-                            sap.m.MessageBox.error("Delete fail " + oError.message);
-                        }).finally(function () {
-                            oView.setBusy(false);
-                        });
                     }
                 }.bind(this)
             });
