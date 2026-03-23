@@ -14,7 +14,9 @@ sap.ui.define([
 
             var oGeneral = new sap.ui.model.json.JSONModel({
                 count: 0,
-                tableName: "" 
+                tableName: "",
+                tabDes:"",
+                lang:""
             })
             this.getView().setModel(oGeneral, "overall");
         }

@@ -47,10 +47,12 @@ sap.ui.define([
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
         },
         
+        // nếu chuyển xong -> viết sao cho console.log ra mảng object
         _onObjectMatched: function (oEvent) {
             var oDisplayModel = this.getView().getModel("displayModel");
             var sNewTableName = oEvent.getParameter("arguments").tableName || "";
-            var sCurrentTableName = oDisplayModel.getProperty("/CurrentTable"); 
+            var sCurrentTableName = oDisplayModel.getProperty("/CurrentTable");
+
             if (sCurrentTableName === sNewTableName && oDisplayModel.getProperty("/Meta")?.length > 0) {
                 return; 
             }
@@ -60,34 +62,121 @@ sap.ui.define([
                 return; 
             }
 
-            oDisplayModel.setProperty("/Meta", []);
-            oDisplayModel.setProperty("/Data", []);
             oDisplayModel.setProperty("/CurrentTable", sNewTableName); 
             oDisplayModel.setProperty("/searchQuery", "");
-            var oTable = this.byId("TablePage");
-            oTable.setBusy(true); 
 
+            var oTable = this.byId("TablePage") || this.byId("dataTable");
+            if(oTable) oTable.setBusy(true);
+
+            // 71,72 bỏ 1 cái, có thể không cần promise nữa, xử lý những object mà be gửi lên 
             var oModel = this.getOwnerComponent().getModel();
-            var oMeta = GetData.loadMeta(oModel,sNewTableName)
-            var oData = GetData.loadData(oModel,sNewTableName)
-            Promise.all([
-                this._loadMeta(oMeta),
-                this._loadData(oData)
-            ]).then(function() {
+
+            var oSettingsModel = this.getView().getModel("settingsModel");
+            var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
+
+            GetData.loadMeta(oModel, sNewTableName, "", sLang).then(function(oPayload) {
+                this._processPayload(oPayload);
                 this._displayData(); 
-            }.bind(this)).catch(function(err) {
-                console.error("Load Meta/Data Error:", err);
-            }).finally(function () {
-                oTable.setBusy(false); 
+                }.bind(this))
+                .catch(function(err) {
+                    console.error("Load Meta/Data Error:", err);
+                    sap.m.MessageBox.error("Lỗi khi tải dữ liệu bảng.");
+                })
+                .finally(function () {
+                    if(oTable) oTable.setBusy(false); 
+                });
+        },
+
+        _processPayload: function(oPayload) {
+            var aRawMeta = oPayload.metadata || [];
+            var oUniqueMap = new Map();
+            aRawMeta.forEach(item => {
+                var sFieldName = item.fieldname || item.fieldName; 
+                if (sFieldName && !oUniqueMap.has(sFieldName)) {
+                    item.field_pos = item.fieldPos;
+                    item.scrtext_m = item.scrTextM;
+                    oUniqueMap.set(sFieldName, item);
+                }
             });
-        },  
+            
+            this._oMetaRaw = Array.from(oUniqueMap.values());
+            this._oMetaRaw.sort((a, b) => parseInt(a.field_pos || a.fieldPos) - parseInt(b.field_pos || b.fieldPos));
+            this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname || prop.fieldName);
+            
+            var sActualTableName = this._oMetaRaw[0]?.tableName || this._oMetaRaw[0]?.table_name || "Unknown";
+            this.getView().getModel("view")?.setProperty("/tableName", sActualTableName);
+            this.getView().getModel("overall")?.setProperty("/tableName", sActualTableName);
+            this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
+            this.getView().getModel("displayModel").setProperty("/UiMeta", this._oMetaRaw);
 
+            var aRawData = oPayload.dataRows || [];
+            var aFormattedData = [];
+
+            aRawData.forEach(function(rowObj, rowIndex) {
+                var oNewRow = {};
+                
+                var oActualData = {};
+                if (rowObj.data) {
+                    try {
+                        oActualData = JSON.parse(rowObj.data);
+                    } catch (e) {
+                        console.error("Lỗi parse JSON ở dòng " + rowIndex, e);
+                    }
+                }
+
+                var sRowUuid = rowObj.uuid || "";
+
+                this._oMetaRaw.forEach(function(colMeta, iIndex) {
+                    var sFieldName = colMeta.fieldname || colMeta.fieldName;
+                    
+                    var sValue = "";
+                    if (oActualData[sFieldName] !== undefined) {
+                        sValue = oActualData[sFieldName];
+                    } else {
+                        var sMatchingKey = Object.keys(oActualData).find(k => k.toUpperCase() === sFieldName.toUpperCase());
+                        if (sMatchingKey) {
+                            sValue = oActualData[sMatchingKey];
+                        }
+                    }
+
+                    oNewRow[iIndex] = {
+                        value: sValue,
+                        isEditable: false, 
+                        isNew: false,
+                        fieldname: sFieldName,
+                        table_name: colMeta.tableName || colMeta.table_name,
+                        field_pos: colMeta.fieldPos || colMeta.field_pos,
+                        datatype: colMeta.datatype || colMeta.dataType,
+                        row_id: rowObj.rowId || rowObj.row_id || (rowIndex + 1).toString(),
+                        uuid: sRowUuid
+                    };
+                });
+                
+                aFormattedData.push(oNewRow);
+            }.bind(this));
+
+            this._oDataRaw = aFormattedData; 
+            
+            var minRec = this._oDataRaw.length < 10 ? this._oDataRaw.length : 10;
+            var oOverallModel = this.getView().getModel("overall");
+            if(oOverallModel) {
+                oOverallModel.setProperty("/minRecord", minRec);
+                oOverallModel.setProperty("/count", this._oDataRaw.length);
+            }
+            
+            this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
+        },
+        
+        // đọc lại code khúc này
         _displayData: function() {
-            var oTable = this.byId("dataTable");
-            const result = DataFormatter.mapDataForDisplay(this._oDataRaw,this._oFieldName)
-
-            this.getView().getModel("displayModel").setProperty("/Data", result);
+            // var oTable = this.byId("dataTable");
+            var oTable = this.byId("dataTable") || this.byId("TablePage");
+            // const result = DataFormatter.mapDataForDisplay(this._oDataRaw,this._oFieldName)
+            var result = this._oDataRaw;
             console.log(result);
+
+            // this.getView().getModel("displayModel").setProperty("/Data", result);
+            // console.log(result);
             
             oTable.destroyColumns(); 
             oTable.bindAggregation("columns", {
@@ -100,6 +189,7 @@ sap.ui.define([
             oTable.attachColumnSelect(this.onColumnSelect, this);
         },
 
+        // đọc lại code khúc này
         createDynamicColumn: function(sId, oContext) {
             var oMeta = oContext.getObject();
             var sPath = oContext.getPath(); 
@@ -183,25 +273,26 @@ sap.ui.define([
             return oColumn;
         },
         
-        _loadMeta: function(meta) {
-            return meta.requestContexts().then(function (aMetaContexts) {
-                this._oMetaFirstContext = aMetaContexts[0];
-                var aRawData = aMetaContexts.map(oContext => oContext.getObject()); 
-                var oUniqueMap = new Map();
-                aRawData.forEach(item => {
-                    if (item && item.fieldname && !oUniqueMap.has(item.fieldname)) {
-                        oUniqueMap.set(item.fieldname, item);
-                    }
-                });
-                this._oMetaRaw = Array.from(oUniqueMap.values())
-                this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
-                this._oFieldName = this._oMetaRaw.map( prop => prop.fieldname);
-                this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
-                this.getView().getModel("overall").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
-                this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
-                this.getView().getModel("displayModel").setProperty("/UiMeta", this._oMetaRaw);
-            }.bind(this));
-        },
+        // _loadMeta: function(meta) {
+        //     return meta.requestContexts().then(function (aMetaContexts) {
+        //         this._oMetaFirstContext = aMetaContexts[0];
+        //         var aRawData = aMetaContexts.map(oContext => oContext.getObject()); 
+        //         var oUniqueMap = new Map();
+        //         aRawData.forEach(item => {
+        //             if (item && item.fieldname && !oUniqueMap.has(item.fieldname)) {
+        //                 oUniqueMap.set(item.fieldname, item);
+        //             }
+        //         });
+        //         console.log(oUniqueMap);
+        //         this._oMetaRaw = Array.from(oUniqueMap.values())
+        //         this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
+        //         this._oFieldName = this._oMetaRaw.map( prop => prop.fieldname);
+        //         this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
+        //         this.getView().getModel("overall").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
+        //         this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
+        //         this.getView().getModel("displayModel").setProperty("/UiMeta", this._oMetaRaw);
+        //     }.bind(this));
+        // },
         
         _loadData: function(data) {
             return data.requestContexts().then(function (aDataContexts) {

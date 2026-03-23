@@ -155,71 +155,68 @@ sap.ui.define([
             
             oTable.setBusyIndicatorDelay(0);
             oTable.setBusy(true);
-
-            var sActionPath = "/Meta/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.SetTable(...)";
-            var oAction = oModel.bindContext(sActionPath); 
-
-            oAction.setParameter("table_name", sName || "");
-            oAction.setParameter("table_description", sDesc || "");
-            oAction.setParameter("language", sLang);
-
-            oAction.execute().then(function () {
-                MessageToast.show(oBundle.getText("msgTableLoaded"));
-                oModel.refresh();
-                this._loadDataToTable(sName); 
-            }.bind(this)).catch(function (oError) {
-                oTable.setBusy(false); 
-                var sErrorMsg = oError.message || oBundle.getText("msgTableNotFound", [sName || sDesc]);
-                MessageBox.warning(sErrorMsg);
-            });
-        },
-
-        _loadDataToTable: function(sTableName) {
-            var oTable = this.byId("dynamicTable");
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
-
-            if (!sTableName) return;  
-
-            var oListBinding = this._loadMeta(sTableName);
- 
-            oListBinding.requestContexts(0, 1000).then(function (aContexts) {
+            
+            GetData.loadMeta(oModel, sName, sDesc, sLang).then(function (oPayload) {
                 oTable.setBusy(false);
-                
-                if (!aContexts || aContexts.length === 0) {
-                    this.getView().getModel("realData").setProperty("/UniqueTables", []);
-                    MessageBox.information(oBundle.getText("msgNoDataFound"));
-                    return;
+                console.log(oPayload);
+
+                var oDisplayModel = oView.getModel("displayModel");
+                if (!oDisplayModel) {
+                    oDisplayModel = new sap.ui.model.JSON.JSONModel();
+                    oView.setModel(oDisplayModel, "displayModel");
+                }
+                oDisplayModel.setProperty("/Meta", oPayload.metadata);
+                oDisplayModel.setProperty("/Data", oPayload.dataRows);
+
+                var oOverall = oView.getModel("overall");
+                if (oOverall) {
+                    oOverall.setProperty("/tableName", sName);
+                    oOverall.setProperty("/tabDes", sDesc);
+                    oOverall.setProperty("/lang", sLang);
+                    oOverall.setProperty("/count", oPayload.dataRows ? oPayload.dataRows.length : 0);
                 }
 
-                var oUniqueMap = {};
-                aContexts.forEach(function (oContext) {
-                    var item = oContext.getObject();
-                    var sId = item.table_name;
-                    if (sId) {
-                        var rawDate = item.change_at || item.created_at;
-                        var oValidDate = rawDate ? new Date(rawDate) : null;
+                this._updateUniqueTablesList(oPayload);
 
-                        if (!oUniqueMap[sId]) {
-                            oUniqueMap[sId] = {
-                                table_name: sId,
-                                table_description: item.table_description,
-                                user_name: item.user_name,
-                                change_at: oValidDate,
-                                field_count: 1
-                            };
-                        } else {
-                            oUniqueMap[sId].field_count += 1;
-                        }
-                    }
+                sap.m.MessageToast.show(oBundle.getText("msgTableLoaded"));
+            }.bind(this))
+            .catch(function (oError) {
+                    oTable.setBusy(false);
+                    console.error("Main [onSetTable] - Có lỗi xảy ra:", oError);
+                    
+                    var sErrorMsg = oError.message || oBundle.getText("msgTableNotFound", [sName || sDesc]);
+                    sap.m.MessageBox.error(sErrorMsg);
                 });
+        },
+        
+        _updateUniqueTablesList: function(oPayload) {
+            // Hàm này thay thế hoàn toàn việc gọi OData GET để nạp danh sách bảng
+            if (!oPayload || !oPayload.metadata || oPayload.metadata.length === 0) return;
 
-                var aUniqueTables = Object.values(oUniqueMap);
-                this.getView().getModel("realData").setProperty("/UniqueTables", aUniqueTables);
+            // ABAP JSON trả về CamelCase nên các trường sẽ có dạng tableName thay vì table_name
+            var oMeta = oPayload.metadata[0];
+            var oFirstRow = (oPayload.dataRows && oPayload.dataRows.length > 0) ? oPayload.dataRows[0] : {};
 
-            }.bind(this)).catch(function(oError) {
-                oTable.setBusy(false);
-                MessageBox.error(oBundle.getText("msgLoadError", [sTableName]));
-            });
+            var oNewTable = {
+                table_name: oMeta.tableName || oMeta.table_name,
+                table_description: oMeta.tableDescription || oMeta.table_description,
+                user_name: oFirstRow.createdBy || oFirstRow.user_name || "Unknown",
+                change_at: oFirstRow.createdAt ? new Date(oFirstRow.createdAt) : new Date(),
+                field_count: oPayload.metadata.length
+            };
+
+            var oRealDataModel = this.getView().getModel("realData");
+            var aUniqueTables = oRealDataModel.getProperty("/UniqueTables") || [];
+
+            // Tránh thêm trùng 1 bảng nhiều lần
+            var iIndex = aUniqueTables.findIndex(function(t) { return t.table_name === oNewTable.table_name; });
+            if (iIndex !== -1) {
+                aUniqueTables[iIndex] = oNewTable;
+            } else {
+                aUniqueTables.push(oNewTable);
+            }
+
+            oRealDataModel.setProperty("/UniqueTables", aUniqueTables);
         },
 
         onRowPress: function (oEvent) {
@@ -346,10 +343,5 @@ sap.ui.define([
             
             this._oPersoDialog.open();
         },
-
-        _loadMeta: function(sTableName) {
-            var oModel = this.getView().getModel(); 
-            return GetData.loadMeta(oModel, sTableName);
-        }
     });
 });

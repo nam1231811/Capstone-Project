@@ -27,9 +27,9 @@
                                     <ColumnListItem type="Navigation" press=".onMedataPress">
                                         <cells>
                                             <Text text="{displayModel>field_pos}"/>
-                                            <Text text="{displayModel>scrtext_l}"/>
+                                            <Text text="{displayModel>scrtextM}"/>
                                             <Text text="{displayModel>fieldname}"/>
-                                            <Text text="{displayModel>rollname}"/>
+                                            <Text text="{displayModel>datatype}"/>
                                         </cells>
                                     </ColumnListItem>
                                 </items>
