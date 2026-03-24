@@ -91,16 +91,25 @@ sap.ui.define([
             
             var codeData = GetData.encodeFunction(aPromises);
             var path = "/Data(uuid=" + enUuid + ")"
-            var oContext = oModel.bindContext(path).getBoundContext();
-            oContext.setProperty("table_name", tableName);
-            oContext.setProperty("data", codeData);
 
-            oModel.submitBatch("updateGroup").then(function(){
+            // code phan role update (KO XOA)
+
+            // var oContext = oModel.bindContext(path).getBoundContext();
+            // oContext.setProperty("table_name", tableName);
+            // oContext.setProperty("data", codeData);
+
+            // oModel.submitBatch("updateGroup").then(function(){
+            //     SaveToDatabase.onSaveDB(tableName, oView)
+            //     this._updateDisplayModelAfterSave(oDetailModel) // Chỗ này nó chưa có biến input lại thành text
+            // }.bind(this)).catch(function(oError){
+            //     sap.m.MessageBox.error("Lỗi: " + oError.message);
+            // });
+            
+            try {
                 SaveToDatabase.onSaveDB(tableName, oView)
-                this._updateDisplayModelAfterSave(oDetailModel) // Chỗ này nó chưa có biến input lại thành text
-            }.bind(this)).catch(function(oError){
+            } catch (error) {
                 sap.m.MessageBox.error("Lỗi: " + oError.message);
-            });
+            }
         },
 
         onCancelEdit: function() {
