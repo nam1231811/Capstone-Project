@@ -158,7 +158,47 @@ sap.ui.define([
             
             GetData.loadMeta(oModel, sName, sDesc, sLang).then(function (oPayload) {
                 oTable.setBusy(false);
-                console.log(oPayload);
+
+                if (oPayload && oPayload.status === "MULTIPLE") {
+                    var aMatchedTables = oPayload.matches.map(function (m) {
+                        var sDate = m.changeDate || m.change_date;
+                        var sTime = m.changeTime || m.change_time; 
+                        var oFullDate = null;
+
+                    if (sDate && sDate !== "0000-00-00") {
+                        var sFormattedTime = "00:00:00";
+                        if (sTime) {
+                            var sTimeStr = sTime.toString().replace(/:/g, ""); 
+                            
+                            if (sTimeStr.length >= 6) {
+                                sFormattedTime = sTimeStr.substring(0, 2) + ":" + sTimeStr.substring(2, 4) + ":" + sTimeStr.substring(4, 6);
+                            } else {
+                                sFormattedTime = sTime.toString();
+                            }
+                        }
+                        oFullDate = new Date(sDate + "T" + sFormattedTime);
+                    }
+
+                        return {
+                            table_name: m.tableName || m.table_name,
+                            table_description: m.tableDescription || m.table_description,
+                            user_name: m.userName || m.user_name || "Unknown",
+                            change_at: oFullDate,
+                            field_count: m.fieldCount || m.field_count || 0
+                        };
+                    }.bind(this));
+
+                    this.getView().getModel("realData").setProperty("/UniqueTables", aMatchedTables);
+
+                    var oDisplayModel = oView.getModel("displayModel");
+                    if (oDisplayModel) {
+                        oDisplayModel.setProperty("/Meta", null);
+                        oDisplayModel.setProperty("/Data", null);
+                    }
+
+                    sap.m.MessageToast.show("Đã tìm thấy " + aMatchedTables.length + " bảng khớp.");
+                    return;
+                }
 
                 var oDisplayModel = oView.getModel("displayModel");
                 if (!oDisplayModel) {
@@ -170,45 +210,52 @@ sap.ui.define([
 
                 var oOverall = oView.getModel("overall");
                 if (oOverall) {
-                    oOverall.setProperty("/tableName", sName);
-                    oOverall.setProperty("/tabDes", sDesc);
-                    oOverall.setProperty("/lang", sLang);
+                    oOverall.setProperty("/tableName", sName || (oPayload.metadata[0] ? oPayload.metadata[0].tableName : ""));
                     oOverall.setProperty("/count", oPayload.dataRows ? oPayload.dataRows.length : 0);
                 }
 
                 this._updateUniqueTablesList(oPayload);
-
                 sap.m.MessageToast.show(oBundle.getText("msgTableLoaded"));
-            }.bind(this))
-            .catch(function (oError) {
-                    oTable.setBusy(false);
-                    console.error("Main [onSetTable] - Có lỗi xảy ra:", oError);
-                    
-                    var sErrorMsg = oError.message || oBundle.getText("msgTableNotFound", [sName || sDesc]);
-                    sap.m.MessageBox.error(sErrorMsg);
-                });
+
+            }.bind(this)).catch(function (oError) {
+                oTable.setBusy(false);
+                sap.m.MessageBox.error(oError.message || "Lỗi tải dữ liệu");
+            });
         },
         
         _updateUniqueTablesList: function(oPayload) {
-            // Hàm này thay thế hoàn toàn việc gọi OData GET để nạp danh sách bảng
             if (!oPayload || !oPayload.metadata || oPayload.metadata.length === 0) return;
 
-            // ABAP JSON trả về CamelCase nên các trường sẽ có dạng tableName thay vì table_name
             var oMeta = oPayload.metadata[0];
             var oFirstRow = (oPayload.dataRows && oPayload.dataRows.length > 0) ? oPayload.dataRows[0] : {};
+
+            var parseAbapDate = function(sDate) {
+                if (!sDate) return new Date();
+                var s = sDate.toString().split(".")[0];
+                if (s.length >= 14) {
+                    return new Date(Date.UTC(
+                        parseInt(s.substring(0, 4), 10),   
+                        parseInt(s.substring(4, 6), 10) - 1, 
+                        parseInt(s.substring(6, 8), 10),   
+                        parseInt(s.substring(8, 10), 10),  
+                        parseInt(s.substring(10, 12), 10),
+                        parseInt(s.substring(12, 14), 10)  
+                    ));
+                }
+                return new Date(sDate);
+            };
 
             var oNewTable = {
                 table_name: oMeta.tableName || oMeta.table_name,
                 table_description: oMeta.tableDescription || oMeta.table_description,
-                user_name: oFirstRow.createdBy || oFirstRow.user_name || "Unknown",
-                change_at: oFirstRow.createdAt ? new Date(oFirstRow.createdAt) : new Date(),
+                user_name: oFirstRow.changedBy || oFirstRow.createdBy || oFirstRow.user_name || "Unknown",
+                change_at: parseAbapDate(oFirstRow.changedAt || oFirstRow.createdAt),
                 field_count: oPayload.metadata.length
             };
 
             var oRealDataModel = this.getView().getModel("realData");
             var aUniqueTables = oRealDataModel.getProperty("/UniqueTables") || [];
 
-            // Tránh thêm trùng 1 bảng nhiều lần
             var iIndex = aUniqueTables.findIndex(function(t) { return t.table_name === oNewTable.table_name; });
             if (iIndex !== -1) {
                 aUniqueTables[iIndex] = oNewTable;
