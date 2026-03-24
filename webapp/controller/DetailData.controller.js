@@ -44,135 +44,49 @@ sap.ui.define([
             }
         },
 
-        onEditAction: async function () {
+        onEditAction: function () {
             var oView = this.getView();
-            var oModel = oView.getModel();
-            var oDetailModel = oView.getModel("detailRecord");
-            var oDataRaw = oDetailModel.getProperty("/Data");
+            var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
 
-            var aCells = Object.values(oDataRaw).filter(i => typeof i === 'object' && i.uuid);
+            var aCells = Object.values(oDetailModel).filter(i => typeof i === 'object' && i.uuid);
             if (aCells.length === 0) {
                 sap.m.MessageBox.warning("Không tìm thấy dữ liệu hợp lệ để chỉnh sửa.");
                 return;
             }
 
             oView.getModel("viewModel").setProperty("/isEditMode", true);
-
-            if (aCells[0].IsActiveEntity === false) {
-                oView.setBusy(true);
-                try {
-                    for (let i = 0; i < aCells.length; i++) {
-                        let oCell = aCells[i];
-                        let sEntityPath = "/Meta(uuid=" + oCell.uuid + ",fieldname='" + oCell.fieldname + "',IsActiveEntity=true)";
-
-                        let oEntityBinding = oModel.bindContext(sEntityPath);
-                        await oEntityBinding.requestObject(); 
-
-                        let oActionBinding = oModel.bindContext("com.sap.gateway.srvd.zsd_dynamic_meta.v0001.Edit(...)", oEntityBinding.getBoundContext());
-                        oActionBinding.setParameter("PreserveChanges", true);
-                        await oActionBinding.execute();
-                    }
-
-                } catch (oError) {
-                    sap.m.MessageBox.error("Hệ thống từ chối tạo Draft");
-                } finally {
-                    oView.setBusy(false);
-                }
-            } else {
-                return;
-            }
         },
 
-        onSaveAction: async function () {
+        onSaveAction: function () {
             var oView = this.getView();
-            var oModel = oView.getModel("displayModel");
-            var oDetailModel = oView.getModel("detailRecord");
-            var oDataRaw = oDetailModel.getProperty("/Data"); 
+            var oModel = oView.getModel();
+            var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
             var tableName = this.getView().getModel("overall").getProperty("/tableName");
-            var aMeta = oModel.getProperty("/Meta");
 
-            var aCells = Object.values(oDataRaw).filter(i => typeof i === 'object' && i.uuid);
-            var oGroupId = "updateGroup"; 
-            var sNewRowUUID = DataFormatter.generateUUID();
-
-            oView.setBusy(true);
-
-            if (aCells[0].IsActiveEntity === true) {
-                console.log("start");
-                    try {
-                        var result = await DeleteFromDatabase.postDelete(tableName, aCells[0].row_id);
-                    } catch (delError) {
-                        sap.m.MessageBox.error("Update thành công nhưng xóa thất bại!");
+            var aPromises = {};
+            var arrayData = Object.values(oDetailModel);
+            arrayData.forEach(oCell => {
+                if (oCell) {
+                    if (oCell && oCell.fieldname) {
+                        aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
+                    } else {
+                        console.warn("On Save" + key + "error");
                     }
-
-                try {
-                    let aPromises = [];
-                    if (!result) {
-                        return; 
-                    }
-
-                    for (let i = 0; i < aCells.length; i++) {
-                        let oCell = aCells[i];
-                        var oMeta = aMeta.filter((column) => column.fieldname === oCell.fieldname);
-                        let oCellPayload = {
-                            "uuid": sNewRowUUID,
-                            "fieldname": oCell.fieldname,
-                            "table_name": oCell.table_name || tableName,
-                            "field_pos": oMeta[0].field_pos,
-                            "datatype": oMeta[0].datatype,
-                            "row_id": oCell.row_id,
-                            "value": oCell.value
-                        };
-                        console.log(oCellPayload);
-                        this._sendToBackend(oCellPayload);
-                    }
-
-                    await Promise.all(aPromises);
-                
-                    this._updateDisplayModelAfterSave(oDataRaw);
-                    oView.getModel("viewModel").setProperty("/isEditMode", false);
-
-                } catch (err) {
-                    sap.m.MessageBox.error("Lỗi khi gọi hàm tạo và kích hoạt dữ liệu mới.");
-                } finally {
-                    oView.setBusy(false);
                 }
-            } 
-            else {
-                try {
-                    let aPatchPromises = aCells.map(function (oCell) {
-                        let sDraftDataPath = "/Data(uuid=" + oCell.uuid + ",fieldname='" + oCell.fieldname + "',row_id=" + oCell.row_id + ",IsActiveEntity=false)";
-                        let oDraftDataBinding = oModel.bindContext(sDraftDataPath);
-                        
-                        return oDraftDataBinding.requestObject().then(function() {
-                            oDraftDataBinding.getBoundContext().setProperty("value", oCell.value, oGroupId);
-                        });
-                    });
+            });
+            var uuid = "55b0eaa1-3335-2f79-3219-07d551abb305";
 
-                    await Promise.all(aPatchPromises);
-                    await oModel.submitBatch(oGroupId); 
+            var codeData = GetData.encodeFunction(aPromises);
+            var path = "/Data(uuid="+ uuid + ")"
+            var oContext = oModel.bindContext(path).getBoundContext();
+            oContext.setProperty("table_name", tableName);
+            oContext.setProperty("data", codeData);
 
-                    for (let j = 0; j < aCells.length; j++) {
-                        let oCell = aCells[j];
-                        let sDraftMetaPath = "/Meta(uuid=" + oCell.uuid + ",fieldname='" + oCell.fieldname + "',IsActiveEntity=false)";
-
-                        let oDraftMetaBinding = oModel.bindContext(sDraftMetaPath);
-                        await oDraftMetaBinding.requestObject();
-
-                        let oActivateAction = oModel.bindContext("com.sap.gateway.srvd.zsd_dynamic_meta.v0001.Activate(...)", oDraftMetaBinding.getBoundContext());
-                        await oActivateAction.execute();
-                    }
-
-                    this._updateDisplayModelAfterSave(oDataRaw);
-                    oView.getModel("viewModel").setProperty("/isEditMode", false);
-                    sap.m.MessageToast.show("Cập nhật dữ liệu Draft thành công!");
-
-                } catch (oError) {
-                    sap.m.MessageBox.error("Lỗi khi lưu dữ liệu.");
-                } finally {
-                    oView.setBusy(false);
-                }
-            }
+            oModel.submitBatch("updateGroup").then(function(){
+                this._updateDisplayModelAfterSave(oDetailModel)
+            }.bind(this)).catch(function(oError){
+                sap.m.MessageBox.error("Lỗi: " + oError.message);
+            });
         },
 
         onCancelEdit: function() {
