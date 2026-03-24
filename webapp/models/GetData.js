@@ -30,6 +30,8 @@ sap.ui.define([
         },
 
         decodeFunction: function (object) {
+            console.log(object);
+            
             try{
                 if (object && object.json_string) {
                     var sBase64 = object.json_string;

@@ -3,10 +3,10 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/f/library",
     "zapp/api/DeleteFromDatabase",
+    "zapp/api/SaveToDatabase",
     "zapp/models/DataFormatter",
-    "zapp/api/ActivateCreate",
     "zapp/models/GetData",
-], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, DataFormatter, ActivateCreate, GetData) {
+], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase,  DataFormatter, GetData) {
     "use strict";
 
     return Controller.extend("zapp.controller.DetailData", {
@@ -62,6 +62,19 @@ sap.ui.define([
             var oModel = oView.getModel();
             var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
             var tableName = this.getView().getModel("overall").getProperty("/tableName");
+            var oDisplayModel = oView.getModel("displayModel");
+            var aDisplayData = oDisplayModel.getProperty("/Data");
+            var enUuid = Object.values(oDetailModel)[0].uuid; // Lấy UUID của record đang sửa
+                
+            // Tìm dòng trong displayModel để cập nhật
+            var iIndex = aDisplayData.findIndex(row => {
+                return row["0"].uuid === enUuid; 
+            });
+        
+            if (iIndex !== -1) {
+                aDisplayData[iIndex] = JSON.parse(JSON.stringify(oDetailModel)); 
+                oDisplayModel.setProperty("/Data", aDisplayData);
+            }
 
             var aPromises = {};
             var arrayData = Object.values(oDetailModel);
@@ -74,16 +87,17 @@ sap.ui.define([
                     }
                 }
             });
-            var uuid = "55b0eaa1-3335-2f79-3219-07d551abb305";
-
+            var enUuid = arrayData[0].uuid
+            
             var codeData = GetData.encodeFunction(aPromises);
-            var path = "/Data(uuid="+ uuid + ")"
+            var path = "/Data(uuid=" + enUuid + ")"
             var oContext = oModel.bindContext(path).getBoundContext();
             oContext.setProperty("table_name", tableName);
             oContext.setProperty("data", codeData);
 
             oModel.submitBatch("updateGroup").then(function(){
-                this._updateDisplayModelAfterSave(oDetailModel)
+                SaveToDatabase.onSaveDB(tableName, oView)
+                this._updateDisplayModelAfterSave(oDetailModel) // Chỗ này nó chưa có biến input lại thành text
             }.bind(this)).catch(function(oError){
                 sap.m.MessageBox.error("Lỗi: " + oError.message);
             });
