@@ -4,11 +4,11 @@ sap.ui.define([
     "use strict";
 
     return {
-        postDelete: function (tableName, rowId) {
+        postDelete: function (tableName, data, sUuid) {
         var sBaseUrl = "/sap/opu/odata4/sap/zsb_dynamic_meta/srvd/sap/zsd_dynamic_meta/0001";            
             return ActivateCreate._getCsrfToken().then(function(sCsrfToken) {
                 var sDeleteUrl = sBaseUrl 
-                    + "/Meta/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.deleteFromDatabase";
+                    + "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.deleteFromDatabase";
 
                 return fetch(sDeleteUrl, {
                     method: "POST",
@@ -17,8 +17,8 @@ sap.ui.define([
                         "X-CSRF-Token": sCsrfToken,
                     },
                     body: JSON.stringify({
-                        table_name: tableName,
-                        row_id: rowId
+                        "table_name": tableName,
+                        "data": data
                     })
                 }).then(function(oResponse) {
                     if (oResponse) {

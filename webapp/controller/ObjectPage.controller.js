@@ -17,23 +17,7 @@ sap.ui.define([
     "zapp/api/ActivateCreate",
     "zapp/utils/LogDialogHelper"
 ], function (
-    Controller, 
-    JSONModel, 
-    fioriLibrary,
-    MessageToast, 
-    MessageBox, 
-    BusyIndicator, 
-    SearchData, 
-    FilterData, 
-    SortData, 
-    PersonalizationData,
-    DataFormatter,
-    GetData,
-    TablePaginationData,
-    UploadExcelData,
-    DownloadExcelData,
-    ActivateCreate,
-    LogDialogHelper
+    Controller, JSONModel, fioriLibrary,MessageToast, MessageBox, BusyIndicator, SearchData, FilterData, SortData, PersonalizationData,DataFormatter,GetData,TablePaginationData, UploadExcelData, DownloadExcelData, ActivateCreate, LogDialogHelper
 ) {
     "use strict";
 
@@ -67,8 +51,6 @@ sap.ui.define([
 
             var oTable = this.byId("TablePage") || this.byId("dataTable");
             if(oTable) oTable.setBusy(true);
-
-            // 71,72 bỏ 1 cái, có thể không cần promise nữa, xử lý những object mà be gửi lên 
             var oModel = this.getOwnerComponent().getModel();
 
             var oSettingsModel = this.getView().getModel("settingsModel");
@@ -87,8 +69,11 @@ sap.ui.define([
                 });
         },
 
+
         _processPayload: function(oPayload) {
             var aRawMeta = oPayload.metadata || [];
+            console.log(aRawMeta);
+            
             var oUniqueMap = new Map();
             aRawMeta.forEach(item => {
                 var sFieldName = item.fieldname || item.fieldName; 
@@ -100,16 +85,19 @@ sap.ui.define([
             });
             
             this._oMetaRaw = Array.from(oUniqueMap.values());
-            this._oMetaRaw.sort((a, b) => parseInt(a.field_pos || a.fieldPos) - parseInt(b.field_pos || b.fieldPos));
+            console.log(this._oMetaRaw);
+            
+            this._oMetaRaw.sort((a, b) => parseInt(b.fieldPos) - parseInt(a.fieldPos));
             this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname || prop.fieldName);
             
             var sActualTableName = this._oMetaRaw[0]?.tableName || this._oMetaRaw[0]?.table_name || "Unknown";
             this.getView().getModel("view")?.setProperty("/tableName", sActualTableName);
             this.getView().getModel("overall")?.setProperty("/tableName", sActualTableName);
             this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
+            this.getView().getModel("displayModel").setProperty("/Data", oPayload.dataRows);
             this.getView().getModel("displayModel").setProperty("/UiMeta", this._oMetaRaw);
 
-            var aRawData = oPayload.dataRows || [];
+            var aRawData = oPayload.dataRows|| this.getView().getModel("displayModel").getProperty("/Data") || [];
             var aFormattedData = [];
 
             aRawData.forEach(function(rowObj, rowIndex) {
@@ -167,17 +155,12 @@ sap.ui.define([
             this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
         },
         
-        // đọc lại code khúc này
+
         _displayData: function() {
-            // var oTable = this.byId("dataTable");
             var oTable = this.byId("dataTable") || this.byId("TablePage");
-            // const result = DataFormatter.mapDataForDisplay(this._oDataRaw,this._oFieldName)
             var result = this._oDataRaw;
             console.log(result);
 
-            // this.getView().getModel("displayModel").setProperty("/Data", result);
-            // console.log(result);
-            
             oTable.destroyColumns(); 
             oTable.bindAggregation("columns", {
                 path: "displayModel>/Meta",
@@ -272,44 +255,7 @@ sap.ui.define([
 
             return oColumn;
         },
-        
-        // _loadMeta: function(meta) {
-        //     return meta.requestContexts().then(function (aMetaContexts) {
-        //         this._oMetaFirstContext = aMetaContexts[0];
-        //         var aRawData = aMetaContexts.map(oContext => oContext.getObject()); 
-        //         var oUniqueMap = new Map();
-        //         aRawData.forEach(item => {
-        //             if (item && item.fieldname && !oUniqueMap.has(item.fieldname)) {
-        //                 oUniqueMap.set(item.fieldname, item);
-        //             }
-        //         });
-        //         console.log(oUniqueMap);
-        //         this._oMetaRaw = Array.from(oUniqueMap.values())
-        //         this._oMetaRaw.sort((a, b) => parseInt(a.field_pos) - parseInt(b.field_pos));
-        //         this._oFieldName = this._oMetaRaw.map( prop => prop.fieldname);
-        //         this.getView().getModel("view").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
-        //         this.getView().getModel("overall").setProperty("/tableName", this._oMetaRaw[0]?.table_name);
-        //         this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
-        //         this.getView().getModel("displayModel").setProperty("/UiMeta", this._oMetaRaw);
-        //     }.bind(this));
-        // },
-        
-        _loadData: function(data) {
-            return data.requestContexts().then(function (aDataContexts) {
-                this._oDataRaw = aDataContexts.map(oContext => oContext.getObject());                
-                this._oDataRaw = DataFormatter.groupDataByRow(this._oDataRaw);
-                console.log(this._oDataRaw);
-                
-                if(this._oDataRaw.length < 10){
-                    this.getView().getModel("overall").setProperty("/minRecord", this._oDataRaw.length); 
-                }else{
-                    this.getView().getModel("overall").setProperty("/minRecord", 10);
-                }
-                this.getView().getModel("overall").setProperty("/count", this._oDataRaw.length);
-                this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
-            }.bind(this));
-        },
-        
+
         onPressLoadMore: function () {
             TablePaginationData.onPressLoadMore.call(this);
         },
@@ -355,32 +301,18 @@ sap.ui.define([
 
             var aMeta = oModel.getProperty("/Meta"); 
             var oNewRow = {};
-            var iMaxRowId = 0;
-            if (aData.length > 0) {
-                iMaxRowId = aData.reduce(function(max, row) {
-
-                    var currentRowId = parseInt(row[0].row_id) || 0; 
-                    return currentRowId > max ? currentRowId : max;
-                }, 0);
-            }
-            var sCommonRowId = (iMaxRowId + 1);
-            var sNewRowUUID = DataFormatter.generateUUID();
 
             aMeta.forEach(function(colMeta, iIndex) {
                 oNewRow[iIndex] = {
                     value: "",               
                     isEditable: true,        
-                    isNew: true,             
-                    uuid: sNewRowUUID, 
+                    isNew: true,         
                     fieldname: colMeta.fieldname,
-                    table_name: colMeta.table_name,
+                    table_name: colMeta.tableName,
                     field_pos: colMeta.field_pos,
                     datatype: colMeta.datatype,
-                    row_id: sCommonRowId,
-
                 };
-                console.log(oNewRow[iIndex]);
-                
+
             }.bind(this));
         
             aData.unshift(oNewRow);
@@ -394,43 +326,63 @@ sap.ui.define([
 
         onSave: function() {
             var oTable = this.byId("dataTable");
-            
             var aData = this.getView().getModel("displayModel").getProperty("/Data");
             var aNewRows = aData.filter(row => row[0] && row[0].isNew);
+            console.log(aData);
+            
+            oTable.setBusy(true);
 
             if (aNewRows.length === 0) return;
-            oTable.setBusy(true);
-            var aPromises = [];
+
+            var aPromises = {};
+            var tableName = "";
+
             aNewRows.forEach(oRow => {
                 Object.keys(oRow).forEach(key => {
                     if (!isNaN(key)) {
                         var oCell = oRow[key];
-                        if (oCell && oCell.uuid && oCell.fieldname) {
-                            var oCellPayload = {
-                                "uuid": oCell.uuid,
-                                "fieldname": oCell.fieldname,
-                                "table_name": oCell.table_name,
-                                "field_pos": oCell.field_pos,
-                                "datatype": oCell.datatype,
-                                "row_id": oCell.row_id,
-                                "value": oCell.value,
-                            }
-                            aPromises.push(this._sendToBackend(oCellPayload));
-                           
+                        if (oCell && oCell.fieldname) {
+                            tableName = oCell.table_name
+                            aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                         } else {
                             console.warn("On Save" + key + "error");
                         }
                     }
                 });
             });
-            Promise.all(aPromises).then(function() {
-                console.log("Activate all");
-                this._onEditToggleButtonPress();
-                this._updateUIAfterSave(); 
-                    
+            
+            var codeData = GetData.encodeFunction(aPromises)
+            if(codeData){
+                this._sendToBackend(tableName, codeData)
+            } else{
+                oTable.setBusy(false)
+                sap.m.MessageBox.error("Can't add more row", {
+                    title: "Warning",
+                onClose: function() {
+                    this.onRollback(); 
+                }.bind(this)})
+            }
+        },
+
+        _sendToBackend: function(table, data) {
+            var oModel = this.getView().getModel();
+            var oFinalPayload = {
+                "table_name": table,
+                "data": data
+            };
+            var oListBinding = oModel.bindList("/Data");
+
+            var oContext = oListBinding.create(oFinalPayload)
+            oContext.created().then(function () {
+                sap.m.MessageToast.show("Add new successfull");
+                this._onSaveDB(oFinalPayload.table_name)
+                this._onEditToggleButtonPress()
             }.bind(this)).catch(function(oError) {
-                console.error("Something is error", oError);
-                oTable.setBusy(false);
+                this.byId("dataTable").setBusy(false);
+                if (oContext.isTransient()) {
+                    oContext.delete(); 
+                }
+                sap.m.MessageBox.error("Dupplicate record, try another pls!" + oError.message);
             }.bind(this));
         },
 
@@ -450,40 +402,7 @@ sap.ui.define([
             return bCurrentShowFooterState
 		},
 
-        _sendToBackend: function(oCellPayload) {
-            var oModel = this.getView().getModel();
-            var oListBinding = oModel.bindList("/Meta", null, null, null, {
-                "$$groupId": "$direct"
-            });
-            var oFinalPayload = {
-                "uuid": oCellPayload.uuid, 
-                "fieldname": oCellPayload.fieldname,
-                "table_name": oCellPayload.table_name,
-                "field_pos": oCellPayload.field_pos,
-                "datatype": oCellPayload.datatype,
-                "_Data": [{
-                    "row_id": oCellPayload.row_id,
-                    "fieldname": oCellPayload.fieldname,
-                    "table_name": oCellPayload.table_name,
-                    "value": oCellPayload.value
-                }]
-            };
-   
-            var oContext = oListBinding.create(oFinalPayload); 
-            return oContext.created().then(function() {
-                var sPath = oContext.getPath();
-                var oBinding = oModel.bindContext(sPath)
-                return oBinding.requestObject().then(function () {
-                    var oNewContext = oBinding.getBoundContext();
-                    var sEtag = oNewContext.getProperty("@odata.etag");
-                    var sUuid = oContext.getProperty("uuid");
-                    var sFieldname = oContext.getProperty("fieldname");
-
-                    return ActivateCreate.postActivate(sUuid, sFieldname, sEtag)
-                });
-            });
-        },
-
+        
         onViewLogDetail: function (oEvent) {
             // 1. Lấy dữ liệu từ cái nút vừa bấm
             var oButton = oEvent.getSource();
@@ -559,20 +478,84 @@ sap.ui.define([
             DownloadExcelData.onDownloadExcelPress(this);
         },
 
-        _updateUIAfterSave: function() {
-            var oTable = this.byId("dataTable");
-            var sNewTableName = this.getView().getModel("overall").getProperty("/tableName");
+        _refreshData: function(sTableName) {
+            var oTable = this.byId("dataTable") || this.byId("TablePage");
             var oModel = this.getOwnerComponent().getModel();
-            oTable.setBusy(true);
-            var oDataPromise = GetData.loadData(oModel, sNewTableName);
-            this._loadData(oDataPromise).then(function() {
-                this._displayData(); 
-                oTable.setBusy(false); 
-                sap.m.MessageToast.show("Add new row successfull");
-            }.bind(this)).catch(function(err) {
-                console.error("error in load data", err);
-                oTable.setBusy(false);
-            }.bind(this));
+            var oSettingsModel = this.getView().getModel("settingsModel");
+            var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
+
+            if (oTable) {
+                oTable.setBusy(true);
+            }
+                
+            GetData.loadMeta(oModel, sTableName, "", sLang)
+                .then(function(oPayload) {
+                    this._processPayload(oPayload); 
+                    this._displayData();           
+                    sap.m.MessageToast.show("Data already update.");
+                }.bind(this))
+                .catch(function(err) {
+                    console.error("Refresh Error:", err);
+                })
+                .finally(function() {
+                    if (oTable) {
+                        oTable.setBusy(false);
+                    }
+                });
         },
+
+        _onSaveDB: function (sTableName) {
+            var oView = this.getView();
+            var oModel = this.getView().getModel();
+            var aData = this.getView().getModel("displayModel").getProperty("/Data") || [];
+            var dataUpdate = []
+            console.log(aData);
+            
+            if (!sTableName) {
+                sap.m.MessageBox.error("Table is unknow");
+                return;
+            }
+        
+            var aDataToSave = oView.getModel("displayModel").getProperty("/Data");
+        
+            if (!aDataToSave || aDataToSave.length === 0) {
+                sap.m.MessageToast.show("No data to update");
+                return;
+            }
+
+            aData.forEach(oRow => {
+                var aPromises = {};
+                Object.keys(oRow).forEach(key => {
+                    if (!isNaN(key)) {
+                        var oCell = oRow[key];
+                        if (oCell && oCell.fieldname) {
+                            aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
+                        } else {
+                            console.warn("On Save" + key + "error");
+                        }
+                    }
+                });
+                dataUpdate.push(aPromises)
+            });
+            console.log(dataUpdate);
+            
+            var sBase64Data = GetData.encodeFunction(dataUpdate)
+
+            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
+            var oActionContext = oModel.bindContext(sActionPath);
+
+            oActionContext.setParameter("table_name", sTableName);
+            oActionContext.setParameter("json_data", sBase64Data);
+
+            oActionContext.execute().then(function () {
+                sap.m.MessageToast.show("Already update to database");
+                this._refreshData(sTableName)
+            }.bind(this)).catch(function (oError) {
+                sap.ui.core.BusyIndicator.hide();
+                sap.m.MessageBox.error("Something is wrong, try another time: " + (oError.message || "Xem Console"));
+                console.error(oError);
+            });
+        }
+  
     });
 });
