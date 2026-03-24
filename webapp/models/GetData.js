@@ -29,15 +29,6 @@ sap.ui.define([
             }.bind(this));
         },
 
-        loadData: function (oModel, tableName) {
-            var aFilters = [
-                new Filter("table_name", FilterOperator.EQ, tableName)
-            ];
-            return oModel.bindList("/Data", null, null, aFilters, {
-                $$groupId: "$direct"
-            });
-        },
-
         decodeFunction: function (object) {
             try{
                 if (object && object.json_string) {
@@ -59,6 +50,7 @@ sap.ui.define([
             try {
                 if (oPayload) {
                     var sJsonString = JSON.stringify(oPayload);
+                    console.log(sJsonString);
                     var sBase64 = btoa(encodeURIComponent(sJsonString).replace(/%([0-9A-F]{2})/g,
                         function toSolidBytes(match, p1) {
                             return String.fromCharCode('0x' + p1);
