@@ -1,13 +1,102 @@
 <mvc:View
     controllerName="zapp.controller.Approval"
     xmlns:mvc="sap.ui.core.mvc"
-    xmlns="sap.m">
-    
-    <Page title="Approval (Phê duyệt)" showNavButton="true" navButtonPress=".onNavBack">
+    xmlns="sap.m"
+    xmlns:f="sap.f"
+    xmlns:layout="sap.ui.layout"
+    displayBlock="true">
+
+    <Page title="Approval Management" showNavButton="true" navButtonPress=".onNavBack" backgroundDesign="List">
         <content>
-            <VBox class="sapUiSmallMargin">
-                <Title text="Khu vực Phê duyệt Yêu cầu" level="H2"/>
-                <Text text="Danh sách các Pending Requests sẽ được hiển thị ở đây." class="sapUiTinyMarginTop"/>
+            
+            <MessagePage 
+                id="accessDeniedPage"
+                visible="{auth>/isClerk}"
+                showHeader="false"
+                icon="sap-icon://locked"
+                text="You do not have permission"
+                description="This feature is only available for Managers. Please contact Admin if you need access."/>
+
+            <VBox visible="{auth>/isManager}" class="sapUiResponsiveContentPadding" width="100%">
+                
+                <IconTabBar id="approvalTabBar" select=".onMainTabSelect" headerBackgroundDesign="Solid">
+                    <items>
+                        
+                        <IconTabFilter key="pending" text="Pending Approvals" icon="sap-icon://pending" count="{approval>/pendingCount}">
+                            
+                            <IconTabBar id="actionFilterBar" select=".onActionFilterSelect" headerMode="Inline" expandable="false" class="sapUiNoMarginTop">
+                                <items>
+                                    <IconTabFilter key="ALL" text="All" />
+                                    <IconTabFilter key="CREATE" text="Create" iconColor="Positive" />
+                                    <IconTabFilter key="UPDATE" text="Update" iconColor="Critical" />
+                                    <IconTabFilter key="DELETE" text="Delete" iconColor="Negative" />
+                                </items>
+                            </IconTabBar>
+
+                            <Table id="pendingTable" 
+                                   items="{approval>/pendingList}" 
+                                   noDataText="No pending approval requests"
+                                   alternateRowColors="true"
+                                   class="sapUiSmallMarginTop">
+                                <columns>
+                                    <Column width="15%"><Label text="Request ID" design="Bold"/></Column>
+                                    <Column width="20%"><Label text="Data Table" design="Bold"/></Column>
+                                    <Column width="15%"><Label text="Action" design="Bold"/></Column>
+                                    <Column width="20%"><Label text="Requested By (Clerk)" design="Bold"/></Column>
+                                    <Column width="20%"><Label text="Requested At" design="Bold"/></Column>
+                                    <Column width="10%" hAlign="End"><Label text="Details" design="Bold"/></Column>
+                                </columns>
+                                <items>
+                                    <ColumnListItem type="Navigation" press=".onViewDiffDetail">
+                                        <cells>
+                                            <ObjectIdentifier title="{approval>reqId}" />
+                                            <Text text="{approval>tableName}" />
+                                            <ObjectStatus text="{approval>action}" 
+                                                          state="{= ${approval>action} === 'CREATE' ? 'Success' : (${approval>action} === 'DELETE' ? 'Error' : 'Warning') }" 
+                                                          icon="{= ${approval>action} === 'CREATE' ? 'sap-icon://add' : (${approval>action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }" />
+                                            <Text text="{approval>requestedBy}" />
+                                            <Text text="{approval>requestedAt}" />
+                                            <Button icon="sap-icon://compare" type="Transparent" press=".onViewDiffDetail" tooltip="Xem so sánh dữ liệu"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </IconTabFilter>
+
+                        <IconTabSeparator />
+                        <IconTabFilter key="history" text="Approval History" icon="sap-icon://history" count="{approval>/historyCount}">
+                            <Table id="historyTable" 
+                                   items="{approval>/historyList}" 
+                                   noDataText="No history data available"
+                                   alternateRowColors="true"
+                                   class="sapUiSmallMarginTop">
+                                <columns>
+                                    <Column width="15%"><Label text="Request ID" design="Bold"/></Column>
+                                    <Column width="15%"><Label text="Data Table" design="Bold"/></Column>
+                                    <Column width="15%"><Label text="Action" design="Bold"/></Column>
+                                    <Column width="20%"><Label text="Approval Status" design="Bold"/></Column>
+                                    <Column width="20%"><Label text="Approved At" design="Bold"/></Column>
+                                    <Column width="15%"><Label text="Approver" design="Bold"/></Column>
+                                </columns>
+                                <items>
+                                    <ColumnListItem>
+                                        <cells>
+                                            <Text text="{approval>reqId}" />
+                                            <Text text="{approval>tableName}" />
+                                            <Text text="{approval>action}" />
+                                            <ObjectStatus text="{approval>status}" 
+                                                          state="{= ${approval>status} === 'APPROVED' ? 'Success' : 'Error' }"
+                                                          icon="{= ${approval>status} === 'APPROVED' ? 'sap-icon://accept' : 'sap-icon://decline' }" />
+                                            <Text text="{approval>processedAt}" />
+                                            <Text text="{approval>processedBy}" />
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </IconTabFilter>
+
+                    </items>
+                </IconTabBar>
             </VBox>
         </content>
     </Page>

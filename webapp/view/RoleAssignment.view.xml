@@ -1,13 +1,87 @@
 <mvc:View
     controllerName="zapp.controller.RoleAssignment"
     xmlns:mvc="sap.ui.core.mvc"
-    xmlns="sap.m">
-    <Page title="Role Assignment" showNavButton="true" navButtonPress=".onNavBack">
+    xmlns="sap.m"
+    xmlns:f="sap.f"
+    xmlns:card="sap.f.cards"
+    xmlns:layout="sap.ui.layout"
+    xmlns:core="sap.ui.core"
+    displayBlock="true">
+    
+    <Page title="Assign Role" showNavButton="true" navButtonPress=".onNavBack" backgroundDesign="List">
         <content>
-            <VBox class="sapUiSmallMargin">
-                <Title text="Quản lý Phân quyền (Role Assignment)" level="H2"/>
-                <Text text="Thiết lập quyền truy cập cho người dùng." class="sapUiTinyMarginTop"/>
-            </VBox>
+            <layout:Grid defaultSpan="XL12 L12 M12 S12" class="sapUiSmallMarginTop">
+                
+                <f:Card>
+                    <f:header>
+                        <card:Header title="Role Assignment" subtitle="Search and assign system roles" iconSrc="sap-icon://key-user-settings"/>
+                    </f:header>
+                    <f:content>
+                        <HBox alignItems="Center" wrap="Wrap" class="sapUiSmallMargin">
+                            <SearchField id="searchUser" placeholder="Search User ID or Name..." search=".onSearchUser" width="300px" class="sapUiTinyMarginEnd" />
+                            
+                            <ComboBox id="filterRole" placeholder="Filter by Role..." selectionChange=".onSearchUser" class="sapUiMediumMarginEnd">
+                                <core:Item key="ALL" text="All Roles" />
+                                <core:Item key="Manager" text="Manager" />
+                                <core:Item key="Clerk" text="Clerk" />
+                                <core:Item key="Viewer" text="Viewer" />
+                            </ComboBox>
+
+                            <ToolbarSpacer />
+                            <Button text="Assign Role" type="Emphasized" icon="sap-icon://add-contact" press=".onOpenAssignDialog"/>
+                        </HBox>
+                    </f:content>
+                </f:Card>
+
+                <f:Card>
+                    <f:header>
+                        <card:Header title="System Users List" subtitle="Current Role Assignments" iconSrc="sap-icon://group"/>
+                    </f:header>
+                    <f:content>
+                        <Table id="usersTable" 
+                               items="{role>/userList}" 
+                               noDataText="No users found."
+                               alternateRowColors="true"
+                               class="sapUiTinyMarginBottom">
+                            <columns>
+                                <Column width="25%"><Label text="User" design="Bold"/></Column>
+                                <Column width="20%"><Label text="Department" design="Bold"/></Column>
+                                <Column width="20%"><Label text="Role" design="Bold"/></Column>
+                                <Column width="20%"><Label text="Expiry Date" design="Bold"/></Column>
+                                <Column width="15%" hAlign="Center"><Label text="Actions" design="Bold"/></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem>
+                                    <cells>
+                                        <HBox alignItems="Center">
+                                            <Avatar src="sap-icon://person-placeholder" displaySize="XS" class="sapUiTinyMarginEnd" 
+                                                    backgroundColor="{= ${role>roleId} === 'Manager' ? 'Accent3' : (${role>roleId} === 'Clerk' ? 'Accent6' : 'Accent1') }"/>
+                                            <VBox>
+                                                <Label text="{role>fullName}" design="Bold" />
+                                                <Label text="{role>userId}" />
+                                            </VBox>
+                                        </HBox>
+                                        
+                                        <Label text="{role>department}" />
+                                        
+                                        <ObjectStatus text="{role>roleName}" 
+                                                      icon="{= ${role>roleId} === 'Manager' ? 'sap-icon://manager' : (${role>roleId} === 'Clerk' ? 'sap-icon://employee' : 'sap-icon://sys-enter-2') }"
+                                                      state="{= ${role>roleId} === 'Manager' ? 'Success' : (${role>roleId} === 'Clerk' ? 'Warning' : 'Information') }" />
+                                        
+                                        <ObjectStatus text="{role>validTo}" state="{= ${role>validTo} === 'Indefinite' ? 'None' : 'Warning' }"/>
+                                        
+                                        <HBox justifyContent="Center">
+                                            <Button icon="sap-icon://edit" type="Transparent" tooltip="Edit Role" press=".onEditRole" class="sapUiTinyMarginEnd"/>
+                                            <Button icon="sap-icon://delete" type="Transparent" tooltip="Revoke Role" press=".onRevokeRole"/>
+                                        </HBox>
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </f:content>
+                </f:Card>
+
+            </layout:Grid>
         </content>
     </Page>
 </mvc:View>

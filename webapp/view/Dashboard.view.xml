@@ -15,17 +15,17 @@
             <layout:Grid defaultSpan="XL12 L12 M12 S12" class="sapUiSmallMarginTop">
                 
                 <HBox width="100%" justifyContent="SpaceAround" class="sapUiSmallMarginBottom">
-                    <GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Tổng số bảng quản lý" subheader="Toàn hệ thống" press="onPressKPI">
+                    <GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Total of Custom Tables" subheader="In the system" press="onPressKPI">
                         <TileContent>
                             <NumericContent value="{dash>/kpi/totalTables}" valueColor="Good" indicator="Up" />
                         </TileContent>
                     </GenericTile>
-                    <GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Record thay đổi hôm nay" subheader="Real-time" press="onPressKPI">
+                    <GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Total of Changes Today" subheader="Real-time" press="onPressKPI">
                         <TileContent>
                             <NumericContent value="{dash>/kpi/changedToday}" valueColor="Critical" indicator="Up" />
                         </TileContent>
                     </GenericTile>
-                    <GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Tổng Data đang có" subheader="Tất cả bảng Z" press="onPressKPI">
+                    <GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Total of Data" subheader="In all Custom Tables" press="onPressKPI">
                         <TileContent>
                             <NumericContent value="{dash>/kpi/totalRecords}" valueColor="Neutral" />
                         </TileContent>
@@ -34,7 +34,7 @@
 
                 <f:Card>
                     <f:header>
-                        <card:Header title="Tần suất thay đổi dữ liệu" subtitle="Thống kê Create/Update/Delete 7 ngày qua" iconSrc="sap-icon://line-chart"/>
+                        <card:Header title="Data Change frequency" subtitle="Statistics of Create/Update/Delete over the last 7 days" iconSrc="sap-icon://line-chart"/>
                     </f:header>
                     <f:content>
                         <viz:VizFrame id="idLineChart" uiConfig="{applicationSet:'fiori'}" vizType="line" width="100%" height="300px" vizProperties="{title: {visible: false}}">
@@ -60,7 +60,7 @@
 
                 <f:Card>
                     <f:header>
-                        <card:Header title="Top 5 Users tương tác" subtitle="Dựa trên số lần thay đổi dữ liệu" iconSrc="sap-icon://bar-chart"/>
+                        <card:Header title="Top Users With Most Changes" subtitle="Based on the number of data changes" iconSrc="sap-icon://bar-chart"/>
                     </f:header>
                     <f:content>
                         <viz:VizFrame id="idBarChart" uiConfig="{applicationSet:'fiori'}" vizType="column" width="100%" height="300px" vizProperties="{title: {visible: false}}">
@@ -82,23 +82,28 @@
                     </f:content>
                 </f:Card>
 
-                <f:Card height="100%">  
+                <f:Card height="100%">
                     <f:layoutData>
                         <layout:GridData span="XL6 L6 M12 S12" />
                     </f:layoutData>
                     <f:header>
-                        <card:Header title="Cảnh báo Data Quality" subtitle="Tỉ lệ dữ liệu trống tại các trường bắt buộc" iconSrc="sap-icon://pie-chart" statusText="Warning"/>
+                        <card:Header title="Data Management" subtitle="Manage and analyze your data" iconSrc="sap-icon://pie-chart" statusText="Warning"/>
                     </f:header>
                     <f:content>
                         <VBox class="sapUiSmallMargin" width="100%" alignItems="Stretch">
                             
-                            <SearchField placeholder="Nhập tên bảng (VD: ZEMPLOYEE_105)..." search=".onSearchTableQuality" width="100%" class="sapUiTinyMarginBottom"/>
+                            <Input id="searchTableInput" 
+                                   placeholder="Enter table name..." 
+                                   showValueHelp="true" 
+                                   valueHelpRequest=".onValueHelpRequest" 
+                                   submit=".onSearchTableQuality" 
+                                   width="100%" 
+                                   class="sapUiTinyMarginBottom"/>
                             
                             <viz:VizFrame id="idPieChart" uiConfig="{applicationSet:'fiori'}" vizType="donut" width="100%" height="320px" 
                                 vizProperties="{
                                     title: {visible: false},
-                                    legendGroup: {layout: {position: 'right'}},
-                                    plotArea: { dataLabel: { visible: true, type: 'value' } }
+                                    legendGroup: {layout: {position: 'right'}}
                                 }">
                                 <viz:dataset>
                                     <viz.data:FlattenedDataset data="{dash>/pieData}">
@@ -125,13 +130,13 @@
                         <layout:GridData span="XL6 L6 M12 S12" />
                     </f:layoutData>
                     <f:header>
-                        <card:Header title="Log thay đổi gần nhất" subtitle="Top 5 actions (Click để xem chi tiết)" iconSrc="sap-icon://history"/>
+                        <card:Header title="Recent Changes" subtitle="Top 5 recent actions (Click to view details)" iconSrc="sap-icon://history"/>
                     </f:header>
                     <f:content>
                         <List items="{dash>/recentLogs}" class="sapUiSmallMarginBottom">
                             <StandardListItem 
-                                title="Bảng: {dash>tableName}" 
-                                description="{dash>action} by {dash>user} lúc {dash>time}" 
+                                title="Table: {dash>tableName}" 
+                                description="{dash>action} by {dash>user} at {dash>time}" 
                                 info="{dash>status}" 
                                 infoState="{= ${dash>action} === 'CREATE' ? 'Success' : (${dash>action} === 'DELETE' ? 'Error' : 'Warning') }" 
                                 type="Navigation" 

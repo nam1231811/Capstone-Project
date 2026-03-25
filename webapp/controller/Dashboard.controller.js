@@ -1,14 +1,20 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
-    "sap/ui/model/json/JSONModel"
-], function (Controller, JSONModel) {
+    "sap/ui/model/json/JSONModel",
+    "sap/ui/model/Filter",           
+    "sap/ui/model/FilterOperator",
+    "zapp/models/GetData"
+], function (Controller, JSONModel, Filter, FilterOperator, GetData) {
     "use strict";
 
     return Controller.extend("zapp.controller.Dashboard", {
         onInit: function () {
-            // MOCK DATA
             var oData = {
-                kpi: { totalTables: 24, changedToday: 156, totalRecords: 125000 },
+                kpi: {
+                    totalTables: 24,
+                    changedToday: 156,
+                    totalRecords: 125000
+                },
                 lineData: [
                     { date: "T2", create: 12, update: 45, delete: 2 },
                     { date: "T3", create: 5, update: 30, delete: 0 },
@@ -25,11 +31,9 @@ sap.ui.define([
                     { user: "USER-05", actions: 25 },
                     { user: "SYSTEM", actions: 10 }
                 ],
-                // Data Pie mặc định khi mới vào (Toàn hệ thống)
                 pieData: [
-                    { status: "Data Hợp lệ", count: 8500 },
-                    { status: "Trống trường bắt buộc", count: 320 },
-                    { status: "Sai định dạng", count: 150 }
+                    { status: "Total of Data in Table", count: 1 },
+                    { status: "Total of Missing Data in Table", count: 1 }
                 ],
                 recentLogs: [
                     { tableName: "ZEMPLOYEE_105", action: "UPDATE", user: "DEV-092", time: "10:05", status: "Success", rowId: "11" },
@@ -44,6 +48,24 @@ sap.ui.define([
             this.getView().setModel(oModel, "dash");
         },
 
+        onAfterRendering: function () {
+            this._togglePieDataLabel(false);
+        },
+
+        _togglePieDataLabel: function(bShow) {
+            var oVizFrame = this.byId("idPieChart");
+            if (oVizFrame) {
+                oVizFrame.setVizProperties({
+                    plotArea: {
+                        dataLabel: {
+                            visible: bShow,
+                            type: 'value'
+                        }
+                    }
+                });
+            }
+        },
+
         onNavBack: function () {
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("RouteHome", {}, true); 
@@ -53,27 +75,132 @@ sap.ui.define([
             sap.m.MessageToast.show("Sau này có thể click vào đây để xem báo cáo chi tiết!");
         },
 
-        // --- HÀM XỬ LÝ SEARCH CẢNH BÁO DATA CHO TỪNG BẢNG ---
-        onSearchTableQuality: function(oEvent) {
-            var sQuery = oEvent.getParameter("query");
-            var oModel = this.getView().getModel("dash");
+        onValueHelpRequest: function (oEvent) {
+            var oView = this.getView();
+            var oBundle = oView.getModel("i18n") ? oView.getModel("i18n").getResourceBundle() : null;
 
-            if (sQuery) {
-                // Giả lập load data rác cho bảng vừa search
-                oModel.setProperty("/pieData", [
-                    { status: "Data Hợp lệ", count: Math.floor(Math.random() * 500) + 100 },
-                    { status: "Trống trường bắt buộc", count: Math.floor(Math.random() * 50) + 10 },
-                    { status: "Sai định dạng", count: Math.floor(Math.random() * 20) + 1 }
-                ]);
-                sap.m.MessageToast.show("Đã tải cảnh báo cho bảng: " + sQuery.toUpperCase());
-            } else {
-                // Nếu xóa trắng ô search, trả về data toàn hệ thống
-                oModel.setProperty("/pieData", [
-                    { status: "Data Hợp lệ", count: 8500 },
-                    { status: "Trống trường bắt buộc", count: 320 },
-                    { status: "Sai định dạng", count: 150 }
-                ]);
+            if (!this._pValueHelpDialog) {
+                this._pValueHelpDialog = new sap.m.TableSelectDialog({
+                    title: oBundle ? oBundle.getText("listTableTitle") : "Chọn Bảng", 
+                    busyIndicatorDelay: 0, 
+                    noDataText: oBundle ? oBundle.getText("noDataText") : "Không có dữ liệu", 
+                    contentWidth: "50%",
+                    growing: true,                           
+                    growingThreshold: 20,                    
+
+                    search: function (oEvt) {
+                        var sValue = oEvt.getParameter("value");
+                        var oFilter = new Filter({
+                            filters: [
+                                new Filter("TableName", FilterOperator.Contains, sValue),
+                                new Filter("Description", FilterOperator.Contains, sValue)
+                            ],
+                            and: false
+                        });
+                        oEvt.getSource().getBinding("items").filter([oFilter]);
+                    },
+                    
+                    confirm: function (oEvt) {
+                        var oSelectedItem = oEvt.getParameter("selectedItem");
+                        if (oSelectedItem) {
+                            var sName = oSelectedItem.getCells()[0].getTitle(); 
+                            this.byId("searchTableInput").setValue(sName);
+                            this.onSearchTableQuality(sName); 
+                        }
+                    }.bind(this),
+                    
+                    columns: [
+                        new sap.m.Column({ 
+                            header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableName") : "Tên Bảng", design: "Bold" }) 
+                        }),
+                        new sap.m.Column({ 
+                            header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableDesc") : "Mô Tả", design: "Bold" }),
+                            minScreenWidth: "Tablet", 
+                            demandPopin: true         
+                        })
+                    ]
+                });
+
+                oView.addDependent(this._pValueHelpDialog);
+
+                this._pValueHelpDialog.bindAggregation("items", {
+                    path: "/TableLookup", 
+                    template: new sap.m.ColumnListItem({
+                        type: "Active", 
+                        cells: [
+                            new sap.m.ObjectIdentifier({ title: "{TableName}" }),
+                            new sap.m.Text({ text: "{Description}", wrapping: true })
+                        ]
+                    })
+                });
             }
+
+            var oBinding = this._pValueHelpDialog.getBinding("items");
+            if (oBinding) { oBinding.filter([]); }
+            if (this._pValueHelpDialog._oSearchField) { this._pValueHelpDialog._oSearchField.setValue(""); }
+
+            this._pValueHelpDialog.open();
+        },
+
+        onSearchTableQuality: function(vQuery) {
+            var sQuery = typeof vQuery === "string" ? vQuery : this.byId("searchTableInput").getValue();
+            var oModel = this.getView().getModel("dash");
+            var oODataModel = this.getView().getModel(); 
+            var oView = this.getView();
+
+            if (!sQuery) {
+                oModel.setProperty("/pieData", [
+                    { status: "Total of Data in Table", count: 1 },
+                    { status: "Total of Missing Data in Table", count: 1 }
+                ]);
+                this._togglePieDataLabel(false);
+                return;
+            }
+
+            oView.setBusy(true);
+
+            GetData.loadMeta(oODataModel, sQuery.toUpperCase(), "", "E")
+                .then(function(oPayload) {
+                    var aData = oPayload.dataRows;
+
+                    if (!aData || aData.length === 0) {
+                        sap.m.MessageToast.show("This table currently has no data!");
+                        oModel.setProperty("/pieData", []);
+                        oView.setBusy(false);
+                        return;
+                    }
+
+                    var iValidCount = 0;
+                    var iEmptyCount = 0;
+
+                    aData.forEach(function(row) {
+                        var bHasEmpty = false;
+                        Object.keys(row).forEach(function(key) {
+                            var value = row[key];
+                            if (value === "" || value === null || value === undefined) {
+                                bHasEmpty = true;
+                            }
+                        });
+
+                        if (bHasEmpty) { iEmptyCount++; } else { iValidCount++; }
+                    });
+
+                    oModel.setProperty("/pieData", [
+                        { status: "Total of Data", count: iValidCount },
+                        { status: "Total of Missing Data", count: iEmptyCount }
+                    ]);
+
+                    this._togglePieDataLabel(true);
+
+                    sap.m.MessageToast.show("This table currently has" + aData.length + "records.");
+                }.bind(this))
+                .catch(function(oError) {
+                    console.error("Lỗi:", oError);
+                    sap.m.MessageBox.error("Cannot load data for table" + sQuery.toUpperCase());
+                })
+                .finally(function() {
+                    oView.setBusy(false); 
+                });
         },
 
         onRecentLogPress: function (oEvent) {
@@ -89,4 +216,4 @@ sap.ui.define([
             });
         }
     });
-}); 
+});
