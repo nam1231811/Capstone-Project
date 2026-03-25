@@ -1,0 +1,14 @@
+<mvc:View
+    controllerName="zapp.controller.Dashboard"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m">
+    
+    <Page title="Dashboard (Báo cáo)" showNavButton="true" navButtonPress=".onNavBack">
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <Title text="Chào mừng đến với Dashboard!" level="H2"/>
+                <Text text="Khu vực này sau này sẽ chứa các biểu đồ Analytics và Reports." class="sapUiTinyMarginTop"/>
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>

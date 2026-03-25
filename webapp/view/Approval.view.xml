@@ -1,0 +1,14 @@
+<mvc:View
+    controllerName="zapp.controller.Approval"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m">
+    
+    <Page title="Approval (Phê duyệt)" showNavButton="true" navButtonPress=".onNavBack">
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <Title text="Khu vực Phê duyệt Yêu cầu" level="H2"/>
+                <Text text="Danh sách các Pending Requests sẽ được hiển thị ở đây." class="sapUiTinyMarginTop"/>
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>
