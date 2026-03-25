@@ -92,23 +92,23 @@ sap.ui.define([
             var codeData = GetData.encodeFunction(aPromises);
             var path = "/Data(uuid=" + enUuid + ")"
 
-            // code phan role update (KO XOA)
+            var oContext = oModel.bindContext(path).getBoundContext();
+            oContext.setProperty("table_name", tableName);
+            oContext.setProperty("data", codeData);
 
-            // var oContext = oModel.bindContext(path).getBoundContext();
-            // oContext.setProperty("table_name", tableName);
-            // oContext.setProperty("data", codeData);
-
-            // oModel.submitBatch("updateGroup").then(function(){
-            //     SaveToDatabase.onSaveDB(tableName, oView)
-            //     this._updateDisplayModelAfterSave(oDetailModel) // Chỗ này nó chưa có biến input lại thành text
-            // }.bind(this)).catch(function(oError){
-            //     sap.m.MessageBox.error("Lỗi: " + oError.message);
-            // });
+            oModel.submitBatch("updateGroup").then(function(){
+                SaveToDatabase.onSaveDB(tableName, oView)
+                this._updateDisplayModelAfterSave(oDetailModel) // Chỗ này nó chưa có biến input lại thành text
+            }.bind(this)).catch(function(oError){
+                sap.m.MessageBox.error("Lỗi: " + oError.message);
+            });
             
             try {
-                SaveToDatabase.onSaveDB(tableName, oView)
+                SaveToDatabase.onSaveDB(tableName, oView);
+                this.getView().getModel("viewModel").setProperty("/isEditMode", false);
+                this._updateDisplayModelAfterSave(oDetailModel);
             } catch (error) {
-                sap.m.MessageBox.error("Lỗi: " + oError.message);
+                sap.m.MessageBox.error("Lỗi: " + error.message);
             }
         },
 
