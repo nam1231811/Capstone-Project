@@ -1,12 +1,11 @@
 sap.ui.define([
-    "zapp/api/ActivateCreate"
-], function (ActivateCreate) {
+], function () {
     "use strict";
 
     return {
         postDelete: function (tableName, data, sUuid) {
         var sBaseUrl = "/sap/opu/odata4/sap/zsb_dynamic_meta/srvd/sap/zsd_dynamic_meta/0001";            
-            return ActivateCreate._getCsrfToken().then(function(sCsrfToken) {
+            return this._getCsrfToken().then(function(sCsrfToken) {
                 var sDeleteUrl = sBaseUrl 
                     + "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.deleteFromDatabase";
 
@@ -28,6 +27,14 @@ sap.ui.define([
                     throw new Error("Delete 500");
                 });
             }.bind(this));
+        },
+
+        _getCsrfToken: function() {
+            var sBaseUrl = "/sap/opu/odata4/sap/zsb_dynamic_meta/srvd/sap/zsd_dynamic_meta/0001";
+            return fetch(sBaseUrl + "/", {
+                method: "HEAD",
+                headers: { "X-CSRF-Token": "Fetch" }
+            }).then(oResponse => oResponse.headers.get("X-CSRF-Token"));
         },
     }
 })
