@@ -23,6 +23,18 @@ sap.ui.define([
         onNavToApproval: function () {
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("RouteApproval"); 
+        },
+
+        // Click vào Audit Log
+        onNavToAuditLog: function () {
+            var oRouter = this.getOwnerComponent().getRouter();
+            oRouter.navTo("RouteAuditLog"); 
+        },
+
+        // Click vào Role Assignment
+        onNavToRoleAssignment: function () {
+            var oRouter = this.getOwnerComponent().getRouter();
+            oRouter.navTo("RouteRoleAssignment"); 
         }
     });
 });

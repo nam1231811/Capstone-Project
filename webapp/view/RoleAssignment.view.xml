@@ -1,0 +1,13 @@
+<mvc:View
+    controllerName="zapp.controller.RoleAssignment"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m">
+    <Page title="Role Assignment" showNavButton="true" navButtonPress=".onNavBack">
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <Title text="Quản lý Phân quyền (Role Assignment)" level="H2"/>
+                <Text text="Thiết lập quyền truy cập cho người dùng." class="sapUiTinyMarginTop"/>
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>

@@ -60,7 +60,8 @@
         "sap.ui.core": {},
         "sap.m": {},
         "sap.uxap": {},
-        "sap.ui.comp": {}
+        "sap.ui.comp": {},
+        "sap.viz": {}
       }
     },
     "contentDensities": {
@@ -127,6 +128,16 @@
           "target": "TargetApproval"
         },
         {
+          "name": "RouteAuditLog",
+          "pattern": "audit-log",
+          "target": "TargetAuditLog"
+        },
+        {
+          "name": "RouteRoleAssignment",
+          "pattern": "role-assignment",
+          "target": "TargetRoleAssignment"
+        },
+        {
           "name": "RouteObjectPage",
           "pattern": "detail/{tableName}/{newTable}",
           "target": [
@@ -177,6 +188,20 @@
           "type": "View",
           "name": "Approval",
           "id": "ViewApproval",
+          "viewLevel": 2,
+          "controlAggregation": "pages"
+        },
+        "TargetAuditLog": {
+          "type": "View",
+          "name": "AuditLog",
+          "id": "ViewAuditLog",
+          "viewLevel": 2,
+          "controlAggregation": "pages"
+        },
+        "TargetRoleAssignment": {
+          "type": "View",
+          "name": "RoleAssignment",
+          "id": "ViewRoleAssignment",
           "viewLevel": 2,
           "controlAggregation": "pages"
         },

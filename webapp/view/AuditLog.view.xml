@@ -1,0 +1,13 @@
+<mvc:View
+    controllerName="zapp.controller.AuditLog"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m">
+    <Page title="Audit Log" showNavButton="true" navButtonPress=".onNavBack">
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <Title text="Lịch sử hệ thống (Audit Log)" level="H2"/>
+                <Text text="Nơi ghi nhận mọi thao tác thay đổi dữ liệu." class="sapUiTinyMarginTop"/>
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>
