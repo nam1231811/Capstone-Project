@@ -69,7 +69,6 @@ sap.ui.define([
                 });
         },
 
-
         _processPayload: function(oPayload) {
             var aRawMeta = oPayload.metadata || [];
             console.log(aRawMeta);
@@ -236,20 +235,20 @@ sap.ui.define([
                             }
                         }),
                         
-                        new sap.m.Input({
-                            value: "{displayModel>" + iIndex + "/value}",
-                            visible: "{= ${displayModel>" + iIndex + "/isEditable} === true }",
-                            showValueHelp: "{displayModel>" + iIndex + "/has_value_help}",
-                            valueHelpRequest: this.onDynamicValueHelp.bind(this),
-                            change: function(oEvent) {
-                                var sColUUID = oMeta.uuid;
-                                var oModel = this.getView().getModel("displayModel");
-                                var sPath = oEvent.getSource().getBindingContext("displayModel").getPath();
-                                oModel.setProperty(sPath + "/uuid", sColUUID);
-                                oModel.setProperty(sPath + "/fieldname", oMeta.fieldname);
-                            }.bind(this)
-                        }).data("tableName", oMeta.table_name || oMeta.tableName || "") 
-                        .data("fieldName", oMeta.fieldname || "")
+                    new sap.m.Input({
+                        value: "{displayModel>" + iIndex + "/value}",
+                        visible: "{= ${displayModel>" + iIndex + "/isEditable} === true }",
+                        showValueHelp: "{= ${displayModel>" + iIndex + "/has_value_help} === true }",
+                        valueHelpRequest: this.onDynamicValueHelp.bind(this),
+                        change: function(oEvent) {
+                            var sColUUID = oMeta.uuid;
+                            var oModel = this.getView().getModel("displayModel");
+                            var sPath = oEvent.getSource().getBindingContext("displayModel").getPath();
+                            oModel.setProperty(sPath + "/uuid", sColUUID);
+                            oModel.setProperty(sPath + "/fieldname", oMeta.fieldname);
+                        }.bind(this)
+                    }).data("tableName", oMeta.table_name || oMeta.tableName || "") 
+                    .data("fieldName", oMeta.fieldname || "")
                     ]
                 })
             });
@@ -294,10 +293,10 @@ sap.ui.define([
         },
 
         onAdd: function() {
-            var footer = this._onEditToggleButtonPress()
+            var footer = this._onEditToggleButtonPress();
             var oModel = this.getView().getModel("displayModel");
-            var aData = oModel.getProperty("/Data") || [];
-            console.log(footer);
+            
+            var aData = oModel.getProperty("/Data") ? oModel.getProperty("/Data").slice() : [];
             
             if (footer) {
                 return; 
@@ -307,26 +306,40 @@ sap.ui.define([
             var oNewRow = {};
 
             aMeta.forEach(function(colMeta, iIndex) {
+                var bHasVH = (colMeta.has_value_help === true || colMeta.hasValueHelp === true || 
+                            colMeta.hasValueHelp === "X" || colMeta.has_value_help === "X" || 
+                            colMeta.hasValueHelp === "true" || colMeta.has_value_help === "true");
+                
+                console.log("Cột: " + (colMeta.fieldname || colMeta.fieldName) + " | Có kính lúp: " + bHasVH);
+
                 oNewRow[iIndex] = {
                     value: "",               
                     isEditable: true,        
                     isNew: true,         
-                    fieldname: colMeta.fieldname,
-                    table_name: colMeta.tableName,
-                    field_pos: colMeta.field_pos,
-                    has_value_help: !!(colMeta.has_value_help || colMeta.hasValueHelp),
-                    datatype: colMeta.datatype
+                    fieldname: colMeta.fieldname || colMeta.fieldName,
+                    table_name: colMeta.table_name || colMeta.tableName,
+                    field_pos: colMeta.field_pos || colMeta.fieldPos,
+                    has_value_help: bHasVH,
+                    datatype: colMeta.datatype || colMeta.dataType
                 };
-
             }.bind(this));
-        
+
             aData.unshift(oNewRow);
-        
             oModel.setProperty("/Data", aData);
-            console.log(aData);
+            
+            oModel.refresh(true);
+            
+            var oOverallModel = this.getView().getModel("overall");
+            if (oOverallModel) {
+                oOverallModel.setProperty("/count", aData.length);
+                var minRec = aData.length < 10 ? aData.length : 10;
+                oOverallModel.setProperty("/minRecord", minRec > 0 ? minRec : 1); 
+            }
             
             var oTable = this.byId("dataTable");
-            oTable.setFirstVisibleRow(0);
+            if(oTable){
+                oTable.setFirstVisibleRow(0);
+            }
         },
 
         onSave: function() {

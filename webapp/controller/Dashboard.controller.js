@@ -32,8 +32,8 @@ sap.ui.define([
                     { user: "SYSTEM", actions: 10 }
                 ],
                 pieData: [
-                    { status: "Total of Data in Table", count: 1 },
-                    { status: "Total of Missing Data in Table", count: 1 }
+                    { status: "Valid Data in Table", count: 1 },
+                    { status: "Missing Data in Table", count: 1 }
                 ],
                 recentLogs: [
                     { tableName: "ZEMPLOYEE_105", action: "UPDATE", user: "DEV-092", time: "10:05", status: "Success", rowId: "11" },
@@ -72,7 +72,7 @@ sap.ui.define([
         },
 
         onPressKPI: function() {
-            sap.m.MessageToast.show("Sau này có thể click vào đây để xem báo cáo chi tiết!");
+            sap.m.MessageToast.show("Press KPI card - future enhancement to navigate to detailed view");
         },
 
         onValueHelpRequest: function (oEvent) {
@@ -81,9 +81,9 @@ sap.ui.define([
 
             if (!this._pValueHelpDialog) {
                 this._pValueHelpDialog = new sap.m.TableSelectDialog({
-                    title: oBundle ? oBundle.getText("listTableTitle") : "Chọn Bảng", 
+                    title: oBundle ? oBundle.getText("listTableTitle") : "List of Tables", 
                     busyIndicatorDelay: 0, 
-                    noDataText: oBundle ? oBundle.getText("noDataText") : "Không có dữ liệu", 
+                    noDataText: oBundle ? oBundle.getText("noDataText") : "No data found", 
                     contentWidth: "50%",
                     growing: true,                           
                     growingThreshold: 20,                    
@@ -111,10 +111,10 @@ sap.ui.define([
                     
                     columns: [
                         new sap.m.Column({ 
-                            header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableName") : "Tên Bảng", design: "Bold" }) 
+                            header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableName") : "Table Name", design: "Bold" }) 
                         }),
                         new sap.m.Column({ 
-                            header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableDesc") : "Mô Tả", design: "Bold" }),
+                            header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableDesc") : "Table Description", design: "Bold" }),
                             minScreenWidth: "Tablet", 
                             demandPopin: true         
                         })
@@ -181,7 +181,7 @@ sap.ui.define([
                                     }
                                 });
                             } catch (e) {
-                                console.error("Lỗi đập vỡ JSON:", e);
+                                console.error("Error parsing JSON:", e);
                             }
                         }
                     });
@@ -222,14 +222,14 @@ sap.ui.define([
                         this._togglePieDataLabel(false);
                     } else {
                         oModel.setProperty("/pieData", [
-                            { status: "Data Hợp lệ", count: iValidCount },
-                            { status: "Data Bị trống", count: iEmptyCount }
+                            { status: "Valid Data", count: iValidCount },
+                            { status: "Missing Data", count: iEmptyCount }
                         ]);
                         this._togglePieDataLabel(true);
                     }
                 }.bind(this))
                 .catch(function(oError) {
-                    console.error("Lỗi:", oError);
+                    console.error("Error:", oError);
                     oModel.setProperty("/pieData", []);
                     this._togglePieDataLabel(false);
                 }.bind(this))

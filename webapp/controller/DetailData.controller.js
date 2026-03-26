@@ -232,6 +232,57 @@ sap.ui.define([
 
             var oGraphModel = new sap.ui.model.json.JSONModel(oGraphData);
             this.getView().setModel(oGraphModel, "graph");
+        },
+
+        onDynamicValueHelp: function (oEvent) {
+            var oInput = oEvent.getSource();
+            var sTableName = oInput.data("tableName") || oInput.data("table_name");
+            var sFieldName = oInput.data("fieldName") || oInput.data("fieldname");
+
+            console.log("Edit Value Help - Table:", sTableName, "Field:", sFieldName);
+
+            if (!sTableName || !sFieldName) {
+                sap.m.MessageToast.show("Không tìm thấy thông tin Metadata cho ô này.");
+                return;
+            }
+
+            if (!this._oDynamicVHDialog) {
+                this._oDynamicVHDialog = new sap.m.SelectDialog({
+                    title: "Select Value",
+                    confirm: this.onValueHelpConfirm.bind(this)
+                });
+                this.getView().addDependent(this._oDynamicVHDialog);
+            }
+
+            var aFilters = [
+                new sap.ui.model.Filter("TableName", "EQ", sTableName),
+                new sap.ui.model.Filter("FieldName", "EQ", sFieldName)
+            ];
+
+            this._oDynamicVHDialog.bindAggregation("items", {
+                path: "/DynamicVHSet",
+                template: new sap.m.StandardListItem({
+                    title: "{KeyValue}",
+                    description: "{Description}",
+                    info: "{FieldName}"
+                }),
+                filters: aFilters
+            });
+
+            this._oDynamicVHDialog.data("targetInput", oInput);
+            this._oDynamicVHDialog.open();
+        },
+
+        onValueHelpConfirm: function (oEvent) {
+            var oSelectedItem = oEvent.getParameter("selectedItem");
+            if (oSelectedItem) {
+                var oInput = oEvent.getSource().data("targetInput");
+                var sSelectedKey = oSelectedItem.getTitle();
+                
+                oInput.setValue(sSelectedKey);
+                
+                oInput.fireChange({ value: sSelectedKey });
+            }
         }
     });
 });
