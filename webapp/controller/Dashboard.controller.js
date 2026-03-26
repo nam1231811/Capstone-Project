@@ -3,12 +3,15 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/ui/model/Filter",           
     "sap/ui/model/FilterOperator",
+    "sap/ui/core/ResizeHandler",
     "zapp/models/GetData"
-], function (Controller, JSONModel, Filter, FilterOperator, GetData) {
+], function (Controller, JSONModel, Filter, FilterOperator, ResizeHandler, GetData) {
     "use strict";
 
     return Controller.extend("zapp.controller.Dashboard", {
         onInit: function () {
+            this._aResizeHandlers = []; 
+
             var oData = {
                 kpi: {
                     totalTables: 24,
@@ -50,6 +53,19 @@ sap.ui.define([
 
         onAfterRendering: function () {
             this._togglePieDataLabel(false);
+
+            var sHandlerId = ResizeHandler.register(this.getView(), this._onResize.bind(this));
+            this._aResizeHandlers.push(sHandlerId);
+        },
+
+        _onResize: function(oEvent) {
+            var aChartIds = ["idLineChart", "idBarChart", "idPieChart"];
+            aChartIds.forEach(function(sId) {
+                var oChart = this.byId(sId);
+                if (oChart) {
+                    oChart.invalidate();
+                }
+            }.bind(this));
         },
 
         _togglePieDataLabel: function(bShow) {
@@ -143,26 +159,34 @@ sap.ui.define([
         },
 
         onSearchTableQuality: function(vQuery) {
-            var sQuery = typeof vQuery === "string" ? vQuery : this.byId("searchTableInput").getValue();
+            var sQuery = "";
+            if (typeof vQuery === "string") {
+                sQuery = vQuery;
+            } else {
+                sQuery = this.byId("searchTableInput").getValue();
+            }
+
             var oModel = this.getView().getModel("dash");
             var oODataModel = this.getView().getModel(); 
-            var oView = this.getView();
+
+            var oCard = this.byId("dataManagementCard");
 
             if (!sQuery) {
-                oModel.setProperty("/pieData", []);
-                this._togglePieDataLabel(false);
+                this.onResetPieChart();
                 return;
             }
 
-            oView.setBusy(true);
+            if (oCard) {
+                oCard.setBusy(true);
+            }
 
             GetData.loadMeta(oODataModel, sQuery.toUpperCase(), "", "E")
                 .then(function(oPayload) {
                     var aDataRows = oPayload.dataRows;
 
                     if (!aDataRows || aDataRows.length === 0) {
-                        oModel.setProperty("/pieData", []);
-                        this._togglePieDataLabel(false);
+                        this.onResetPieChart(); 
+                        sap.m.MessageToast.show("No data found for this table.");
                         return;
                     }
 
@@ -187,8 +211,7 @@ sap.ui.define([
                     });
 
                     if (aAllColumns.length === 0) {
-                        oModel.setProperty("/pieData", []);
-                        this._togglePieDataLabel(false);
+                        this.onResetPieChart(); 
                         return;
                     }
 
@@ -218,8 +241,7 @@ sap.ui.define([
                     });
 
                     if (iValidCount === 0 && iEmptyCount === 0) {
-                        oModel.setProperty("/pieData", []);
-                        this._togglePieDataLabel(false);
+                        this.onResetPieChart();
                     } else {
                         oModel.setProperty("/pieData", [
                             { status: "Valid Data", count: iValidCount },
@@ -230,11 +252,13 @@ sap.ui.define([
                 }.bind(this))
                 .catch(function(oError) {
                     console.error("Error:", oError);
-                    oModel.setProperty("/pieData", []);
-                    this._togglePieDataLabel(false);
+                    this.onResetPieChart(); 
+                    sap.m.MessageToast.show("Error loading table data.");
                 }.bind(this))
                 .finally(function() {
-                    oView.setBusy(false); 
+                    if (oCard) {
+                        oCard.setBusy(false); 
+                    }
                 });
         },
 
@@ -249,6 +273,26 @@ sap.ui.define([
                 tableName: oLogData.tableName,
                 rowId: oLogData.rowId
             });
+        },
+
+        onResetPieChart: function() {
+            var oModel = this.getView().getModel("dash");
+            this.byId("searchTableInput").setValue("");
+            
+            oModel.setProperty("/pieData", [
+                { status: "Valid Data in Table", count: 1 },
+                { status: "Missing Data in Table", count: 1 }
+            ]);
+            this._togglePieDataLabel(false);
+        },
+
+        onExit: function () {
+            if (this._aResizeHandlers && this._aResizeHandlers.length > 0) {
+                this._aResizeHandlers.forEach(function(sHandlerId) {
+                    ResizeHandler.deregister(sHandlerId);
+                });
+                this._aResizeHandlers = [];
+            }
         }
     });
 });
