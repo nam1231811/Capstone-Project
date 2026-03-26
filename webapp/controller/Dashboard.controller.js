@@ -149,10 +149,7 @@ sap.ui.define([
             var oView = this.getView();
 
             if (!sQuery) {
-                oModel.setProperty("/pieData", [
-                    { status: "Total of Data in Table", count: 1 },
-                    { status: "Total of Missing Data in Table", count: 1 }
-                ]);
+                oModel.setProperty("/pieData", []);
                 this._togglePieDataLabel(false);
                 return;
             }
@@ -161,43 +158,81 @@ sap.ui.define([
 
             GetData.loadMeta(oODataModel, sQuery.toUpperCase(), "", "E")
                 .then(function(oPayload) {
-                    var aData = oPayload.dataRows;
+                    var aDataRows = oPayload.dataRows;
 
-                    if (!aData || aData.length === 0) {
-                        sap.m.MessageToast.show("This table currently has no data!");
+                    if (!aDataRows || aDataRows.length === 0) {
                         oModel.setProperty("/pieData", []);
-                        oView.setBusy(false);
+                        this._togglePieDataLabel(false);
+                        return;
+                    }
+
+                    var aAllColumns = [];
+                    var parsedRows = [];
+
+                    aDataRows.forEach(function(row) {
+                        if (row.data && typeof row.data === "string") {
+                            try {
+                                var parsedData = JSON.parse(row.data);
+                                parsedRows.push(parsedData);
+                                
+                                Object.keys(parsedData).forEach(function(key) {
+                                    if (aAllColumns.indexOf(key) === -1) {
+                                        aAllColumns.push(key);
+                                    }
+                                });
+                            } catch (e) {
+                                console.error("Lỗi đập vỡ JSON:", e);
+                            }
+                        }
+                    });
+
+                    if (aAllColumns.length === 0) {
+                        oModel.setProperty("/pieData", []);
+                        this._togglePieDataLabel(false);
                         return;
                     }
 
                     var iValidCount = 0;
                     var iEmptyCount = 0;
 
-                    aData.forEach(function(row) {
-                        var bHasEmpty = false;
-                        Object.keys(row).forEach(function(key) {
-                            var value = row[key];
-                            if (value === "" || value === null || value === undefined) {
-                                bHasEmpty = true;
+                    parsedRows.forEach(function(parsedRow) {
+                        aAllColumns.forEach(function(colName) {
+                            var val = parsedRow[colName];
+                            var isEmpty = false;
+
+                            if (val === undefined || val === null) {
+                                isEmpty = true;
+                            } else if (typeof val === "string") {
+                                var sTrim = val.trim();
+                                if (sTrim === "" || sTrim === "0000-00-0" || sTrim === "0000-00-00" || sTrim === "-") {
+                                    isEmpty = true;
+                                }
+                            }
+
+                            if (isEmpty) {
+                                iEmptyCount++;
+                            } else {
+                                iValidCount++;
                             }
                         });
-
-                        if (bHasEmpty) { iEmptyCount++; } else { iValidCount++; }
                     });
 
-                    oModel.setProperty("/pieData", [
-                        { status: "Total of Data", count: iValidCount },
-                        { status: "Total of Missing Data", count: iEmptyCount }
-                    ]);
-
-                    this._togglePieDataLabel(true);
-
-                    sap.m.MessageToast.show("This table currently has" + aData.length + "records.");
+                    if (iValidCount === 0 && iEmptyCount === 0) {
+                        oModel.setProperty("/pieData", []);
+                        this._togglePieDataLabel(false);
+                    } else {
+                        oModel.setProperty("/pieData", [
+                            { status: "Data Hợp lệ", count: iValidCount },
+                            { status: "Data Bị trống", count: iEmptyCount }
+                        ]);
+                        this._togglePieDataLabel(true);
+                    }
                 }.bind(this))
                 .catch(function(oError) {
                     console.error("Lỗi:", oError);
-                    sap.m.MessageBox.error("Cannot load data for table" + sQuery.toUpperCase());
-                })
+                    oModel.setProperty("/pieData", []);
+                    this._togglePieDataLabel(false);
+                }.bind(this))
                 .finally(function() {
                     oView.setBusy(false); 
                 });

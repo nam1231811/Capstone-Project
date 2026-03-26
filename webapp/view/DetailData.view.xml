@@ -5,7 +5,9 @@
     xmlns:f="sap.f"
     xmlns:form="sap.ui.layout.form"
     xmlns:l="sap.ui.layout"
-    xmlns:mvc="sap.ui.core.mvc">
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns:suite="sap.suite.ui.commons.networkgraph"
+    xmlns:layout="sap.suite.ui.commons.networkgraph.layout">
     
     <ObjectPageLayout
         id="ObjectPageLayout"
@@ -118,6 +120,40 @@
                     </ObjectPageSubSection>
                 </subSections>
             </ObjectPageSection>
+
+            <ObjectPageSection title="Impact Analysis">
+                <subSections>
+                    <ObjectPageSubSection>
+                        <blocks>
+                            <suite:Graph id="impactGraph" width="100%" height="450px"
+                                         nodes="{graph>/nodes}" 
+                                         lines="{graph>/lines}">
+                                
+                                <suite:nodes>
+                                    <suite:Node 
+                                        key="{graph>key}" 
+                                        title="{graph>title}" 
+                                        icon="{graph>icon}" 
+                                        status="{graph>status}">
+                                        <suite:attributes>
+                                            <suite:ElementAttribute label="{graph>attrLabel}" value="{graph>attrValue}"/>
+                                        </suite:attributes>
+                                    </suite:Node>
+                                </suite:nodes>
+                                
+                                <suite:lines>
+                                    <suite:Line from="{graph>from}" to="{graph>to}" status="{graph>status}"/>
+                                </suite:lines>
+                                
+                                <suite:layoutAlgorithm>
+                                    <layout:LayeredLayout />
+                                </suite:layoutAlgorithm>
+                            </suite:Graph>
+                        </blocks>
+                    </ObjectPageSubSection>
+                </subSections>
+            </ObjectPageSection>
+
         </sections>
 
         <footer>

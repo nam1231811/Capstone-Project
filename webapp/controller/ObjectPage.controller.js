@@ -133,6 +133,7 @@ sap.ui.define([
                         isNew: false,
                         fieldname: sFieldName,
                         table_name: colMeta.tableName || colMeta.table_name,
+                        has_value_help: !!(colMeta.has_value_help || colMeta.hasValueHelp),
                         field_pos: colMeta.fieldPos || colMeta.field_pos,
                         datatype: colMeta.datatype || colMeta.dataType,
                         row_id: rowObj.rowId || rowObj.row_id || (rowIndex + 1).toString(),
@@ -238,14 +239,17 @@ sap.ui.define([
                         new sap.m.Input({
                             value: "{displayModel>" + iIndex + "/value}",
                             visible: "{= ${displayModel>" + iIndex + "/isEditable} === true }",
+                            showValueHelp: "{displayModel>" + iIndex + "/has_value_help}",
+                            valueHelpRequest: this.onDynamicValueHelp.bind(this),
                             change: function(oEvent) {
-                                var sColUUID = oMeta.uuid; 
+                                var sColUUID = oMeta.uuid;
                                 var oModel = this.getView().getModel("displayModel");
                                 var sPath = oEvent.getSource().getBindingContext("displayModel").getPath();
                                 oModel.setProperty(sPath + "/uuid", sColUUID);
                                 oModel.setProperty(sPath + "/fieldname", oMeta.fieldname);
                             }.bind(this)
-                        })
+                        }).data("tableName", oMeta.table_name || oMeta.tableName || "") 
+                        .data("fieldName", oMeta.fieldname || "")
                     ]
                 })
             });
@@ -310,7 +314,8 @@ sap.ui.define([
                     fieldname: colMeta.fieldname,
                     table_name: colMeta.tableName,
                     field_pos: colMeta.field_pos,
-                    datatype: colMeta.datatype,
+                    has_value_help: !!(colMeta.has_value_help || colMeta.hasValueHelp),
+                    datatype: colMeta.datatype
                 };
 
             }.bind(this));
@@ -404,7 +409,6 @@ sap.ui.define([
             return bCurrentShowFooterState
 		},
 
-        
         onViewLogDetail: function (oEvent) {
             // 1. Lấy dữ liệu từ cái nút vừa bấm
             var oButton = oEvent.getSource();
@@ -478,6 +482,57 @@ sap.ui.define([
 
         onDownloadExcelPress: function () {
             DownloadExcelData.onDownloadExcelPress(this);
+        },
+
+        onDynamicValueHelp: function (oEvent) {
+            var oInput = oEvent.getSource();
+            var sTableName = oInput.data("tableName");
+            var sFieldName = oInput.data("fieldName");
+
+            if (!sTableName || !sFieldName) {
+                console.error("Missing Metadata for Value Help");
+                return;
+            }
+
+            if (!this._oDynamicVHDialog) {
+                this._oDynamicVHDialog = new sap.m.SelectDialog({
+                    title: "Select Value",
+                    confirm: this.onValueHelpConfirm.bind(this)
+                });
+                this.getView().addDependent(this._oDynamicVHDialog);
+            }
+
+            var aFilters = [
+                new sap.ui.model.Filter("TableName", "EQ", sTableName),
+                new sap.ui.model.Filter("FieldName", "EQ", sFieldName)
+            ];
+
+            this._oDynamicVHDialog.bindAggregation("items", {
+                path: "/DynamicVHSet",
+                template: new sap.m.StandardListItem({
+                    title: "{KeyValue}",
+                    description: "{Description}",
+                    info: "{FieldName}"
+                }),
+                filters: aFilters
+            });
+
+            this._oDynamicVHDialog.data("targetInput", oInput);
+            this._oDynamicVHDialog.open();
+        },
+
+        onValueHelpConfirm: function (oEvent) {
+            var oSelectedItem = oEvent.getParameter("selectedItem");
+            if (oSelectedItem) {
+                var oInput = oEvent.getSource().data("targetInput");
+                var sSelectedKey = oSelectedItem.getTitle();
+                
+                // Cập nhật giá trị vào Input
+                oInput.setValue(sSelectedKey);
+                
+                // Trigger sự kiện change để cập nhật vào JSON Model (quan trọng để Save)
+                oInput.fireChange({ value: sSelectedKey });
+            }
         },
 
         _refreshData: function(sTableName) {

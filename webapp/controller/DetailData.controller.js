@@ -41,6 +41,8 @@ sap.ui.define([
             if (aData[this._record] != undefined) {
                 var oDataClone = JSON.parse(JSON.stringify(aData[this._record]));
                 this.getView().getModel("detailRecord").setProperty("/Data", oDataClone);
+                
+                this._loadImpactAnalysisData();
             }
         },
 
@@ -64,9 +66,8 @@ sap.ui.define([
             var tableName = this.getView().getModel("overall").getProperty("/tableName");
             var oDisplayModel = oView.getModel("displayModel");
             var aDisplayData = oDisplayModel.getProperty("/Data");
-            var enUuid = Object.values(oDetailModel)[0].uuid; // Lấy UUID của record đang sửa
+            var enUuid = Object.values(oDetailModel)[0].uuid;
                 
-            // Tìm dòng trong displayModel để cập nhật
             var iIndex = aDisplayData.findIndex(row => {
                 return row["0"].uuid === enUuid; 
             });
@@ -98,7 +99,7 @@ sap.ui.define([
 
             oModel.submitBatch("updateGroup").then(function(){
                 SaveToDatabase.onSaveDB(tableName, oView)
-                this._updateDisplayModelAfterSave(oDetailModel) // Chỗ này nó chưa có biến input lại thành text
+                this._updateDisplayModelAfterSave(oDetailModel)
             }.bind(this)).catch(function(oError){
                 sap.m.MessageBox.error("Lỗi: " + oError.message);
             });
@@ -208,6 +209,29 @@ sap.ui.define([
                     this.onRollback(); 
                 }.bind(this)
             });
+        },
+
+        _loadImpactAnalysisData: function() {
+            var oGraphData = {
+                nodes: [
+                    { key: "N1", title: "Record đang xem", icon: "sap-icon://database", group: "Dữ liệu Gốc", status: "Warning", attrLabel: "Trạng thái", attrValue: "Có rủi ro nếu sửa" },
+                    
+                    { key: "N2", title: "Bảng Master Data A", icon: "sap-icon://table-view", group: "Ảnh hưởng Cấp 1", status: "Information", attrLabel: "Số dòng liên quan", attrValue: "15" },
+                    { key: "N3", title: "Bảng Master Data B", icon: "sap-icon://table-view", group: "Ảnh hưởng Cấp 1", status: "Information", attrLabel: "Số dòng liên quan", attrValue: "120" },
+                    
+                    { key: "N4", title: "Báo cáo Doanh thu", icon: "sap-icon://business-objects-experience", group: "Báo cáo (Cấp 2)", status: "Error", attrLabel: "Cảnh báo", attrValue: "Lệch số liệu hệ thống" },
+                    { key: "N5", title: "Giao dịch kho", icon: "sap-icon://shipping-status", group: "Nghiệp vụ (Cấp 2)", status: "Error", attrLabel: "Cảnh báo", attrValue: "Treo chứng từ" }
+                ],
+                lines: [
+                    { from: "N1", to: "N2", status: "Warning" },
+                    { from: "N1", to: "N3", status: "Warning" },
+                    { from: "N2", to: "N4", status: "Error" },
+                    { from: "N3", to: "N5", status: "Error" }
+                ]
+            };
+
+            var oGraphModel = new sap.ui.model.json.JSONModel(oGraphData);
+            this.getView().setModel(oGraphModel, "graph");
         }
     });
 });
