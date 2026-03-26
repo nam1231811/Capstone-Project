@@ -1,23 +1,17 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
-    "sap/ui/model/json/JSONModel",
     "sap/f/library",
-    "sap/m/MessageToast",   
-    "sap/m/MessageBox",     
-    "sap/ui/core/BusyIndicator",
     "zapp/utils/SearchData",
     "zapp/utils/FilterData",
     "zapp/utils/SortData",
     "zapp/utils/PersonalizationData",
     "zapp/models/DataFormatter",
     "zapp/models/GetData",
-    "zapp/utils/TablePaginationData",
     "zapp/utils/UploadExcelData",
     "zapp/utils/DownloadExcelData",
     "zapp/api/SaveToDatabase",
-    "zapp/utils/LogDialogHelper"
 ], function (
-    Controller, JSONModel, fioriLibrary,MessageToast, MessageBox, BusyIndicator, SearchData, FilterData, SortData, PersonalizationData, DataFormatter, GetData, TablePaginationData, UploadExcelData, DownloadExcelData, SaveToDatabase, LogDialogHelper
+    Controller, fioriLibrary, SearchData, FilterData, SortData, PersonalizationData, DataFormatter, GetData, UploadExcelData, DownloadExcelData, SaveToDatabase
 ) {
     "use strict";
 
@@ -31,7 +25,6 @@ sap.ui.define([
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
         },
         
-        // nếu chuyển xong -> viết sao cho console.log ra mảng object
         _onObjectMatched: function (oEvent) {
             var oDisplayModel = this.getView().getModel("displayModel");
             var sNewTableName = oEvent.getParameter("arguments").tableName || "";
@@ -154,7 +147,6 @@ sap.ui.define([
             
             this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
         },
-        
 
         _displayData: function() {
             var oTable = this.byId("dataTable") || this.byId("TablePage");
@@ -172,7 +164,6 @@ sap.ui.define([
             oTable.attachColumnSelect(this.onColumnSelect, this);
         },
 
-        // đọc lại code khúc này
         createDynamicColumn: function(sId, oContext) {
             var oMeta = oContext.getObject();
             var sPath = oContext.getPath(); 
@@ -204,7 +195,7 @@ sap.ui.define([
 
             var sHeaderText = "N/A";
             if (oMeta) {
-                sHeaderText = oMeta.scrtext_l || oMeta.scrtext_m || oMeta.scrtext_s || oMeta.fieldname || "N/A";
+                sHeaderText = oMeta.scrtext_l || oMeta.scrtextM || oMeta.scrtext_s || oMeta.fieldname || "N/A";
             }
             
             var oColumn = new sap.ui.table.Column(sStableId, {
@@ -257,14 +248,6 @@ sap.ui.define([
             oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colName", value: sHeaderText }));
 
             return oColumn;
-        },
-
-        onPressLoadMore: function () {
-            TablePaginationData.onPressLoadMore.call(this);
-        },
-
-        onPressShowLess: function () {
-            TablePaginationData.onPressShowLess.call(this);
         },
 
         //Các hàm search, sort, filter, personalization
@@ -422,33 +405,6 @@ sap.ui.define([
             return bCurrentShowFooterState
 		},
 
-        onViewLogDetail: function (oEvent) {
-            // 1. Lấy dữ liệu từ cái nút vừa bấm
-            var oButton = oEvent.getSource();
-            var oContext = oButton.getBindingContext("displayModel");
-            var oRowData = oContext.getObject();
-
-            // 2. Khai báo hàm format định dạng JSON 
-            var formatJson = function (sJsonString) {
-                if (!sJsonString || sJsonString === "") {
-                    return "No data available";
-                }
-                try {
-                    var oJson = JSON.parse(sJsonString);
-                    return JSON.stringify(oJson, null, 4); 
-                } catch (e) {
-                    return sJsonString; 
-                }
-            };
-
-            // 3. Thực hiện Format dữ liệu Cũ và Mới
-            var sOldDataFormatted = formatJson(oRowData.OldData);
-            var sNewDataFormatted = formatJson(oRowData.NewData);
-
-            // 4. Bàn giao phần việc vẽ vời cho Utils xử lý
-            LogDialogHelper.onViewLogDetail(this, sOldDataFormatted, sNewDataFormatted);
-        },
-
         onMedataPress: function (oEvent) {
             var oFCL = this.oView.getParent().getParent();
             if (oFCL) {
@@ -540,10 +496,8 @@ sap.ui.define([
                 var oInput = oEvent.getSource().data("targetInput");
                 var sSelectedKey = oSelectedItem.getTitle();
                 
-                // Cập nhật giá trị vào Input
                 oInput.setValue(sSelectedKey);
                 
-                // Trigger sự kiện change để cập nhật vào JSON Model (quan trọng để Save)
                 oInput.fireChange({ value: sSelectedKey });
             }
         },
