@@ -25,10 +25,10 @@
                             </HBox>
 
                             <HBox alignItems="Center">
-                                <SearchField id="searchUser" placeholder="Tìm Username hoặc Tên..." search=".onSearchUser" width="300px" class="sapUiSmallMarginEnd" />
+                                <SearchField id="searchUser" placeholder="Find Username or Name..." search=".onSearchUser" width="300px" class="sapUiSmallMarginEnd" />
                                 
-                                <ComboBox id="filterRole" placeholder="Lọc theo Role..." selectionChange=".onSearchUser">
-                                    <core:Item key="ALL" text="Tất cả Roles" />
+                                <ComboBox id="filterRole" placeholder="Filter by Role..." selectionChange=".onSearchUser">
+                                    <core:Item key="ALL" text="All Roles" />
                                     <core:Item key="Admin" text="Admin" />
                                     <core:Item key="Manager" text="Manager" />
                                     <core:Item key="Clerk" text="Clerk" />
@@ -43,7 +43,7 @@
                     <f:content>
                         <Table id="usersTable" 
                                items="{/UserRoleList}"
-                               noDataText="Đang tải dữ liệu hoặc không tìm thấy user..."
+                               noDataText="Loading data or no user found..."
                                alternateRowColors="true"
                                class="sapUiTinyMarginBottom">
                                
@@ -53,7 +53,7 @@
                                     
                                     <VBox class="sapUiTinyMarginTopBottom">
                                         <Title text="System Users List" level="H5"/>
-                                        <Text text="Danh sách người dùng từ hệ thống SAP" />
+                                        <Text text="List of users from the SAP system" />
                                     </VBox>
                                     
                                     <ToolbarSpacer />
@@ -66,11 +66,11 @@
                             </headerToolbar>
 
                             <columns>
-                                <Column width="30%"><Label text="User (Tài khoản)" design="Bold"/></Column>
-                                <Column width="15%"><Label text="Phòng ban" design="Bold"/></Column>
-                                <Column width="25%"><Label text="Quyền hạn (Role)" design="Bold"/></Column>
-                                <Column width="15%"><Label text="Hiệu lực" design="Bold"/></Column>
-                                <Column width="15%" hAlign="Center"><Label text="Hành động" design="Bold"/></Column>
+                                <Column width="30%"><Label text="User (Username)" design="Bold"/></Column>
+                                <Column width="15%"><Label text="Department" design="Bold"/></Column>
+                                <Column width="25%"><Label text="Role" design="Bold"/></Column>
+                                <Column width="15%"><Label text="Validity" design="Bold"/></Column>
+                                <Column width="15%" hAlign="Center"><Label text="Actions" design="Bold"/></Column>
                             </columns>
                             <items>
                                 <ColumnListItem>
@@ -87,18 +87,18 @@
                                         <Label text="N/A" />
                                         
                                         <ObjectStatus 
-                                            text="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'Admin (Toàn Quyền)' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'Manager (Quản Lý)' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'Clerk (Nhân Viên)' : 'Chưa phân quyền')) }" 
+                                            text="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'Admin (Full Access)' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'Manager (Manager)' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'Clerk (Staff)' : 'Not Assigned')) }" 
                                             icon="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'sap-icon://unlocked' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'sap-icon://manager' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'sap-icon://employee' : 'sap-icon://sys-enter-2')) }"
                                             state="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'Error' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'Success' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'Warning' : 'Information')) }" />
 
                                         <ObjectStatus 
-    text="{ValidityText}" 
-    state="{= ${ValidityText} === 'Vô thời hạn' ? 'Success' : (${ValidityText} === 'Chưa phân quyền' ? 'None' : (${ValidityText} === 'Đã hết hạn' ? 'Error' : 'Warning')) }"
-    class="sapUiTinyMarginTop"/>
+                                            text="{ValidityText}" 
+                                            state="{= ${ValidityText} === 'No Expiration' ? 'Success' : (${ValidityText} === 'Not Assigned' ? 'None' : (${ValidityText} === 'Expired' ? 'Error' : 'Warning')) }"
+                                            class="sapUiTinyMarginTop"/>
                                         
                                         <HBox justifyContent="Center">
-                                            <Button icon="sap-icon://edit" type="Transparent" tooltip="Sửa Quyền" press=".onEditRole" class="sapUiTinyMarginEnd"/>
-                                            <Button icon="sap-icon://delete" type="Transparent" tooltip="Gỡ Quyền (Coming soon)" press=".onRevokeRole"/>
+                                            <Button icon="sap-icon://edit" type="Transparent" tooltip="Edit Role" press=".onEditRole" class="sapUiTinyMarginEnd"/>
+                                            <Button icon="sap-icon://delete" type="Transparent" tooltip="Revoke Role (Coming soon)" press=".onRevokeRole"/>
                                         </HBox>
                                     </cells>
                                 </ColumnListItem>
