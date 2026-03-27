@@ -8,7 +8,7 @@
     xmlns:core="sap.ui.core"
     displayBlock="true">
     
-    <Page title="Quản lý Phân quyền" showNavButton="true" navButtonPress=".onNavBack" backgroundDesign="List">
+    <Page title="Role Management" showNavButton="true" navButtonPress=".onNavBack" backgroundDesign="List">
         <content>
             <layout:Grid defaultSpan="XL12 L12 M12 S12" class="sapUiSmallMarginTop">
                 
@@ -25,7 +25,7 @@
                             </HBox>
 
                             <HBox alignItems="Center">
-                                <SearchField id="searchUser" placeholder="Find Username or Name..." search=".onSearchUser" width="300px" class="sapUiSmallMarginEnd" />
+                                <SearchField id="searchUser" placeholder="Search Username or Name..." search=".onSearchUser" width="300px" class="sapUiSmallMarginEnd" />
                                 
                                 <ComboBox id="filterRole" placeholder="Filter by Role..." selectionChange=".onSearchUser">
                                     <core:Item key="ALL" text="All Roles" />
@@ -43,7 +43,7 @@
                     <f:content>
                         <Table id="usersTable" 
                                items="{/UserRoleList}"
-                               noDataText="Loading data or no user found..."
+                               noDataText="Loading data or user not found..."
                                alternateRowColors="true"
                                class="sapUiTinyMarginBottom">
                                
@@ -53,7 +53,7 @@
                                     
                                     <VBox class="sapUiTinyMarginTopBottom">
                                         <Title text="System Users List" level="H5"/>
-                                        <Text text="List of users from the SAP system" />
+                                        <Text text="List of users from SAP system" />
                                     </VBox>
                                     
                                     <ToolbarSpacer />
@@ -66,18 +66,18 @@
                             </headerToolbar>
 
                             <columns>
-                                <Column width="30%"><Label text="User (Username)" design="Bold"/></Column>
+                                <Column width="30%"><Label text="User Account" design="Bold"/></Column>
                                 <Column width="15%"><Label text="Department" design="Bold"/></Column>
                                 <Column width="25%"><Label text="Role" design="Bold"/></Column>
                                 <Column width="15%"><Label text="Validity" design="Bold"/></Column>
-                                <Column width="15%" hAlign="Center"><Label text="Actions" design="Bold"/></Column>
+                                <Column width="15%" hAlign="Center"><Label text="Action" design="Bold"/></Column>
                             </columns>
                             <items>
                                 <ColumnListItem>
                                     <cells>
                                         <HBox alignItems="Center">
-                                                <Avatar src="sap-icon://person-placeholder" displaySize="XS" class="sapUiTinyMarginEnd" 
-                                                backgroundColor="{= ${IsAdmin} === true ? 'Accent2' : (${IsManager} === true ? 'Accent3' : (${IsClerk} === true ? 'Accent6' : 'Accent1')) }"/>
+                                            <Avatar src="sap-icon://person-placeholder" displaySize="XS" class="sapUiTinyMarginEnd" 
+                                                    backgroundColor="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'Accent2' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'Accent3' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'Accent6' : 'Accent1')) }"/>
                                             <VBox justifyContent="Center">
                                                 <Label text="{FullName}" design="Bold" visible="{= ${FullName} ? true : false }" />
                                                 <Label text="{Username}" />
@@ -87,18 +87,18 @@
                                         <Label text="N/A" />
                                         
                                         <ObjectStatus 
-                                            text="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'Admin (Full Access)' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'Manager (Manager)' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'Clerk (Staff)' : 'Not Assigned')) }" 
+                                            text="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'Admin (Full Access)' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'Manager' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'Clerk' : 'Unassigned')) }" 
                                             icon="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'sap-icon://unlocked' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'sap-icon://manager' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'sap-icon://employee' : 'sap-icon://sys-enter-2')) }"
                                             state="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'Error' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'Success' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'Warning' : 'Information')) }" />
 
                                         <ObjectStatus 
                                             text="{ValidityText}" 
-                                            state="{= ${ValidityText} === 'No Expiration' ? 'Success' : (${ValidityText} === 'Not Assigned' ? 'None' : (${ValidityText} === 'Expired' ? 'Error' : 'Warning')) }"
+                                            state="{= ${ValidityText} === 'No expiration' ? 'Success' : (${ValidityText} === 'Unassigned' ? 'None' : (${ValidityText} === 'Expired' ? 'Error' : 'Warning')) }"
                                             class="sapUiTinyMarginTop"/>
                                         
                                         <HBox justifyContent="Center">
                                             <Button icon="sap-icon://edit" type="Transparent" tooltip="Edit Role" press=".onEditRole" class="sapUiTinyMarginEnd"/>
-                                            <Button icon="sap-icon://delete" type="Transparent" tooltip="Revoke Role (Coming soon)" press=".onRevokeRole"/>
+                                            <Button icon="sap-icon://delete" type="Transparent" tooltip="Revoke Role" press=".onRevokeRole" enabled="{= ${ValidityText} !== 'Unassigned' }"/>
                                         </HBox>
                                     </cells>
                                 </ColumnListItem>
