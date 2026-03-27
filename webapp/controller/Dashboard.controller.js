@@ -3,12 +3,15 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/ui/model/Filter",           
     "sap/ui/model/FilterOperator",
+    "sap/ui/core/ResizeHandler",
     "zapp/models/GetData"
-], function (Controller, JSONModel, Filter, FilterOperator, GetData) {
+], function (Controller, JSONModel, Filter, FilterOperator, ResizeHandler, GetData) {
     "use strict";
 
     return Controller.extend("zapp.controller.Dashboard", {
         onInit: function () {
+            this._aResizeHandlers = []; 
+
             var oData = {
                 kpi: {
                     totalTables: 24,
@@ -32,8 +35,8 @@ sap.ui.define([
                     { user: "SYSTEM", actions: 10 }
                 ],
                 pieData: [
-                    { status: "Total of Data in Table", count: 1 },
-                    { status: "Total of Missing Data in Table", count: 1 }
+                    { status: "Valid Data in Table", count: 1 },
+                    { status: "Missing Data in Table", count: 1 }
                 ],
                 recentLogs: [
                     { tableName: "ZEMPLOYEE_105", action: "UPDATE", user: "DEV-092", time: "10:05", status: "Success", rowId: "11" },
@@ -50,6 +53,19 @@ sap.ui.define([
 
         onAfterRendering: function () {
             this._togglePieDataLabel(false);
+
+            var sHandlerId = ResizeHandler.register(this.getView(), this._onResize.bind(this));
+            this._aResizeHandlers.push(sHandlerId);
+        },
+
+        _onResize: function(oEvent) {
+            var aChartIds = ["idLineChart", "idBarChart", "idPieChart"];
+            aChartIds.forEach(function(sId) {
+                var oChart = this.byId(sId);
+                if (oChart) {
+                    oChart.invalidate();
+                }
+            }.bind(this));
         },
 
         _togglePieDataLabel: function(bShow) {
@@ -72,7 +88,7 @@ sap.ui.define([
         },
 
         onPressKPI: function() {
-            sap.m.MessageToast.show("Sau này có thể click vào đây để xem báo cáo chi tiết!");
+            sap.m.MessageToast.show("Press KPI card - future enhancement to navigate to detailed view");
         },
 
         onValueHelpRequest: function (oEvent) {
@@ -81,9 +97,9 @@ sap.ui.define([
 
             if (!this._pValueHelpDialog) {
                 this._pValueHelpDialog = new sap.m.TableSelectDialog({
-                    title: oBundle ? oBundle.getText("listTableTitle") : "Chọn Bảng", 
+                    title: oBundle ? oBundle.getText("listTableTitle") : "List of Tables", 
                     busyIndicatorDelay: 0, 
-                    noDataText: oBundle ? oBundle.getText("noDataText") : "Không có dữ liệu", 
+                    noDataText: oBundle ? oBundle.getText("noDataText") : "No data found", 
                     contentWidth: "50%",
                     growing: true,                           
                     growingThreshold: 20,                    
@@ -111,10 +127,10 @@ sap.ui.define([
                     
                     columns: [
                         new sap.m.Column({ 
-                            header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableName") : "Tên Bảng", design: "Bold" }) 
+                            header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableName") : "Table Name", design: "Bold" }) 
                         }),
                         new sap.m.Column({ 
-                            header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableDesc") : "Mô Tả", design: "Bold" }),
+                            header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableDesc") : "Table Description", design: "Bold" }),
                             minScreenWidth: "Tablet", 
                             demandPopin: true         
                         })
@@ -143,63 +159,106 @@ sap.ui.define([
         },
 
         onSearchTableQuality: function(vQuery) {
-            var sQuery = typeof vQuery === "string" ? vQuery : this.byId("searchTableInput").getValue();
+            var sQuery = "";
+            if (typeof vQuery === "string") {
+                sQuery = vQuery;
+            } else {
+                sQuery = this.byId("searchTableInput").getValue();
+            }
+
             var oModel = this.getView().getModel("dash");
             var oODataModel = this.getView().getModel(); 
-            var oView = this.getView();
+
+            var oCard = this.byId("dataManagementCard");
 
             if (!sQuery) {
-                oModel.setProperty("/pieData", [
-                    { status: "Total of Data in Table", count: 1 },
-                    { status: "Total of Missing Data in Table", count: 1 }
-                ]);
-                this._togglePieDataLabel(false);
+                this.onResetPieChart();
                 return;
             }
 
-            oView.setBusy(true);
+            if (oCard) {
+                oCard.setBusy(true);
+            }
 
             GetData.loadMeta(oODataModel, sQuery.toUpperCase(), "", "E")
                 .then(function(oPayload) {
-                    var aData = oPayload.dataRows;
+                    var aDataRows = oPayload.dataRows;
 
-                    if (!aData || aData.length === 0) {
-                        sap.m.MessageToast.show("This table currently has no data!");
-                        oModel.setProperty("/pieData", []);
-                        oView.setBusy(false);
+                    if (!aDataRows || aDataRows.length === 0) {
+                        this.onResetPieChart(); 
+                        sap.m.MessageToast.show("No data found for this table.");
+                        return;
+                    }
+
+                    var aAllColumns = [];
+                    var parsedRows = [];
+
+                    aDataRows.forEach(function(row) {
+                        if (row.data && typeof row.data === "string") {
+                            try {
+                                var parsedData = JSON.parse(row.data);
+                                parsedRows.push(parsedData);
+                                
+                                Object.keys(parsedData).forEach(function(key) {
+                                    if (aAllColumns.indexOf(key) === -1) {
+                                        aAllColumns.push(key);
+                                    }
+                                });
+                            } catch (e) {
+                                console.error("Error parsing JSON:", e);
+                            }
+                        }
+                    });
+
+                    if (aAllColumns.length === 0) {
+                        this.onResetPieChart(); 
                         return;
                     }
 
                     var iValidCount = 0;
                     var iEmptyCount = 0;
 
-                    aData.forEach(function(row) {
-                        var bHasEmpty = false;
-                        Object.keys(row).forEach(function(key) {
-                            var value = row[key];
-                            if (value === "" || value === null || value === undefined) {
-                                bHasEmpty = true;
+                    parsedRows.forEach(function(parsedRow) {
+                        aAllColumns.forEach(function(colName) {
+                            var val = parsedRow[colName];
+                            var isEmpty = false;
+
+                            if (val === undefined || val === null) {
+                                isEmpty = true;
+                            } else if (typeof val === "string") {
+                                var sTrim = val.trim();
+                                if (sTrim === "" || sTrim === "0000-00-0" || sTrim === "0000-00-00" || sTrim === "-") {
+                                    isEmpty = true;
+                                }
+                            }
+
+                            if (isEmpty) {
+                                iEmptyCount++;
+                            } else {
+                                iValidCount++;
                             }
                         });
-
-                        if (bHasEmpty) { iEmptyCount++; } else { iValidCount++; }
                     });
 
-                    oModel.setProperty("/pieData", [
-                        { status: "Total of Data", count: iValidCount },
-                        { status: "Total of Missing Data", count: iEmptyCount }
-                    ]);
-
-                    this._togglePieDataLabel(true);
-
-                    sap.m.MessageToast.show("This table currently has" + aData.length + "records.");
+                    if (iValidCount === 0 && iEmptyCount === 0) {
+                        this.onResetPieChart();
+                    } else {
+                        oModel.setProperty("/pieData", [
+                            { status: "Valid Data", count: iValidCount },
+                            { status: "Missing Data", count: iEmptyCount }
+                        ]);
+                        this._togglePieDataLabel(true);
+                    }
                 }.bind(this))
                 .catch(function(oError) {
-                    console.error("Lỗi:", oError);
-                    sap.m.MessageBox.error("Cannot load data for table" + sQuery.toUpperCase());
-                })
+                    console.error("Error:", oError);
+                    this.onResetPieChart(); 
+                    sap.m.MessageToast.show("Error loading table data.");
+                }.bind(this))
                 .finally(function() {
-                    oView.setBusy(false); 
+                    if (oCard) {
+                        oCard.setBusy(false); 
+                    }
                 });
         },
 
@@ -214,6 +273,26 @@ sap.ui.define([
                 tableName: oLogData.tableName,
                 rowId: oLogData.rowId
             });
+        },
+
+        onResetPieChart: function() {
+            var oModel = this.getView().getModel("dash");
+            this.byId("searchTableInput").setValue("");
+            
+            oModel.setProperty("/pieData", [
+                { status: "Valid Data in Table", count: 1 },
+                { status: "Missing Data in Table", count: 1 }
+            ]);
+            this._togglePieDataLabel(false);
+        },
+
+        onExit: function () {
+            if (this._aResizeHandlers && this._aResizeHandlers.length > 0) {
+                this._aResizeHandlers.forEach(function(sHandlerId) {
+                    ResizeHandler.deregister(sHandlerId);
+                });
+                this._aResizeHandlers = [];
+            }
         }
     });
 });

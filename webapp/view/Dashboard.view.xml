@@ -8,33 +8,52 @@
     xmlns:viz="sap.viz.ui5.controls"
     xmlns:viz.data="sap.viz.ui5.data"
     xmlns:viz.feeds="sap.viz.ui5.controls.common.feeds"
-    displayBlock="true">
+    displayBlock="true"
+    height="100%">
     
-    <Page title="Dashboard Admin" showNavButton="true" navButtonPress=".onNavBack" backgroundDesign="List">
-        <content>
-            <layout:Grid defaultSpan="XL12 L12 M12 S12" class="sapUiSmallMarginTop">
-                
-                <HBox width="100%" justifyContent="SpaceAround" class="sapUiSmallMarginBottom">
-                    <GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Total of Custom Tables" subheader="In the system" press="onPressKPI">
+    <f:DynamicPage id="pageDashboard" toggleHeaderOnTitleClick="true" headerExpanded="true" class="sapUiNoContentPadding">
+        
+        <f:title>
+            <f:DynamicPageTitle>
+                <f:heading>
+                    <Title text="Dashboard Admin" level="H2" />
+                </f:heading>
+                <f:navigationActions>
+                    <Button icon="sap-icon://nav-back" press=".onNavBack" tooltip="Back" type="Transparent"/>
+                </f:navigationActions>
+            </f:DynamicPageTitle>
+        </f:title>
+
+        <f:header>
+            <f:DynamicPageHeader pinnable="true">
+                <HBox wrap="Wrap" fitContainer="true" alignItems="Center">
+                    <GenericTile class="sapUiTinyMarginEnd sapUiTinyMarginBottom" header="Total of Custom Tables" subheader="In the system" press="onPressKPI">
                         <TileContent>
                             <NumericContent value="{dash>/kpi/totalTables}" valueColor="Good" indicator="Up" />
                         </TileContent>
                     </GenericTile>
-                    <GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Total of Changes Today" subheader="Real-time" press="onPressKPI">
+                    
+                    <GenericTile class="sapUiTinyMarginEnd sapUiTinyMarginBottom" header="Total of Changes Today" subheader="Real-time" press="onPressKPI">
                         <TileContent>
                             <NumericContent value="{dash>/kpi/changedToday}" valueColor="Critical" indicator="Up" />
                         </TileContent>
                     </GenericTile>
-                    <GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Total of Data" subheader="In all Custom Tables" press="onPressKPI">
+                    
+                    <GenericTile class="sapUiTinyMarginBottom" header="Total of Data" subheader="In all Custom Tables" press="onPressKPI">
                         <TileContent>
                             <NumericContent value="{dash>/kpi/totalRecords}" valueColor="Neutral" />
                         </TileContent>
                     </GenericTile>
                 </HBox>
+            </f:DynamicPageHeader>
+        </f:header>
 
+        <f:content>
+            <layout:Grid defaultSpan="XL12 L12 M12 S12" vSpacing="1" hSpacing="1" class="sapUiSmallMargin">
+                
                 <f:Card>
                     <f:header>
-                        <card:Header title="Data Change frequency" subtitle="Statistics of Create/Update/Delete over the last 7 days" iconSrc="sap-icon://line-chart"/>
+                        <card:Header title="Data Change Frequency" subtitle="Statistics of Create/Update/Delete over the last 7 days" iconSrc="sap-icon://line-chart"/>
                     </f:header>
                     <f:content>
                         <viz:VizFrame id="idLineChart" uiConfig="{applicationSet:'fiori'}" vizType="line" width="100%" height="300px" vizProperties="{title: {visible: false}}">
@@ -82,7 +101,7 @@
                     </f:content>
                 </f:Card>
 
-                <f:Card height="100%">
+                <f:Card id="dataManagementCard" height="420px">
                     <f:layoutData>
                         <layout:GridData span="XL6 L6 M12 S12" />
                     </f:layoutData>
@@ -90,20 +109,22 @@
                         <card:Header title="Data Management" subtitle="Manage and analyze your data" iconSrc="sap-icon://pie-chart" statusText="Warning"/>
                     </f:header>
                     <f:content>
-                        <VBox class="sapUiSmallMargin" width="100%" alignItems="Stretch">
+                        <VBox width="100%" height="100%">
+                            <Toolbar style="Clear" class="sapUiTinyMarginTop sapUiSmallMarginBeginEnd">
+                                <Input id="searchTableInput" 
+                                       placeholder="Enter table name..." 
+                                       showValueHelp="true" 
+                                       valueHelpRequest=".onValueHelpRequest" 
+                                       submit=".onSearchTableQuality" 
+                                       width="50%" />
+                                <Button icon="sap-icon://refresh" press=".onResetPieChart" type="Transparent" tooltip="Reload Default Chart"/>
+                                <ToolbarSpacer />
+                            </Toolbar>
                             
-                            <Input id="searchTableInput" 
-                                   placeholder="Enter table name..." 
-                                   showValueHelp="true" 
-                                   valueHelpRequest=".onValueHelpRequest" 
-                                   submit=".onSearchTableQuality" 
-                                   width="100%" 
-                                   class="sapUiTinyMarginBottom"/>
-                            
-                            <viz:VizFrame id="idPieChart" uiConfig="{applicationSet:'fiori'}" vizType="donut" width="100%" height="320px" 
+                            <viz:VizFrame id="idPieChart" uiConfig="{applicationSet:'fiori'}" vizType="donut" width="100%" height="280px" 
                                 vizProperties="{
                                     title: {visible: false},
-                                    legendGroup: {layout: {position: 'right'}}
+                                    legendGroup: {layout: {position: 'left'}}
                                 }">
                                 <viz:dataset>
                                     <viz.data:FlattenedDataset data="{dash>/pieData}">
@@ -120,32 +141,33 @@
                                     <viz.feeds:FeedItem uid="color" type="Dimension" values="Trạng thái" />
                                 </viz:feeds>
                             </viz:VizFrame>
-                            
                         </VBox>
                     </f:content>
                 </f:Card>
 
-                <f:Card height="100%">
+                <f:Card height="420px">
                     <f:layoutData>
                         <layout:GridData span="XL6 L6 M12 S12" />
                     </f:layoutData>
                     <f:header>
-                        <card:Header title="Recent Changes" subtitle="Top 5 recent actions (Click to view details)" iconSrc="sap-icon://history"/>
+                        <card:Header title="Recent Changes" subtitle="Top 5 recent actions" iconSrc="sap-icon://history"/>
                     </f:header>
                     <f:content>
-                        <List items="{dash>/recentLogs}" class="sapUiSmallMarginBottom">
-                            <StandardListItem 
-                                title="Table: {dash>tableName}" 
-                                description="{dash>action} by {dash>user} at {dash>time}" 
-                                info="{dash>status}" 
-                                infoState="{= ${dash>action} === 'CREATE' ? 'Success' : (${dash>action} === 'DELETE' ? 'Error' : 'Warning') }" 
-                                type="Navigation" 
-                                press=".onRecentLogPress" />
-                        </List>
+                        <ScrollContainer width="100%" height="320px" vertical="true">
+                            <List items="{dash>/recentLogs}" showSeparators="Inner" width="100%">
+                                <StandardListItem 
+                                    title="Table: {dash>tableName}" 
+                                    description="{dash>action} by {dash>user} at {dash>time}" 
+                                    info="{dash>status}" 
+                                    infoState="{= ${dash>action} === 'CREATE' ? 'Success' : (${dash>action} === 'DELETE' ? 'Error' : 'Warning') }" 
+                                    type="Navigation" 
+                                    press=".onRecentLogPress" />
+                            </List>
+                        </ScrollContainer>
                     </f:content>
                 </f:Card>
 
             </layout:Grid>
-        </content>
-    </Page>
+        </f:content>
+    </f:DynamicPage>
 </mvc:View>
