@@ -1,0 +1,90 @@
+<mvc:View
+    controllerName="zapp.controller.Home"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:layout="sap.ui.layout">
+    
+    <Page id="homePage" title="Home Screen" titleLevel="H2" class="sapUiResponsivePadding--header">
+        <content>
+            <VBox class="sapUiSmallMargin">
+                
+                <Title 
+                    text="Functional App" 
+                    level="H2" 
+                    titleStyle="H4" 
+                    class="sapUiTinyMarginBottom sapUiTinyMarginBegin"/>
+                
+                <layout:HorizontalLayout allowWrapping="true">
+                    <GenericTile 
+                        class="sapUiTinyMarginBegin sapUiTinyMarginTop" 
+                        header="Custom Master Data" 
+                        subheader="Maintenance" 
+                        press=".onNavToApp">
+                        <TileContent>
+                            <ImageContent src="sap-icon://database"/>
+                        </TileContent>
+                    </GenericTile>
+                </layout:HorizontalLayout>
+
+
+                <Title 
+                    text="Management Apps" 
+                    level="H2" 
+                    titleStyle="H4" 
+                    class="sapUiMediumMarginTop sapUiTinyMarginBottom sapUiTinyMarginBegin"/>
+                
+                <layout:HorizontalLayout allowWrapping="true">
+                    <GenericTile 
+                        class="sapUiTinyMarginBegin sapUiTinyMarginTop" 
+                        header="Approval" 
+                        subheader="Pending Requests" 
+                        press=".onNavToApproval">
+                        <TileContent>
+                            <ImageContent src="sap-icon://sys-enter-2"/>
+                        </TileContent>
+                    </GenericTile>
+
+                    <GenericTile 
+                        class="sapUiTinyMarginBegin sapUiTinyMarginTop" 
+                        header="Role Assignment" 
+                        subheader="User Access" 
+                        press=".onNavToRoleAssignment">
+                        <TileContent>
+                            <ImageContent src="sap-icon://role"/>
+                        </TileContent>
+                    </GenericTile>
+                </layout:HorizontalLayout>
+
+
+                <Title 
+                    text="Analytics Apps" 
+                    level="H2" 
+                    titleStyle="H4" 
+                    class="sapUiMediumMarginTop sapUiTinyMarginBottom sapUiTinyMarginBegin"/>
+                
+                <layout:HorizontalLayout allowWrapping="true">
+                    <GenericTile 
+                        class="sapUiTinyMarginBegin sapUiTinyMarginTop" 
+                        header="Dashboard" 
+                        subheader="Analytics &amp; Reports" 
+                        press=".onNavToDashboard">
+                        <TileContent>
+                            <ImageContent src="sap-icon://bpi-metrics"/> 
+                        </TileContent>
+                    </GenericTile>
+
+                    <GenericTile 
+                        class="sapUiTinyMarginBegin sapUiTinyMarginTop" 
+                        header="Audit Log" 
+                        subheader="System Tracking" 
+                        press=".onNavToAuditLog">
+                        <TileContent>
+                            <ImageContent src="sap-icon://history"/>
+                        </TileContent>
+                    </GenericTile>
+                </layout:HorizontalLayout>
+
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>

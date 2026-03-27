@@ -45,22 +45,23 @@
   "sap.ui5": {
     "flexEnabled": false,
     "rootView": {
-            "viewName": "zapp.view.App",
-            "type": "XML",
-            "async": false,
-            "id": "root"
-        },
+      "viewName": "zapp.view.App",
+      "type": "XML",
+      "async": false,
+      "id": "root"
+    },
     "config": {
-            "fullWidth": true
-        },
+      "fullWidth": true
+    },
     "dependencies": {
       "minUI5Version": "1.145.0",
       "libs": {
         "sap.f": {},
         "sap.ui.core": {},
         "sap.m": {},
-				"sap.uxap": {},
-        "sap.ui.comp": {}
+        "sap.uxap": {},
+        "sap.ui.comp": {},
+        "sap.viz": {}
       }
     },
     "contentDensities": {
@@ -107,59 +108,126 @@
       },
       "routes": [
         {
-          "name": "RouteMain",
+          "name": "RouteHome",
           "pattern": "",
+          "target": "TargetHome"
+        },
+        {
+          "name": "RouteMain",
+          "pattern": "main",
           "target": "TargetMain"
+        },
+        {
+          "name": "RouteDashboard",
+          "pattern": "dashboard",
+          "target": "TargetDashboard"
+        },
+        {
+          "name": "RouteApproval",
+          "pattern": "approval",
+          "target": "TargetApproval"
+        },
+        {
+          "name": "RouteAuditLog",
+          "pattern": "audit-log",
+          "target": "TargetAuditLog"
+        },
+        {
+          "name": "RouteRoleAssignment",
+          "pattern": "role-assignment",
+          "target": "TargetRoleAssignment"
         },
         {
           "name": "RouteObjectPage",
           "pattern": "detail/{tableName}/{newTable}",
-          "target": ["TargetTwoColumnContainer", "DetailTable"]
+          "target": [
+            "TargetTwoColumnContainer",
+            "DetailTable"
+          ]
         },
         {
           "name": "Metadata",
           "pattern": "detail/{tableName}/metadata/{rowId}",
-          "target": ["DetailTable", "MetadataTable"]
+          "target": [
+            "DetailTable",
+            "MetadataTable"
+          ]
         },
         {
           "name": "DetailData",
           "pattern": "detail/{tableName}/data/{rowId}",
-          "target": ["DetailTable", "DataTable"]
+          "target": [
+            "DetailTable",
+            "DataTable"
+          ]
         }
-
       ],
       "targets": {
+        "TargetHome": {
+          "type": "View",
+          "name": "Home",
+          "id": "Home",
+          "viewLevel": 1,
+          "controlAggregation": "pages"
+        },
         "TargetMain": {
           "type": "View",
           "name": "MainPage",
           "id": "MainPage",
-          "viewLevel": 1,
+          "viewLevel": 2,
           "controlAggregation": "pages"
         },
-        
+        "TargetDashboard": {
+          "type": "View",
+          "name": "Dashboard", 
+          "id": "ViewDashboard",
+          "viewLevel": 2,
+          "controlAggregation": "pages"
+        },
+        "TargetApproval": {
+          "type": "View",
+          "name": "Approval",
+          "id": "ViewApproval",
+          "viewLevel": 2,
+          "controlAggregation": "pages"
+        },
+        "TargetAuditLog": {
+          "type": "View",
+          "name": "AuditLog",
+          "id": "ViewAuditLog",
+          "viewLevel": 2,
+          "controlAggregation": "pages"
+        },
+        "TargetRoleAssignment": {
+          "type": "View",
+          "name": "RoleAssignment",
+          "id": "ViewRoleAssignment",
+          "viewLevel": 2,
+          "controlAggregation": "pages"
+        },
         "TargetTwoColumnContainer": {
           "type": "View",
-          "viewName": "TableContainer", 
+          "viewName": "TableContainer",
           "controlAggregation": "pages",
           "controlId": "appContainer",
-          "viewLevel": "2"
+          "viewLevel": 3
         },
         "DetailTable": {
-          "viewName": "ObjectPage", 
+          "viewName": "ObjectPage",
           "controlAggregation": "beginColumnPages",
-          "parent": "TargetTwoColumnContainer", 
+          "parent": "TargetTwoColumnContainer",
           "controlId": "flexibleColumnLayout"
         },
         "MetadataTable": {
-          "viewName": "Metadata", 
+          "viewName": "Metadata",
           "controlAggregation": "midColumnPages",
-          "parent": "TargetTwoColumnContainer", 
+          "parent": "TargetTwoColumnContainer",
           "controlId": "flexibleColumnLayout"
         },
         "DataTable": {
-          "viewName": "DetailData", 
+          "viewName": "DetailData",
           "controlAggregation": "midColumnPages",
-          "parent": "TargetTwoColumnContainer", 
+          "parent": "TargetTwoColumnContainer",
           "controlId": "flexibleColumnLayout"
         }
       }

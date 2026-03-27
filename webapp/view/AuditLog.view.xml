@@ -1,0 +1,76 @@
+<mvc:View
+    controllerName="zapp.controller.AuditLog"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.f"
+    xmlns:card="sap.f.cards"
+    xmlns:layout="sap.ui.layout"
+    displayBlock="true">
+    
+    <Page title="Audit Log Management" showNavButton="true" navButtonPress=".onNavBack" backgroundDesign="List">
+        <content>
+            <layout:Grid defaultSpan="XL12 L12 M12 S12" class="sapUiSmallMarginTop">
+                
+                <f:Card>
+                    <f:header>
+                        <card:Header title="System Search" subtitle="Select a table to view its audit log" iconSrc="sap-icon://sys-find" />
+                    </f:header>
+                    <f:content>
+                        <HBox alignItems="Center" wrap="Wrap" class="sapUiSmallMargin">
+                            <Label text="Data Table:" design="Bold" class="sapUiTinyMarginEnd sapUiTinyMarginTopBottom" />
+                            <Input id="auditSearchInput" 
+                                   placeholder="Example: ZEMPLOYEE_105..." 
+                                   showValueHelp="true" 
+                                   valueHelpRequest=".onValueHelpRequest" 
+                                   submit=".onSearchAuditLog" 
+                                   width="400px" 
+                                   class="sapUiTinyMarginEnd" />
+                            <Button text="Search" type="Emphasized" icon="sap-icon://search" press=".onSearchAuditLog" class="sapUiTinyMarginEnd"/>
+                            <Button text="Clear" type="Transparent" icon="sap-icon://clear-filter" press=".onClearAuditSearch" tooltip="Clear search criteria"/>
+                        </HBox>
+                    </f:content>
+                </f:Card>
+
+                <f:Card>
+                    <f:header>
+                        <card:Header title="Recent Changes" subtitle="Click the details button to view the data lifecycle (Audit Trail)" iconSrc="sap-icon://table-view"/>
+                    </f:header>
+                    <f:content>
+                        <Table id="auditMasterTable" 
+                               items="{audit>/mainLogs}" 
+                               noDataText="No data available. Please select a table to view its audit log."
+                               alternateRowColors="true"
+                               growing="true"
+                               growingThreshold="20"
+                               class="sapUiTinyMarginBottom">
+                            <columns>
+                                <Column width="20%"><Label text="Data Key (Row ID)" design="Bold"/></Column>
+                                <Column width="20%"><Label text="Latest Action" design="Bold"/></Column>
+                                <Column width="20%"><Label text="Performed by" design="Bold"/></Column>
+                                <Column width="25%"><Label text="Timestamp" design="Bold"/></Column>
+                                <Column width="15%" hAlign="End"><Label text="Action" design="Bold"/></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem>
+                                    <cells>
+                                        <ObjectIdentifier title="{audit>rowId}" text="ID" />
+                                        
+                                        <ObjectStatus text="{audit>lastAction}" 
+                                                      state="{= ${audit>lastAction} === 'CREATE' ? 'Success' : (${audit>lastAction} === 'DELETE' ? 'Error' : 'Warning') }" 
+                                                      icon="{= ${audit>lastAction} === 'CREATE' ? 'sap-icon://add' : (${audit>lastAction} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }"/>
+                                        
+                                        <Text text="{audit>lastUser}" />
+                                        <Text text="{audit>lastTimestamp}" />
+                                        
+                                        <Button text="Details" icon="sap-icon://history" press=".onViewAuditTrail" type="Transparent"/>
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </f:content>
+                </f:Card>
+
+            </layout:Grid>
+        </content>
+    </Page>
+</mvc:View>
