@@ -4,8 +4,9 @@ sap.ui.define([
     "sap/ui/model/Filter",           
     "sap/ui/model/FilterOperator",
     "sap/ui/core/ResizeHandler",
-    "zapp/models/GetData"
-], function (Controller, JSONModel, Filter, FilterOperator, ResizeHandler, GetData) {
+    "zapp/models/GetData",
+    "zapp/api/DashboardApi"
+], function (Controller, JSONModel, Filter, FilterOperator, ResizeHandler, GetData, DashboardApi) {
     "use strict";
 
     return Controller.extend("zapp.controller.Dashboard", {
@@ -31,7 +32,6 @@ sap.ui.define([
 
         _loadDashboardData: function() {
             var oDashModel = this.getView().getModel("dash");
-            var sServiceUrl = "/sap/opu/odata4/sap/zsb_audit_log_gsp14/srvd/sap/zsd_audit_log_gsp14/0001/";
 
             var oCardLine = this.byId("cardLineChart");
             var oCardBar  = this.byId("cardBarChart");
@@ -41,151 +41,24 @@ sap.ui.define([
             if (oCardBar)  oCardBar.setBusy(true);
             if (oCardLogs) oCardLogs.setBusy(true);
 
-            $.ajax({
-                url: sServiceUrl,
-                method: "GET",
-                headers: {
-                    "X-CSRF-Token": "Fetch"
-                },
-                success: function (data, textStatus, jqXHR) {
-                    var sToken = jqXHR.getResponseHeader("X-CSRF-Token");
-                    console.log("CSRF Token:", sToken);
-
-                    $.ajax({
-                        url: sServiceUrl + "Log/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getKpi",
-                        method: "POST",
-                        headers: {
-                            "X-CSRF-Token": sToken,
-                            "Content-Type": "application/json"
-                        },
-                        success: function (oResult) {
-                            console.log("getKpi Result:", oResult);
-
-                            var aTopUsers = [];
-                            if (oResult.top_users) {
-                                try {
-                                    var aParsedUsers = JSON.parse(oResult.top_users);
-                                    console.log("Parsed Top Users:", aParsedUsers);
-                                    aTopUsers = aParsedUsers.map(function(item) {
-                                        return { user: item.USER, actions: item.ACTIONS };
-                                    });
-                                } catch (e) { 
-                                    console.error("Error parsing top users json:", e); 
-                                }
-                            } else {
-                                console.warn("Error: 'top_users' field not found in response");
-                            }
-
-                            var aRecentLogs = [];
-                            if (oResult.recent_logs) {
-                                try {
-                                    var aParsedLogs = JSON.parse(oResult.recent_logs);
-                                    console.log("Parsed Recent Logs:", aParsedLogs);
-                                    aRecentLogs = aParsedLogs.map(function(item) {
-                                        var sAction = item.action || "";
-                                        if (sAction === "C") sAction = "CREATE";
-                                        else if (sAction === "U") sAction = "UPDATE";
-                                        else if (sAction === "D") sAction = "DELETE";
-
-                                        var sTime = item.changedAt || "";
-                                        if (sTime && sTime.length >= 14) {
-                                            sTime = sTime.substring(0,4) + "-" + sTime.substring(4,6) + "-" + sTime.substring(6,8) + " " + sTime.substring(8,10) + ":" + sTime.substring(10,12) + ":" + sTime.substring(12,14);
-                                        }
-
-                                        return {
-                                            tableName: item.tableName || "",
-                                            action: sAction,
-                                            user: item.changedBy || "",
-                                            time: sTime,
-                                            status: "Success",
-                                            rowId: item.recordKey || "" 
-                                        };
-                                    });
-                                } catch (e) { 
-                                    console.error("Error parsing recent logs json:", e); 
-                                }
-                            } else {
-                                console.warn("Error: 'recent_logs' field not found in response");
-                            }
-                            
-                            oDashModel.setProperty("/kpi/totalTables", oResult.total_tables);
-                            oDashModel.setProperty("/kpi/changedToday", oResult.today_changes);
-                            oDashModel.setProperty("/kpi/totalRecords", oResult.total_data);
-                            oDashModel.setProperty("/topUsers", aTopUsers);
-                            oDashModel.setProperty("/recentLogs", aRecentLogs);
-
-                            if (oCardBar)  oCardBar.setBusy(false);
-                            if (oCardLogs) oCardLogs.setBusy(false);
-                        },
-                        error: function (jqXHR, textStatus, errorThrown) {
-                            console.error("Error calling kpi API");
-                            console.error("Status:", textStatus);
-                            console.error("Error:", errorThrown);
-                            console.error("Details from backend:", jqXHR.responseText);
-
-                            if (oCardBar)  oCardBar.setBusy(false);
-                            if (oCardLogs) oCardLogs.setBusy(false);
-                            sap.m.MessageToast.show("Error loading KPI/Logs data");
-                        }
-                    });
-
-                    $.ajax({
-                        url: sServiceUrl + "Log/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getChartData",
-                        method: "POST",
-                        headers: {
-                            "X-CSRF-Token": sToken,
-                            "Content-Type": "application/json"
-                        },
-                        success: function (oResult) {
-                            console.log("getChartData Result:", oResult);
-
-                            var aLineData = [];
-                            if (oResult.json_string) {
-                                try {
-                                    var aParsedChart = JSON.parse(oResult.json_string);
-                                    console.log("Parsed Chart Data:", aParsedChart);
-                                    aLineData = aParsedChart.map(function(item) {
-                                        return {
-                                            date: item.date,
-                                            create: item.create || 0,
-                                            update: item.update || 0,
-                                            delete: item.delete || 0
-                                        };
-                                    });
-                                } catch (e) { 
-                                    console.error("Error parsing chart data json string:", e); 
-                                }
-                            } else {
-                                console.warn("Error: 'json_string' field not found in response.");
-                            }
-                            oDashModel.setProperty("/lineData", aLineData);
-
-                            if (oCardLine) oCardLine.setBusy(false);
-                        },
-                        error: function (jqXHR, textStatus, errorThrown) {
-                            console.error("Error calling chart data API");
-                            console.error("Status:", textStatus);
-                            console.error("Error:", errorThrown);
-                            console.error("Details from backend:", jqXHR.responseText);
-
-                            if (oCardLine) oCardLine.setBusy(false);
-                            sap.m.MessageToast.show("Error loading line chart data");
-                        }
-                    });
-
-                }.bind(this),
-                error: function (jqXHR, textStatus, errorThrown) {
-                    console.error("Error fetching CSRF token");
-                    console.error("Status:", textStatus);
-                    console.error("Error:", errorThrown);
-                    console.error("Details from backend:", jqXHR.responseText);
-
+            DashboardApi.getDashboardData()
+                .then(function(oParsedData) {
+                    oDashModel.setProperty("/kpi/totalTables", oParsedData.totalTables);
+                    oDashModel.setProperty("/kpi/changedToday", oParsedData.changedToday);
+                    oDashModel.setProperty("/kpi/totalRecords", oParsedData.totalRecords);
+                    oDashModel.setProperty("/topUsers", oParsedData.topUsers);
+                    oDashModel.setProperty("/recentLogs", oParsedData.recentLogs);
+                    oDashModel.setProperty("/lineData", oParsedData.lineData);
+                })
+                .catch(function(error) {
+                    console.error("Lỗi lấy dữ liệu Dashboard:", error);
+                    sap.m.MessageToast.show("Lỗi tải dữ liệu Dashboard.");
+                })
+                .finally(function() {
                     if (oCardLine) oCardLine.setBusy(false);
                     if (oCardBar)  oCardBar.setBusy(false);
                     if (oCardLogs) oCardLogs.setBusy(false);
-                    sap.m.MessageToast.show("Cannot connect to backend to fetch token");
-                }
-            });
+                });
         },
 
         onAfterRendering: function () {
