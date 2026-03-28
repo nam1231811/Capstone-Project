@@ -58,7 +58,7 @@ sap.ui.define([
 
         onOpenAssignDialog: function () {
             var oModel = this.getView().getModel("roleLocal");
-            oModel.setProperty("/formData", { isEditMode: false, userId: "", roleId: "Clerk", validTo: "" });
+            oModel.setProperty("/formData", { isEditMode: false, userId: "", roleId: "", validTo: "" });
             this._openRoleDialog("Assign New Role");
         },
 
@@ -70,6 +70,11 @@ sap.ui.define([
             var sCurrentRole = "Clerk";
             if (oRowData.IsAdmin) sCurrentRole = "Admin";
             else if (oRowData.IsManager) sCurrentRole = "Manager";
+
+            var sCurrentRole = "";
+            if (oRowData.IsAdmin === true || oRowData.IsAdmin === 'true' || oRowData.IsAdmin === 'Yes') sCurrentRole = "Admin";
+            else if (oRowData.IsManager === true || oRowData.IsManager === 'true' || oRowData.IsManager === 'Yes') sCurrentRole = "Manager";
+            else if (oRowData.IsClerk === true || oRowData.IsClerk === 'true' || oRowData.IsClerk === 'Yes') sCurrentRole = "Clerk";
 
             oModel.setProperty("/formData", {
                 isEditMode: true,
@@ -102,6 +107,8 @@ sap.ui.define([
                                     selectedKey: "{roleLocal>/formData/roleId}",
                                     width: "100%",
                                     items: [
+                                        new sap.ui.core.Item({ key: "", text: "--- Select Role (Unassigned) ---" }),
+
                                         new sap.ui.core.Item({ key: "Admin", text: "Admin (Full Access)" }),
                                         new sap.ui.core.Item({ key: "Manager", text: "Manager (Approval)" }),
                                         new sap.ui.core.Item({ key: "Clerk", text: "Clerk (Employee)" })
@@ -137,95 +144,107 @@ sap.ui.define([
         },
 
         onSaveRole: function () {
-            var oLocalModel = this.getView().getModel("roleLocal");
-            var oFormData = oLocalModel.getProperty("/formData");
-            var sUserId = oFormData.userId.toUpperCase();
-            var sValidTo = oFormData.validTo || "";
+            var oView = this.getView();
+            var oFormData = oView.getModel("roleLocal").getProperty("/formData");
+            var sUserId = oFormData.userId;
 
             if (!sUserId) {
-                MessageBox.error("Please enter a system Username!");
+                sap.m.MessageBox.error("Vui lòng nhập User Account!");
                 return;
             }
 
-            if (sValidTo !== "") {
+            if (!oFormData.roleId) {
+                sap.m.MessageBox.error("Vui lòng chọn một Role để gán!");
+                return;
+            }
+
+            // 1. LẤY NGÀY TRỰC TIẾP TỪ MODEL (Không cần tìm ID nữa)
+            // Nhờ thuộc tính valueFormat="yyyyMMdd", oFormData.validTo đã tự động là chuỗi 8 ký tự (VD: "20260410")
+            var sValidTo = oFormData.validTo;
+            var sFormattedDate = "99991231"; // Mặc định là vô cực nếu để trống
+
+            if (sValidTo && sValidTo.trim() !== "") {
+
+                if (!/^\d{8}$/.test(sValidTo)) {
+                    sap.m.MessageBox.error("Ngày hết hạn không hợp lệ! Vui lòng nhập đúng định dạng DD/MM/YYYY hoặc chọn từ biểu tượng lịch.");
+                    return;
+                }
+
+                sFormattedDate = sValidTo;
+
                 var oToday = new Date();
                 var sYear = oToday.getFullYear().toString();
                 var sMonth = (oToday.getMonth() + 1).toString().padStart(2, '0');
                 var sDay = oToday.getDate().toString().padStart(2, '0');
-                var sTodayYYYYMMDD = sYear + sMonth + sDay;
+                var sTodayStr = sYear + sMonth + sDay;
 
-                if (sValidTo < sTodayYYYYMMDD) {
-                    MessageBox.error("Error: Expiration date cannot be in the past!");
+                if (sFormattedDate < sTodayStr) {
+                    sap.m.MessageBox.error("Vui lòng chọn ngày hết hạn lớn hơn hoặc bằng ngày hiện tại!");
                     return;
                 }
             }
 
-            sap.ui.core.BusyIndicator.show(0);
-            var oODataModel = this.getView().getModel();
-
+            // 2. CHUẨN BỊ ACTION NAME
             var sActionName = "";
-            if (oFormData.roleId === "Admin") sActionName = "assignAdmin";
-            else if (oFormData.roleId === "Manager") sActionName = "assignManager";
-            else if (oFormData.roleId === "Clerk") sActionName = "assignClerk";
+            if (oFormData.roleId === "Admin") {
+                sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignAdmin";
+            } else if (oFormData.roleId === "Manager") {
+                sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignManager";
+            } else if (oFormData.roleId === "Clerk") {
+                sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignClerk";
+            }
 
-            var sActionPath = "/UserRoleList('" + sUserId + "')/com.sap.gateway.srvd.zsd_dynamic_meta.v0001." + sActionName + "(...)";
-            var oActionContext = oODataModel.bindContext(sActionPath);
+            // 3. BIND ACTION & TRUYỀN THAM SỐ XUỐNG ABAP
+            var sPath = "/UserRoleList('" + sUserId + "')/" + sActionName + "(...)";
+            var oActionContext = oView.getModel().bindContext(sPath);
 
-            oActionContext.setParameter("ValidTo", sValidTo);
+            oActionContext.setParameter("ValidTo", sFormattedDate);
+
+            // 4. THỰC THI ACTION VÀ CHỜ BACKEND ABAP XỬ LÝ
+            sap.ui.core.BusyIndicator.show(0);
 
             oActionContext.execute().then(function () {
-                sap.ui.core.BusyIndicator.hide();
-                MessageToast.show("Successfully assigned " + oFormData.roleId + " role to " + sUserId + "!");
-
-                this.byId("usersTable").getBinding("items").refresh();
+                sap.m.MessageToast.show("Successfully assigned " + oFormData.roleId + " role to " + sUserId + "!");
                 this._oRoleDialog.close();
 
+                // Dùng setTimeout chờ 1.5s để Backend ABAP lưu xong mới Refresh giật data mới
+                setTimeout(function () {
+                    this.byId("usersTable").getBinding("items").refresh();
+                    sap.ui.core.BusyIndicator.hide();
+                }.bind(this), 1500);
+
             }.bind(this)).catch(function (oError) {
+                sap.m.MessageBox.error("Error assigning role: " + oError.message);
                 sap.ui.core.BusyIndicator.hide();
-                MessageBox.error("Role assignment error: " + (oError.message || "User does not exist or system error."));
             });
         },
 
         onRevokeRole: function (oEvent) {
-            var oButton = oEvent.getSource();
-            var oContext = oButton.getBindingContext();
-
-            if (!oContext) return;
-
+            var oContext = oEvent.getSource().getBindingContext();
             var sUsername = oContext.getProperty("Username");
 
-            var sValidity = oContext.getProperty("ValidityText");
-            if (sValidity === "Unassigned") {
-                sap.m.MessageBox.information("User '" + sUsername + "' currently has no role to revoke!");
-                return;
-            }
+            sap.m.MessageBox.confirm("Are you sure you want to revoke the role for " + sUsername + "?", {
+                onClose: function (sAction) {
+                    if (sAction === sap.m.MessageBox.Action.OK) {
+                        sap.ui.core.BusyIndicator.show(0);
 
-            sap.m.MessageBox.confirm(
-                "This action will immediately revoke all tool permissions for User '" + sUsername + "'.\n\nAre you sure you want to revoke the role?",
-                {
-                    title: "Security Warning",
-                    icon: sap.m.MessageBox.Icon.WARNING,
-                    actions: [sap.m.MessageBox.Action.YES, sap.m.MessageBox.Action.NO],
-                    emphasizedAction: sap.m.MessageBox.Action.NO,
-                    onClose: function (sAction) {
-                        if (sAction === sap.m.MessageBox.Action.YES) {
+                        var oOperation = oContext.getModel().bindContext("com.sap.gateway.srvd.zsd_dynamic_meta.v0001.revokeRole(...)", oContext);
 
-                            sap.ui.core.BusyIndicator.show(0);
+                        oOperation.execute().then(function () {
+                            sap.m.MessageToast.show("Successfully revoked role for " + sUsername + "!");
 
-                            var oOperation = oContext.getModel().bindContext("com.sap.gateway.srvd.zsd_dynamic_meta.v0001.revokeRole(...)", oContext);
-
-                            oOperation.execute().then(function () {
-                                sap.ui.core.BusyIndicator.hide();
-                                sap.m.MessageToast.show("Successfully revoked role for " + sUsername + "!");
+                            setTimeout(function () {
                                 oContext.refresh();
-                            }).catch(function (oError) {
                                 sap.ui.core.BusyIndicator.hide();
-                                sap.m.MessageBox.error("Error revoking role: " + oError.message);
-                            });
-                        }
+                            }, 1500);
+
+                        }).catch(function (oError) {
+                            sap.m.MessageBox.error("Error revoking role: " + oError.message);
+                            sap.ui.core.BusyIndicator.hide();
+                        });
                     }
                 }
-            );
+            });
         }
     });
 });
