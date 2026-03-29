@@ -24,6 +24,17 @@
                             <ImageContent src="sap-icon://database"/>
                         </TileContent>
                     </GenericTile>
+
+                    <GenericTile 
+                        class="sapUiTinyMarginBegin sapUiTinyMarginTop" 
+                        header="My Requests" 
+                        subheader="Track &amp; View Reasons"
+                        visible="{auth>/isClerk}"
+                        press=".onNavToMyRequests">
+                        <TileContent>
+                            <ImageContent src="sap-icon://request"/>
+                        </TileContent>
+                    </GenericTile>
                 </layout:HorizontalLayout>
 
 

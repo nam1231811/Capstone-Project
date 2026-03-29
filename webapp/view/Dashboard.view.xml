@@ -18,9 +18,6 @@
                 <f:heading>
                     <Title text="Dashboard Admin" level="H2" />
                 </f:heading>
-                <f:navigationActions>
-                    <Button icon="sap-icon://nav-back" press=".onNavBack" tooltip="Back" type="Transparent"/>
-                </f:navigationActions>
             </f:DynamicPageTitle>
         </f:title>
 

@@ -95,7 +95,11 @@ sap.ui.define([
                         var sKey = colMeta.fieldname || colMeta.fieldName;
                         if(sKey && sKey.toUpperCase() !== "MANDT") {
                             var sUpperKey = sKey.toUpperCase();
-                            var valResult = UploadExcelData._validateCellFormat(row[sUpperKey], colMeta.datatype || colMeta.dataType);
+                            var valResult = UploadExcelData._validateCellFormat(
+                                row[sUpperKey],
+                                colMeta.datatype || colMeta.dataType,
+                                colMeta
+                            );
                             if (!valResult.valid) {
                                 row["_state_" + sUpperKey] = "Error";
                                 row["_msg_" + sUpperKey] = valResult.msg;
@@ -132,15 +136,15 @@ sap.ui.define([
             // 2. TẠO CỘT VỚI INPUT ĐỘNG
             var oTable = new sap.ui.table.Table({
                 selectionMode: "None",
-                visibleRowCount: aData.length < 10 ? aData.length : 10,
+                visibleRowCount: aData.length,
                 alternateRowColors: true
             });
 
             if (aMeta && aMeta.length > 0) {
                 aMeta.forEach(function(colMeta) {
-                    var sKey = colMeta.fieldname || colMeta.fieldName;
+                    var sKey = colMeta.fieldname;
                     var sUpperKey = sKey.toUpperCase();
-                    var sLabelText = colMeta.scrtext_l || colMeta.scrtext_m || colMeta.scrtext_s || sKey; 
+                    var sLabelText = colMeta.scrtextL || colMeta.scrtextM || colMeta.scrtextS || sKey; 
                     
                     if (sUpperKey !== "MANDT") {
                         oTable.addColumn(new sap.ui.table.Column({
@@ -156,7 +160,8 @@ sap.ui.define([
                                     _performFullGridValidation(); 
                                 }
                             }),
-                            width: "auto"
+                            width: "10rem",
+                            autoResizable: true
                         }));
                     }
                 });
@@ -169,6 +174,14 @@ sap.ui.define([
             // 3. THỰC HIỆN QUÉT LỖI LẦN ĐẦU TIÊN (Khi vừa mở Popup)
             _performFullGridValidation();
 
+            var oScrollContainer = new sap.m.ScrollContainer({
+                horizontal: true,
+                vertical: true,
+                width: "100%",
+                height: "100%",
+                content: [oTable]
+            });
+
             // 4. TẠO DIALOG CHỐT HẠ
             var oDialog = new sap.m.Dialog({
                 title: "Check data before uploading - Table " + sTableName + " (" + aData.length + " line)",
@@ -176,7 +189,7 @@ sap.ui.define([
                 contentHeight: "600px",
                 resizable: true,
                 draggable: true,
-                content: [oTable],
+                content: [oScrollContainer],
                 buttons: [
                     new sap.m.Button({
                         text: "Confirm Upload",
@@ -253,13 +266,17 @@ sap.ui.define([
         },
 
         // --- HÀM 4: KIỂM TRA ĐỊNH DẠNG DỮ LIỆU ---
-        _validateCellFormat: function (sValue, sDataType) {
+        _validateCellFormat: function (sValue, sDataType, oColMeta) {
             if (sValue === null || sValue === undefined || sValue === "") {
                 return { valid: true, msg: "" };
             }
             var sStrVal = String(sValue).trim();
             // Đảm bảo sDataType luôn in hoa để so sánh không bị trượt
             sDataType = sDataType ? sDataType.toUpperCase() : "";
+            var sFieldName = "";
+            if (oColMeta) {
+                sFieldName = (oColMeta.fieldname || oColMeta.fieldName || "").toUpperCase();
+            }
             
             // 1. Kiểm tra Kiểu Số / Tiền tệ / NUMC (Thường dùng cho ID/Mã số)
             var aNumTypes = ["INT1", "INT2", "INT4", "INT8", "DEC", "CURR", "QUAN", "NUMC", "FLTP"];
@@ -270,12 +287,44 @@ sap.ui.define([
                 if (!numRegex.test(sStrVal)) {
                     return { valid: false, msg: "Please enter only numbers." };
                 }
+
+                if (sFieldName.indexOf("MONTH") !== -1 || sFieldName.indexOf("MONAT") !== -1) {
+                    var iMonthNum = parseInt(sStrVal, 10);
+                    if (isNaN(iMonthNum) || iMonthNum < 1 || iMonthNum > 12) {
+                        return { valid: false, msg: "Month must be from 1 to 12." };
+                    }
+                }
             } 
             // 2. Kiểm tra Kiểu Ngày Tháng (DATS)
             else if (sDataType === "DATS") {
                 var dateRegex = /^(\d{4}-\d{2}-\d{2}|\d{8})$/; // YYYY-MM-DD hoặc YYYYMMDD
                 if (!dateRegex.test(sStrVal)) {
                     return { valid: false, msg: "Incorrect format (YYYY-MM-DD)" };
+                }
+
+
+                var iYear;
+                var iMonth;
+                var iDay;
+
+                if (/^\d{8}$/.test(sStrVal)) {
+                    iYear = parseInt(sStrVal.substring(0, 4), 10);
+                    iMonth = parseInt(sStrVal.substring(4, 6), 10);
+                    iDay = parseInt(sStrVal.substring(6, 8), 10);
+                } else {
+                    var aDateParts = sStrVal.split("-");
+                    iYear = parseInt(aDateParts[0], 10);
+                    iMonth = parseInt(aDateParts[1], 10);
+                    iDay = parseInt(aDateParts[2], 10);
+                }
+
+                var oDate = new Date(iYear, iMonth - 1, iDay);
+                var bIsValidDate = oDate.getFullYear() === iYear &&
+                    (oDate.getMonth() + 1) === iMonth &&
+                    oDate.getDate() === iDay;
+
+                if (!bIsValidDate) {
+                    return { valid: false, msg: "Invalid date value." };
                 }
             }
             return { valid: true, msg: "" };

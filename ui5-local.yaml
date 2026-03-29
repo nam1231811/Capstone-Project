@@ -10,6 +10,7 @@ framework:
   libraries:
     - name: sap.m
     - name: sap.ui.core
+    - name: sap.ui.table
     - name: sap.fe.templates
     - name: sap.ushell
     - name: themelib_sap_horizon
