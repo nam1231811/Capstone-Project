@@ -97,9 +97,11 @@
                                             class="sapUiTinyMarginTop"/>
                                         
                                         <HBox justifyContent="Center">
-                                            <Button icon="sap-icon://edit" type="Transparent" tooltip="Edit Role" press=".onEditRole" class="sapUiTinyMarginEnd"/>
-                                            <Button icon="sap-icon://delete" type="Transparent" tooltip="Revoke Role" press=".onRevokeRole" enabled="{= ${ValidityText} !== 'Unassigned' }"/>
-                                        </HBox>
+        <Button icon="sap-icon://edit" type="Transparent" tooltip="Edit Role" press=".onEditRole" class="sapUiTinyMarginEnd"/>
+        
+        <Button icon="sap-icon://delete" type="Transparent" tooltip="Revoke Role" press=".onRevokeRole" 
+                enabled="{= ${IsAdmin} === true || ${IsAdmin} === 'true' || ${IsManager} === true || ${IsManager} === 'true' || ${IsClerk} === true || ${IsClerk} === 'true' ? true : false }"/>
+    </HBox>
                                     </cells>
                                 </ColumnListItem>
                             </items>
