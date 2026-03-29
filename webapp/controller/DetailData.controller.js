@@ -52,7 +52,7 @@ sap.ui.define([
 
             var aCells = Object.values(oDetailModel).filter(i => typeof i === 'object' && i.uuid);
             if (aCells.length === 0) {
-                sap.m.MessageBox.warning("Không tìm thấy dữ liệu hợp lệ để chỉnh sửa.");
+                sap.m.MessageBox.warning("No valid data found for editing!");
                 return;
             }
 
@@ -67,50 +67,58 @@ sap.ui.define([
             var oDisplayModel = oView.getModel("displayModel");
             var aDisplayData = oDisplayModel.getProperty("/Data");
             var enUuid = Object.values(oDetailModel)[0].uuid;
-                
-            var iIndex = aDisplayData.findIndex(row => {
-                return row["0"].uuid === enUuid; 
-            });
-        
+
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
+            var bIsAdmin   = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
+
+            var iIndex = aDisplayData.findIndex(row => row["0"].uuid === enUuid);
             if (iIndex !== -1) {
                 aDisplayData[iIndex] = JSON.parse(JSON.stringify(oDetailModel)); 
                 oDisplayModel.setProperty("/Data", aDisplayData);
             }
 
+            if (bIsManager || bIsAdmin) {
+                sap.ui.core.BusyIndicator.show(0);
+                
+                SaveToDatabase.onSaveDB(tableName, oView).then(function() {
+                    sap.ui.core.BusyIndicator.hide();
+                    sap.m.MessageToast.show("Updated to database successfully!");
+                    
+                    oView.getModel("viewModel").setProperty("/isEditMode", false);
+                    this._updateDisplayModelAfterSave(oDetailModel);
+                }.bind(this)).catch(function() {
+                    sap.ui.core.BusyIndicator.hide();
+                });
+                return;
+            }
+
             var aPromises = {};
             var arrayData = Object.values(oDetailModel);
             arrayData.forEach(oCell => {
-                if (oCell) {
-                    if (oCell && oCell.fieldname) {
-                        aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
-                    } else {
-                        console.warn("On Save" + key + "error");
-                    }
+                if (oCell && oCell.fieldname) {
+                    aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                 }
             });
-            var enUuid = arrayData[0].uuid
             
             var codeData = GetData.encodeFunction(aPromises);
-            var path = "/Data(uuid=" + enUuid + ")"
+            var path = "/Data(uuid=" + enUuid + ")";
 
             var oContext = oModel.bindContext(path).getBoundContext();
             oContext.setProperty("table_name", tableName);
             oContext.setProperty("data", codeData);
 
+            sap.ui.core.BusyIndicator.show(0);
             oModel.submitBatch("updateGroup").then(function(){
-                SaveToDatabase.onSaveDB(tableName, oView)
-                this._updateDisplayModelAfterSave(oDetailModel)
-            }.bind(this)).catch(function(oError){
-                sap.m.MessageBox.error("Lỗi: " + oError.message);
-            });
-            
-            try {
-                SaveToDatabase.onSaveDB(tableName, oView);
-                this.getView().getModel("viewModel").setProperty("/isEditMode", false);
+                sap.ui.core.BusyIndicator.hide();
+                sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
+                
+                oView.getModel("viewModel").setProperty("/isEditMode", false);
                 this._updateDisplayModelAfterSave(oDetailModel);
-            } catch (error) {
-                sap.m.MessageBox.error("Lỗi: " + error.message);
-            }
+            }.bind(this)).catch(function(oError){
+                sap.ui.core.BusyIndicator.hide();
+                sap.m.MessageBox.error("Error updating temporary table: " + oError.message);
+            });
         },
 
         onCancelEdit: function() {
@@ -156,40 +164,56 @@ sap.ui.define([
             var oModel = oView.getModel();
             var oDetailModel = oView.getModel("detailRecord");
             var oDataRaw = oDetailModel.getProperty("/Data");
-            var tableName = this.getView().getModel("overall").getProperty("/tableName")
+            var tableName = this.getView().getModel("overall").getProperty("/tableName");
             var aCells = Object.values(oDataRaw).filter(i => typeof i === 'object' && i.uuid);
         
+            if (aCells.length === 0) return;
+
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
+            var bIsAdmin   = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
+            
+            var enUuid = aCells[0].uuid;
+
             sap.m.MessageBox.confirm("Do you want to delete this record?", {
                 onClose: function (sAction) {
-                    oView.setBusy(true); 
                     if (sAction !== sap.m.MessageBox.Action.OK) {
-                        oView.setBusy(false);
                         return;
                     }
-                    
-                    var aPromises = {};
+                    oView.setBusy(true); 
 
-                    aCells.forEach(oRow => {
-                        console.log(oRow);
-                        if (oRow && oRow.fieldname) {
-                            aPromises[oRow.fieldname] = DataFormatter.formatValueByType(oRow.value, oRow.datatype);
-                        } else {
-                            console.warn("On Save" + key + "error");
-                        }
-                    });
+                    if (bIsManager || bIsAdmin) {
+                        var aPromises = {};
+                        aCells.forEach(oRow => {
+                            if (oRow && oRow.fieldname) {
+                                aPromises[oRow.fieldname] = DataFormatter.formatValueByType(oRow.value, oRow.datatype);
+                            }
+                        });
 
-                    if (aPromises && tableName) {
-                        var codeData = GetData.encodeFunction(aPromises)
-                        DeleteFromDatabase.postDelete(tableName, codeData, aCells[0].uuid).then(function () {                      
+                        var codeData = GetData.encodeFunction(aPromises);
+                        
+                        DeleteFromDatabase.postDelete(tableName, codeData, enUuid).then(function () {                      
+                            sap.m.MessageToast.show("Deleted successfully from database!");
                             this._cleanUpAfterDelete(aCells[0].row_id);
                         }.bind(this)).catch(function (oError) {
-                            console.error(oError);
-                            sap.m.MessageBox.error("Delete fail " + oError.message);
-                        }).finally(function () {
+                            sap.m.MessageBox.error("Failed to delete: " + oError.message);
                             oView.setBusy(false);
                         });
 
+                        return;
                     }
+
+                    var path = "/Data(uuid=" + enUuid + ")";
+                    var oContext = oModel.bindContext(path).getBoundContext();
+
+                    oContext.delete().then(function() {
+                        sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
+                        this._cleanUpAfterDelete(aCells[0].row_id);
+                    }.bind(this)).catch(function(oError) {
+                        sap.m.MessageBox.error("Error deleting temporary table: " + oError.message);
+                        oView.setBusy(false);
+                    });
+
                 }.bind(this)
             });
         },
@@ -242,7 +266,7 @@ sap.ui.define([
             console.log("Edit Value Help - Table:", sTableName, "Field:", sFieldName);
 
             if (!sTableName || !sFieldName) {
-                sap.m.MessageToast.show("Không tìm thấy thông tin Metadata cho ô này.");
+                sap.m.MessageToast.show("Cannot find metadata for this field");
                 return;
             }
 

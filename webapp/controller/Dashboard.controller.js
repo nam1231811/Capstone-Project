@@ -27,6 +27,19 @@ sap.ui.define([
             var oModel = new JSONModel(oData);
             this.getView().setModel(oModel, "dash");
 
+            var oRouter = this.getOwnerComponent().getRouter();
+            
+            var oRoute = oRouter.getRoute("RouteDashboard"); 
+            if (oRoute) {
+                oRoute.attachPatternMatched(this._onRouteMatched, this);
+            } else {
+                this._loadDashboardData();
+            }
+
+            this._loadDashboardData();
+        },
+
+        _onRouteMatched: function () {
             this._loadDashboardData();
         },
 
@@ -84,10 +97,6 @@ sap.ui.define([
                     plotArea: { dataLabel: { visible: bShow, type: 'value' } }
                 });
             }
-        },
-
-        onNavBack: function () {
-            this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true); 
         },
 
         onPressKPI: function() {

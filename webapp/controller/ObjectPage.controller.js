@@ -250,7 +250,6 @@ sap.ui.define([
             return oColumn;
         },
 
-        //Các hàm search, sort, filter, personalization
         onPersonalization: function () {
             PersonalizationData.onPersonalization.call(this);
         },
@@ -366,26 +365,45 @@ sap.ui.define([
         },
 
         _sendToBackend: function(table, data) {
-            var oView = this.getView()
+            var oView = this.getView();
             var oModel = oView.getModel();
+            
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
+            var bIsAdmin   = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
+
+            console.log("Quyền hiện tại: Manager?", bIsManager, "| Admin?", bIsAdmin);
+            if (bIsManager || bIsAdmin) {
+                sap.ui.core.BusyIndicator.show(0);
+                SaveToDatabase.onSaveDB(table, oView).then(function() {
+                    sap.ui.core.BusyIndicator.hide();
+                    sap.m.MessageToast.show("Updated to database successfully!");
+                    
+                    this._refreshData(table);
+                    this._onEditToggleButtonPress();
+                }.bind(this)).catch(function() {
+                    sap.ui.core.BusyIndicator.hide();
+                });
+                return;
+            }
+
             var oFinalPayload = {
                 "table_name": table,
                 "data": data
             };
             var oListBinding = oModel.bindList("/Data");
-
-            var oContext = oListBinding.create(oFinalPayload)
+            var oContext = oListBinding.create(oFinalPayload);
+            
             oContext.created().then(function () {
-                sap.m.MessageToast.show("Add new successfull");
-                SaveToDatabase.onSaveDB(oFinalPayload.table_name, oView)
-                this._refreshData(table)
-                this._onEditToggleButtonPress()
+                sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
+                this._refreshData(table);
+                this._onEditToggleButtonPress();
             }.bind(this)).catch(function(oError) {
                 this.byId("dataTable").setBusy(false);
                 if (oContext.isTransient()) {
                     oContext.delete(); 
                 }
-                sap.m.MessageBox.error("Dupplicate record, try another pls!" + oError.message);
+                sap.m.MessageBox.error("Error updating temporary table: " + oError.message);
             }.bind(this));
         },
 

@@ -4,64 +4,141 @@ sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
-    "sap/m/MessageToast"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast) {
+    "sap/m/MessageToast",
+    "zapp/models/GetData"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData) {
     "use strict";
 
     return Controller.extend("zapp.controller.Approval", {
         onInit: function () {
-            var sUserRole = "Manager"; 
-            
-            var oAuthModel = new JSONModel({
-                isManager: sUserRole === "Manager",
-                isClerk: sUserRole !== "Manager",
-                currentUser: "MNGR-001"
-            });
-            this.getView().setModel(oAuthModel, "auth");
-
-            var aPendingList = [
-                { reqId: "REQ-001", tableName: "ZEMPLOYEE_105", action: "UPDATE", requestedBy: "DEV-092", requestedAt: "2026-03-25 10:00:00", 
-                  diff: [
-                      { field: "Thành phố", oldData: "Ha Noi", newData: "Da Nang" },
-                      { field: "Phòng ban", oldData: "IT", newData: "Marketing" }
-                  ] 
-                },
-                { reqId: "REQ-002", tableName: "ZCOURSE_DEV335", action: "CREATE", requestedBy: "USER-01", requestedAt: "2026-03-25 09:30:00", 
-                  diff: [
-                      { field: "Khóa học", oldData: "-", newData: "SAP ABAP RAP" },
-                      { field: "Thời lượng", oldData: "-", newData: "40 Giờ" }
-                  ] 
-                },
-                { reqId: "REQ-003", tableName: "ZEMPLOYEE_105", action: "DELETE", requestedBy: "DEV-092", requestedAt: "2026-03-24 16:15:00", 
-                  diff: [
-                      { field: "Row ID", oldData: "EMP_99", newData: "Xóa toàn bộ dòng" }
-                  ] 
-                }
-            ];
-
-            var aHistoryList = [
-                { reqId: "REQ-000", tableName: "ZDEPARTMENT", action: "UPDATE", status: "APPROVED", processedAt: "2026-03-23 14:00:00", processedBy: "MNGR-001" },
-                { reqId: "REQ-099", tableName: "ZCONFIG", action: "DELETE", status: "REJECTED", processedAt: "2026-03-22 09:10:00", processedBy: "MNGR-002" }
-            ];
-
             var oApprovalModel = new JSONModel({
-                pendingList: aPendingList,
-                historyList: aHistoryList,
-                pendingCount: aPendingList.length,
-                historyCount: aHistoryList.length,
+                isPendingMode: true,
+                pendingList: [],
+                historyList: [],
+                pendingCount: 0,
+                historyCount: 0,
                 currentDetail: null
             });
             this.getView().setModel(oApprovalModel, "approval");
+
+            var oRouter = this.getOwnerComponent().getRouter();
+            if (oRouter.getRoute("RouteApproval")) {
+                oRouter.getRoute("RouteApproval").attachPatternMatched(this._onRouteMatched, this);
+            } else {
+                this._loadApprovalData();
+            }
         },
 
-        onNavBack: function () {
-            var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteHome", {}, true); 
+        _onRouteMatched: function () {
+            this._loadApprovalData();
+        },
+
+        _loadApprovalData: function () {
+            var oView = this.getView();
+            var oODataModel = this.getOwnerComponent().getModel();
+            var oApprovalModel = oView.getModel("approval");
+
+            if (!oODataModel) return;
+
+            oView.setBusy(true);
+
+            var oPendingBinding = oODataModel.bindList("/Data", null, null, [
+                new Filter("status", FilterOperator.EQ, "P")
+            ]);
+            var oHistoryBinding = oODataModel.bindList("/Data", null, null, [
+                new Filter("status", FilterOperator.NE, "P")
+            ]);
+
+            Promise.all([
+                oPendingBinding.requestContexts(0, 100),
+                oHistoryBinding.requestContexts(0, 100)
+            ]).then(function (aResults) {
+                var aPendingContexts = aResults[0];
+                var aHistoryContexts = aResults[1];
+
+                var aPendingList = this._formatData(aPendingContexts);
+                var aHistoryList = this._formatData(aHistoryContexts);
+
+                oApprovalModel.setProperty("/pendingList", aPendingList);
+                oApprovalModel.setProperty("/pendingCount", aPendingList.length);
+                oApprovalModel.setProperty("/historyList", aHistoryList);
+                oApprovalModel.setProperty("/historyCount", aHistoryList.length);
+
+                oView.setBusy(false);
+            }.bind(this)).catch(function (oError) {
+                oView.setBusy(false);
+                MessageBox.error("Error loading data: " + oError.message);
+            });
+        },
+
+        _formatData: function (aContexts) {
+            return aContexts.map(function (oContext) {
+                var oData = oContext.getObject();
+
+                var sActionCode = oData.action_type || oData.ActionType || "";
+                var sActionText = sActionCode;
+                if (sActionCode === "C") sActionText = "CREATE";
+                else if (sActionCode === "U") sActionText = "UPDATE";
+                else if (sActionCode === "D") sActionText = "DELETE";
+
+                var sStatusCode = oData.status || oData.Status || "";
+                var sStatusText = "PENDING";
+                if (sStatusCode === "A") sStatusText = "APPROVED";
+                else if (sStatusCode === "R") sStatusText = "REJECTED";
+
+                var aDiff = [];
+                var sRawData = oData.data || oData.Data;
+
+                if (sRawData) {
+                    try {
+                        var oParsed;
+                        if (!sRawData.startsWith("{") && !sRawData.startsWith("[")) {
+                            oParsed = GetData.decodeFunction({ json_string: sRawData }); 
+                        } else {
+                            oParsed = JSON.parse(sRawData);
+                        }
+
+                        Object.keys(oParsed).forEach(function (key) {
+                            aDiff.push({
+                                field: key,
+                                oldData: sActionCode === "C" ? "-" : "Loading...", 
+                                newData: oParsed[key]
+                            });
+                        });
+                    } catch (e) {
+                        console.error("Error parsing JSON approval data", e);
+                    }
+                }
+
+                return {
+                    _odataContext: oContext,
+                    reqId: oData.uuid || oData.Uuid,
+                    tableName: oData.table_name || oData.TableName || "",
+                    action: sActionText,
+                    status: sStatusText,
+                    requestedBy: oData.created_by || oData.CreatedBy || "USER",
+                    requestedAt: oData.created_at || oData.CreatedAt || "",
+                    processedBy: oData.changed_by || oData.ChangedBy || "",
+                    processedAt: oData.changed_at || oData.ChangedAt || "",
+                    diff: aDiff
+                };
+            });
+        },
+
+        onToggleMode: function() {
+            var oModel = this.getView().getModel("approval");
+            var bCurrentMode = oModel.getProperty("/isPendingMode");
+            
+            oModel.setProperty("/isPendingMode", !bCurrentMode);
+            this.byId("actionFilterBar").setSelectedKey("ALL");
+            this.onActionFilterSelect(); 
         },
 
         onActionFilterSelect: function (oEvent) {
-            var sKey = oEvent.getParameter("key");
-            var oTable = this.byId("pendingTable");
+            var sKey = this.byId("actionFilterBar").getSelectedKey();
+            var bIsPending = this.getView().getModel("approval").getProperty("/isPendingMode");
+            var sTableId = bIsPending ? "pendingTable" : "historyTable";
+            var oTable = this.byId(sTableId);
             var oBinding = oTable.getBinding("items");
 
             if (sKey === "ALL") {
@@ -80,7 +157,7 @@ sap.ui.define([
 
             if (!this._oDiffDialog) {
                 this._oDiffDialog = new sap.m.Dialog({
-                    title: "Approval Detail - Request: {approval>/currentDetail/reqId}",
+                    title: "Approval Detail",
                     contentWidth: "800px",
                     resizable: true,
                     content: [
@@ -109,8 +186,8 @@ sap.ui.define([
                                                 new sap.m.Text({ text: "{approval>oldData}" }),
                                                 new sap.m.ObjectStatus({ 
                                                     text: "{approval>newData}", 
-                                                    state: "Success",
-                                                    icon: "sap-icon://sys-enter-2"
+                                                    state: "{= ${approval>oldData} !== ${approval>newData} && ${approval>oldData} !== 'N/A' ? 'Warning' : 'Success' }",
+                                                    icon: "{= ${approval>oldData} !== ${approval>newData} && ${approval>oldData} !== 'N/A' ? 'sap-icon://edit' : 'sap-icon://sys-enter-2' }"
                                                 })
                                             ]
                                         })
@@ -148,6 +225,46 @@ sap.ui.define([
             }
 
             this._oDiffDialog.open();
+
+            if (oRowData.action === "CREATE") return;
+
+            this._oDiffDialog.setBusy(true);
+
+            var oODataModel = this.getOwnerComponent().getModel();
+            GetData.loadMeta(oODataModel, oRowData.tableName, "", "E").then(function(oPayload) {
+                var aMasterData = oPayload.dataRows || oPayload.Data || [];
+                
+                var oNewDataMapped = {};
+                oRowData.diff.forEach(function(d) { oNewDataMapped[d.field] = d.newData; });
+
+                var oOldRow = aMasterData.find(function(row) {
+                    var oJson = JSON.parse(row.data || "{}");
+                    if (oNewDataMapped.ID && String(oJson.ID) === String(oNewDataMapped.ID)) return true;
+                    if (oNewDataMapped.UUID && String(oJson.UUID) === String(oNewDataMapped.UUID)) return true;
+                    if (oNewDataMapped.CODE && String(oJson.CODE) === String(oNewDataMapped.CODE)) return true;
+                    return false;
+                });
+
+                var aUpdatedDiff = oRowData.diff.map(function(d) {
+                    var sOldValue = "N/A";
+                    if (oOldRow) {
+                        var oOldJson = JSON.parse(oOldRow.data || "{}");
+                        sOldValue = oOldJson[d.field] !== undefined ? String(oOldJson[d.field]) : "N/A";
+                    }
+                    return {
+                        field: d.field,
+                        oldData: sOldValue,
+                        newData: String(d.newData)
+                    };
+                });
+
+                oModel.setProperty("/currentDetail/diff", aUpdatedDiff);
+                this._oDiffDialog.setBusy(false);
+
+            }.bind(this)).catch(function(e) {
+                console.error("Error loading master data:", e);
+                this._oDiffDialog.setBusy(false);
+            }.bind(this));
         },
 
         onApproveRequest: function () {
@@ -159,37 +276,38 @@ sap.ui.define([
         },
 
         _processRequest: function (sStatus) {
-            var oModel = this.getView().getModel("approval");
+            var oView = this.getView();
+            var oModel = oView.getModel("approval");
             var oCurrentReq = oModel.getProperty("/currentDetail");
-            var aPending = oModel.getProperty("/pendingList");
-            var aHistory = oModel.getProperty("/historyList");
-            var sCurrentUser = this.getView().getModel("auth").getProperty("/currentUser");
 
-            // TODO: Gọi API lưu DB thực tế (SE16N) nếu Approve, hoặc hủy bỏ nếu Reject.
-            // VD: ApprovalAPI.submit(oCurrentReq.reqId, sStatus)...
+            var oODataModel = this.getOwnerComponent().getModel();
+            if (!oODataModel) return;
 
-            var aNewPending = aPending.filter(function(item) { return item.reqId !== oCurrentReq.reqId; });
-            
-            aHistory.unshift({
-                reqId: oCurrentReq.reqId,
-                tableName: oCurrentReq.tableName,
-                action: oCurrentReq.action,
-                status: sStatus,
-                processedAt: new Date().toLocaleString(),
-                processedBy: sCurrentUser
+            var oODataContext = oCurrentReq._odataContext;
+            if (!oODataContext) {
+                MessageBox.error("Error connecting to data source!");
+                return;
+            }
+
+            var sActionName = (sStatus === "APPROVED") ? "approve" : "reject";
+
+            var sActionPath = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001." + sActionName + "(...)";
+            var oActionContext = oODataModel.bindContext(sActionPath, oODataContext);
+
+            sap.ui.core.BusyIndicator.show(0);
+
+            oActionContext.execute().then(function () {
+                sap.ui.core.BusyIndicator.hide();
+                MessageToast.show(sStatus === "APPROVED" ? "Approved!" : "Rejected!");
+
+                this._oDiffDialog.close();
+                this._loadApprovalData();
+
+            }.bind(this)).catch(function (oError) {
+                sap.ui.core.BusyIndicator.hide();
+                MessageBox.error("Error processing Request: " + oError.message);
+                console.error(oError);
             });
-
-            oModel.setProperty("/pendingList", aNewPending);
-            oModel.setProperty("/historyList", aHistory);
-            oModel.setProperty("/pendingCount", aNewPending.length);
-            oModel.setProperty("/historyCount", aHistory.length);
-
-            this._oDiffDialog.close();
-
-            var sMsg = sStatus === "APPROVED" 
-                ? "Request approved " + oCurrentReq.reqId + ". Data saved to database." 
-                : "Request rejected " + oCurrentReq.reqId + ".";
-            MessageToast.show(sMsg);
         }
     });
 });
