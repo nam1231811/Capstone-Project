@@ -14,6 +14,11 @@ sap.ui.define([
             oRouter.navTo("RouteMain"); 
         },
 
+        onNavToMyRequests: function () {
+            var oRouter = this.getOwnerComponent().getRouter();
+            oRouter.navTo("RouteMyRequests"); 
+        },
+
         onNavToDashboard: function () {
             var oAuthModel = this.getOwnerComponent().getModel("auth");
             var bIsClerk = oAuthModel.getProperty("/isClerk");

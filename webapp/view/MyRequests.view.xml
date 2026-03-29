@@ -1,0 +1,54 @@
+<mvc:View
+    controllerName="zapp.controller.MyRequests"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:layout="sap.ui.layout">
+    <Page title="My Requests" showNavButton="true" navButtonPress=".onNavBack" backgroundDesign="List">
+        <content>
+            <VBox class="sapUiResponsiveContentPadding">
+                <OverflowToolbar class="sapUiSmallMarginBottom">
+                    <Title text="Status:" level="H4" class="sapUiTinyMarginEnd" />
+                    <SegmentedButton id="statusFilterBar" selectionChange=".onStatusFilterSelect" selectedKey="ALL">
+                        <items>
+                            <SegmentedButtonItem key="ALL" text="All" />
+                            <SegmentedButtonItem key="PENDING" text="Pending" icon="sap-icon://pending" />
+                            <SegmentedButtonItem key="REJECTED" text="Rejected" icon="sap-icon://decline" />
+                            <SegmentedButtonItem key="APPROVED" text="Approved" icon="sap-icon://accept" />
+                        </items>
+                    </SegmentedButton>
+                    <ToolbarSpacer />
+                    <Button icon="sap-icon://refresh" text="Refresh" press=".onRefreshList" />
+                </OverflowToolbar>
+
+                <Table id="myRequestsTable" 
+                       items="{myreq>/list}" 
+                       noDataText="You have not created any requests"
+                       alternateRowColors="true">
+                    <columns>
+                        <Column width="20%"><Label text="Data Table" design="Bold"/></Column>
+                        <Column width="15%"><Label text="Action" design="Bold"/></Column>
+                        <Column width="20%"><Label text="Status" design="Bold"/></Column>
+                        <Column width="20%"><Label text="Last Updated" design="Bold"/></Column>
+                        <Column width="15%" hAlign="End"><Label text="Action" design="Bold"/></Column>
+                    </columns>
+                    <items>
+                        <ColumnListItem>
+                            <cells>
+                                <ObjectIdentifier title="{myreq>tableName}" text="ID: {myreq>reqId}" />
+                                <Text text="{myreq>action}" />
+                                <ObjectStatus text="{myreq>status}" 
+                                              state="{= ${myreq>status} === 'APPROVED' ? 'Success' : (${myreq>status} === 'REJECTED' ? 'Error' : 'Warning') }" 
+                                              icon="{= ${myreq>status} === 'APPROVED' ? 'sap-icon://accept' : (${myreq>status} === 'REJECTED' ? 'sap-icon://decline' : 'sap-icon://pending') }" />
+                                <Text text="{myreq>changedAt}" />
+                                <Button text="{= ${myreq>status} === 'REJECTED' ? 'Edit &amp; Resubmit' : 'View Details' }" 
+                                        type="{= ${myreq>status} === 'REJECTED' ? 'Reject' : 'Transparent' }" 
+                                        icon="{= ${myreq>status} === 'REJECTED' ? 'sap-icon://edit' : 'sap-icon://display' }" 
+                                        press=".onOpenDetailDialog"/>
+                            </cells>
+                        </ColumnListItem>
+                    </items>
+                </Table>
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>
