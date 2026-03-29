@@ -48,7 +48,7 @@ sap.ui.define([
             oActionContext.setParameter("table_name", sTableName);
             oActionContext.setParameter("json_data", sBase64Data);
 
-            oActionContext.execute().then(function () {
+            return oActionContext.execute().then(function () {
                 sap.m.MessageToast.show("Already update to database");
             }.bind(this)).catch(function (oError) {
                 sap.ui.core.BusyIndicator.hide();
