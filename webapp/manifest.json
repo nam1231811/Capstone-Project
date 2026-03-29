@@ -118,6 +118,11 @@
           "target": "TargetMain"
         },
         {
+          "name": "RouteMyRequests",
+          "pattern": "my-requests",
+          "target": "TargetMyRequests"
+        },
+        {
           "name": "RouteDashboard",
           "pattern": "dashboard",
           "target": "TargetDashboard"
@@ -174,6 +179,13 @@
           "type": "View",
           "name": "MainPage",
           "id": "MainPage",
+          "viewLevel": 2,
+          "controlAggregation": "pages"
+        },
+        "TargetMyRequests": {
+          "type": "View",
+          "name": "MyRequests",
+          "id": "ViewMyRequests",
           "viewLevel": 2,
           "controlAggregation": "pages"
         },

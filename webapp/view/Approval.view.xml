@@ -49,7 +49,7 @@
                         <Column width="15%"><Label text="Request ID" design="Bold"/></Column>
                         <Column width="20%"><Label text="Data Table" design="Bold"/></Column>
                         <Column width="15%"><Label text="Action" design="Bold"/></Column>
-                        <Column width="20%"><Label text="Requested By (Clerk)" design="Bold"/></Column>
+                        <Column width="20%"><Label text="Requested By" design="Bold"/></Column>
                         <Column width="20%"><Label text="Requested At" design="Bold"/></Column>
                         <Column width="10%" hAlign="End"><Label text="Details" design="Bold"/></Column>
                     </columns>

@@ -272,10 +272,44 @@ sap.ui.define([
         },
 
         onRejectRequest: function () {
-            this._processRequest("REJECTED");
+            var oTextArea = new sap.m.TextArea({
+                width: "100%",
+                placeholder: "Enter reason for rejection...",
+                rows: 4
+            });
+
+            var oRejectDialog = new sap.m.Dialog({
+                title: "Confirm Rejection",
+                type: "Message",
+                state: "Error",
+                content: [
+                    new sap.m.Text({ text: "Are you sure you want to reject this request? Please provide a reason for this rejection:" }),
+                    oTextArea
+                ],
+                beginButton: new sap.m.Button({
+                    type: "Reject",
+                    text: "Reject",
+                    press: function () {
+                        var sReason = oTextArea.getValue().trim();
+                        if (!sReason) {
+                            sap.m.MessageToast.show("Please enter a reason for rejection!");
+                            return;
+                        }
+                        oRejectDialog.close();
+                        this._processRequest("REJECTED", sReason);
+                    }.bind(this)
+                }),
+                endButton: new sap.m.Button({
+                    text: "Cancel",
+                    press: function () { oRejectDialog.close(); }
+                }),
+                afterClose: function () { oRejectDialog.destroy(); }
+            });
+
+            oRejectDialog.open();
         },
 
-        _processRequest: function (sStatus) {
+        _processRequest: function (sStatus, sReason) {
             var oView = this.getView();
             var oModel = oView.getModel("approval");
             var oCurrentReq = oModel.getProperty("/currentDetail");
@@ -293,6 +327,10 @@ sap.ui.define([
 
             var sActionPath = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001." + sActionName + "(...)";
             var oActionContext = oODataModel.bindContext(sActionPath, oODataContext);
+
+            if (sStatus === "REJECTED" && sReason) {
+                oActionContext.setParameter("reason", sReason);
+            }
 
             sap.ui.core.BusyIndicator.show(0);
 
