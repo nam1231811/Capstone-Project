@@ -4,7 +4,6 @@
     xmlns:uxap="sap.uxap" 
     xmlns:core="sap.ui.core"
     xmlns:ui="sap.ui.table"
-    xmlns:rowmodes="sap.ui.table.rowmodes"
     xmlns:u="sap.ui.unified"
     xmlns="sap.m">
     <App id="TablePage">
@@ -64,7 +63,7 @@
                                     <Button 
                                         id="btnDownload" 
                                         icon="sap-icon://download" 
-                                        type="Success" 
+                                        type="Accept" 
                                         text="Download" 
                                         press=".onDownloadExcelPress" 
                                         tooltip="Xuất dữ liệu ra file Excel"/>
@@ -83,11 +82,8 @@
                                     class="myCustomCleanTable"
                                     rowSelectionChange=".onListItemPress"
                                     selectionBehavior="RowOnly"
-                                    selectionMode="MultiToggle">
-
-                                    <ui:rowMode>
-                                        <rowmodes:Auto minRowCount="{overall>/minRecord}" />
-                                    </ui:rowMode>
+                                    selectionMode="MultiToggle"
+                                    >
 
                                 </ui:Table>
                                 </ScrollContainer>

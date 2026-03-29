@@ -6,7 +6,6 @@
     xmlns:fb="sap.ui.comp.filterbar"
     xmlns:core="sap.ui.core"
     xmlns:ui="sap.ui.table"
-    xmlns:rowmodes="sap.ui.table.rowmodes"
     displayBlock="true">
 
     <f:DynamicPage id="dynamicPageId" headerExpanded="true" toggleHeaderOnTitleClick="true" class="sapUiResponsiveContentPadding">
@@ -82,14 +81,11 @@
                         width="100%"
                         rows="{realData>/UniqueTables}"
                         noData="{i18n>noDataText}"
-                        class="myCustomCleanTable" 
+                        class="myCustomCleanTable"
+                        visibleRowCount="{= ${realData>/UniqueTables} ? (${realData>/UniqueTables}.length === 0 ? 1 : (${realData>/UniqueTables}.length > 15 ? 15 : ${realData>/UniqueTables}.length)) : 1 }"
                         rowSelectionChange=".onRowPress"
                         selectionBehavior="RowOnly"
                         selectionMode="Single">
-
-                        <ui:rowMode>
-                            <rowmodes:Fixed rowCount="{= ${realData>/UniqueTables} ? (${realData>/UniqueTables}.length === 0 ? 1 : (${realData>/UniqueTables}.length > 15 ? 15 : ${realData>/UniqueTables}.length)) : 1 }" />
-                        </ui:rowMode>
 
                         <ui:columns>
                             <ui:Column id="colTableName" width="25%">

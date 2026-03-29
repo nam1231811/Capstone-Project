@@ -160,7 +160,7 @@ sap.ui.define([
                                     _performFullGridValidation(); 
                                 }
                             }),
-                            width: "10em",
+                            width: "10rem",
                             autoResizable: true
                         }));
                     }
@@ -174,7 +174,6 @@ sap.ui.define([
             // 3. THỰC HIỆN QUÉT LỖI LẦN ĐẦU TIÊN (Khi vừa mở Popup)
             _performFullGridValidation();
 
-            // Bọc table trong scroll container để hiển thị thanh cuộn ngang khi nhiều cột
             var oScrollContainer = new sap.m.ScrollContainer({
                 horizontal: true,
                 vertical: true,
@@ -289,7 +288,6 @@ sap.ui.define([
                     return { valid: false, msg: "Please enter only numbers." };
                 }
 
-                // Kiểm tra tháng hợp lệ cho các cột month/monat (1..12)
                 if (sFieldName.indexOf("MONTH") !== -1 || sFieldName.indexOf("MONAT") !== -1) {
                     var iMonthNum = parseInt(sStrVal, 10);
                     if (isNaN(iMonthNum) || iMonthNum < 1 || iMonthNum > 12) {
@@ -304,7 +302,7 @@ sap.ui.define([
                     return { valid: false, msg: "Incorrect format (YYYY-MM-DD)" };
                 }
 
-                // Kiểm tra ngày thực tế có tồn tại (vd: 2026-16-32 là không hợp lệ)
+
                 var iYear;
                 var iMonth;
                 var iDay;
