@@ -5,8 +5,9 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "zapp/models/GetData"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData) {
+    "zapp/models/GetData",
+    "zapp/utils/DataFormatter"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData, DataFormatter) { 
     "use strict";
 
     return Controller.extend("zapp.controller.Approval", {
@@ -39,25 +40,35 @@ sap.ui.define([
             var oApprovalModel = oView.getModel("approval");
 
             if (!oODataModel) return;
-
             oView.setBusy(true);
 
             var oPendingBinding = oODataModel.bindList("/Data", null, null, [
                 new Filter("status", FilterOperator.EQ, "P")
             ]);
-            var oHistoryBinding = oODataModel.bindList("/Data", null, null, [
-                new Filter("status", FilterOperator.NE, "P")
-            ]);
+            
+            var oAuditModel = this.getOwnerComponent().getModel("auditOData");
+            var oHistoryBinding = oAuditModel.bindList("/AuditLog", null, null, null); 
 
             Promise.all([
-                oPendingBinding.requestContexts(0, 100),
-                oHistoryBinding.requestContexts(0, 100)
+                oPendingBinding.requestContexts(0, 500),
+                oHistoryBinding.requestContexts(0, 500)
             ]).then(function (aResults) {
-                var aPendingContexts = aResults[0];
-                var aHistoryContexts = aResults[1];
+                var aPendingList = this._formatData(aResults[0], true);
+                var aHistoryList = this._formatData(aResults[1], false);
 
-                var aPendingList = this._formatData(aPendingContexts);
-                var aHistoryList = this._formatData(aHistoryContexts);
+                aPendingList.sort(function(a, b) {
+                    return new Date(b.rawDataTime) - new Date(a.rawDataTime);
+                });
+                aPendingList.forEach(function(item, index) { 
+                    item.indexNo = index + 1; 
+                });
+
+                aHistoryList.sort(function(a, b) {
+                    return new Date(b.rawDataTime) - new Date(a.rawDataTime);
+                });
+                aHistoryList.forEach(function(item, index) { 
+                    item.indexNo = index + 1; 
+                });
 
                 oApprovalModel.setProperty("/pendingList", aPendingList);
                 oApprovalModel.setProperty("/pendingCount", aPendingList.length);
@@ -67,37 +78,30 @@ sap.ui.define([
                 oView.setBusy(false);
             }.bind(this)).catch(function (oError) {
                 oView.setBusy(false);
-                MessageBox.error("Error loading data: " + oError.message);
+                sap.m.MessageBox.error("Error loading data");
+                console.error(oError);
             });
         },
 
-        _formatData: function (aContexts) {
+        _formatData: function (aContexts, bIsPending) {
             return aContexts.map(function (oContext) {
                 var oData = oContext.getObject();
 
-                var sActionCode = oData.action_type || oData.ActionType || "";
-                var sActionText = sActionCode;
-                if (sActionCode === "C") sActionText = "CREATE";
-                else if (sActionCode === "U") sActionText = "UPDATE";
-                else if (sActionCode === "D") sActionText = "DELETE";
+                var sActionCode = oData.action_type || oData.ActionType || oData.action || oData.Action || "";
+                var sActionText = sActionCode === "C" ? "CREATE" : (sActionCode === "U" ? "UPDATE" : "DELETE");
 
                 var sStatusCode = oData.status || oData.Status || "";
-                var sStatusText = "PENDING";
-                if (sStatusCode === "A") sStatusText = "APPROVED";
-                else if (sStatusCode === "R") sStatusText = "REJECTED";
+                var sStatusText = bIsPending ? "PENDING" : (sStatusCode === "A" ? "APPROVED" : "REJECTED");
+
+                var sRawTime = bIsPending ? (oData.created_at || oData.CreatedAt) : (oData.changed_at || oData.ChangedAt);
 
                 var aDiff = [];
-                var sRawData = oData.data || oData.Data;
-
+                var sRawData = oData.data || oData.Data || oData.old_data || oData.OldData;
                 if (sRawData) {
                     try {
-                        var oParsed;
-                        if (!sRawData.startsWith("{") && !sRawData.startsWith("[")) {
-                            oParsed = GetData.decodeFunction({ json_string: sRawData }); 
-                        } else {
-                            oParsed = JSON.parse(sRawData);
-                        }
-
+                        var oParsed = (!sRawData.startsWith("{") && !sRawData.startsWith("[")) 
+                                    ? GetData.decodeFunction({ json_string: sRawData }) 
+                                    : JSON.parse(sRawData);
                         Object.keys(oParsed).forEach(function (key) {
                             aDiff.push({
                                 field: key,
@@ -105,21 +109,21 @@ sap.ui.define([
                                 newData: oParsed[key]
                             });
                         });
-                    } catch (e) {
-                        console.error("Error parsing JSON approval data", e);
-                    }
+                    } catch (e) { console.error(e); }
                 }
 
                 return {
                     _odataContext: oContext,
-                    reqId: oData.uuid || oData.Uuid,
+                    reqId: oData.uuid || oData.Uuid || oData.log_uuid || oData.LogUuid,
                     tableName: oData.table_name || oData.TableName || "",
                     action: sActionText,
                     status: sStatusText,
-                    requestedBy: oData.created_by || oData.CreatedBy || "USER",
-                    requestedAt: oData.created_at || oData.CreatedAt || "",
+                    requestedBy: oData.created_by || oData.CreatedBy || oData.changed_by || "USER",
                     processedBy: oData.changed_by || oData.ChangedBy || "",
-                    processedAt: oData.changed_at || oData.ChangedAt || "",
+                    rawDataTime: sRawTime,
+                    requestedAt: DataFormatter.formatDateTime(oData.created_at || oData.CreatedAt || oData.changed_at),
+                    processedAt: DataFormatter.formatDateTime(oData.changed_at || oData.ChangedAt),
+                    
                     diff: aDiff
                 };
             });
@@ -159,25 +163,38 @@ sap.ui.define([
                 this._oDiffDialog = new sap.m.Dialog({
                     title: "Approval Detail",
                     contentWidth: "800px",
+                    contentHeight: "500px",
                     resizable: true,
+                    draggable: true,
                     content: [
                         new sap.m.VBox({
-                            class: "sapUiSmallMargin",
                             items: [
-                                new sap.m.HBox({
-                                    justifyContent: "SpaceBetween",
-                                    class: "sapUiMediumMarginBottom",
-                                    items: [
-                                        new sap.m.Label({ text: "Data Table: {approval>/currentDetail/tableName}", design: "Bold" }),
+                                new sap.m.ObjectHeader({
+                                    title: "Target Table: {approval>/currentDetail/tableName}",
+                                    icon: "sap-icon://table-view",
+                                    responsive: true,
+                                    fullScreenOptimized: true,
+                                    statuses: [
                                         new sap.m.ObjectStatus({
                                             text: "{approval>/currentDetail/action}",
-                                            state: "{= ${approval>/currentDetail/action} === 'CREATE' ? 'Success' : (${approval>/currentDetail/action} === 'DELETE' ? 'Error' : 'Warning') }"
+                                            state: "{= ${approval>/currentDetail/action} === 'CREATE' ? 'Success' : (${approval>/currentDetail/action} === 'DELETE' ? 'Error' : 'Warning') }",
+                                            icon: "{= ${approval>/currentDetail/action} === 'CREATE' ? 'sap-icon://add' : (${approval>/currentDetail/action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }",
+                                            inverted: true
                                         })
                                     ]
+                                }),
+
+                                new sap.m.MessageStrip({
+                                    text: "Please review the data differences below before making a decision",
+                                    type: "Information",
+                                    showIcon: true,
+                                    class: "sapUiSmallMargin"
                                 }),
                                 
                                 new sap.m.Table({
                                     backgroundDesign: "Solid",
+                                    sticky: ["ColumnHeaders"],
+                                    class: "sapUiTinyMargin",
                                     items: {
                                         path: "approval>/currentDetail/diff",
                                         template: new sap.m.ColumnListItem({
@@ -194,8 +211,8 @@ sap.ui.define([
                                     },
                                     columns: [
                                         new sap.m.Column({ header: new sap.m.Label({ text: "Field", design: "Bold" }) }),
-                                        new sap.m.Column({ header: new sap.m.Label({ text: "Old Data", design: "Bold" }) }),
-                                        new sap.m.Column({ header: new sap.m.Label({ text: "New Data", design: "Bold" }) })
+                                        new sap.m.Column({ header: new sap.m.Label({ text: "Old Data", design: "Bold" }) }), 
+                                        new sap.m.Column({ header: new sap.m.Label({ text: "New Data", design: "Bold" }) })    
                                     ]
                                 })
                             ]
@@ -215,9 +232,9 @@ sap.ui.define([
                     }),
                     customHeader: new sap.m.Toolbar({
                         content: [
-                            new sap.m.Title({ text: "Check Data" }),
+                            new sap.m.Title({ text: "Review Request" }),
                             new sap.m.ToolbarSpacer(),
-                            new sap.m.Button({ icon: "sap-icon://decline", press: function() { this._oDiffDialog.close(); }.bind(this) })
+                            new sap.m.Button({ icon: "sap-icon://decline", type: "Transparent", press: function() { this._oDiffDialog.close(); }.bind(this) })
                         ]
                     })
                 });
@@ -274,8 +291,19 @@ sap.ui.define([
         onRejectRequest: function () {
             var oTextArea = new sap.m.TextArea({
                 width: "100%",
-                placeholder: "Enter reason for rejection...",
+                placeholder: "Please enter the reason why this request is rejected...", 
                 rows: 4
+            });
+
+            var oMessageStrip = new sap.m.MessageStrip({
+                text: "Rejecting this request will halt the current workflow",
+                type: "Warning",
+                showIcon: true
+            }).addStyleClass("sapUiMediumMarginBottom");
+
+            var oLabel = new sap.m.Label({ 
+                text: "Rejection Reason", 
+                required: true 
             });
 
             var oRejectDialog = new sap.m.Dialog({
@@ -283,12 +311,17 @@ sap.ui.define([
                 type: "Message",
                 state: "Error",
                 content: [
-                    new sap.m.Text({ text: "Are you sure you want to reject this request? Please provide a reason for this rejection:" }),
-                    oTextArea
+                    new sap.m.VBox({
+                        items: [
+                            oMessageStrip,
+                            oLabel,
+                            oTextArea
+                        ]
+                    }).addStyleClass("sapUiTinyMarginTop")
                 ],
                 beginButton: new sap.m.Button({
                     type: "Reject",
-                    text: "Reject",
+                    text: "Reject Request", 
                     press: function () {
                         var sReason = oTextArea.getValue().trim();
                         if (!sReason) {

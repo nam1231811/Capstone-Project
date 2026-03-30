@@ -8,8 +8,17 @@
     xmlns:core="sap.ui.core"
     displayBlock="true">
     
-    <Page title="Role Management" showNavButton="true" navButtonPress=".onNavBack" backgroundDesign="List">
-        <content>
+    <f:DynamicPage id="roleAssignmentPageId" headerExpanded="true" class="sapUiResponsiveContentPadding">
+        
+        <f:title>
+            <f:DynamicPageTitle>
+                <f:heading>
+                    <Title text="Role Assignment" level="H2"/>
+                </f:heading>
+            </f:DynamicPageTitle>
+        </f:title>
+
+        <f:content>
             <layout:Grid defaultSpan="XL12 L12 M12 S12" class="sapUiSmallMarginTop">
                 
                 <f:Card>
@@ -19,12 +28,12 @@
                             <HBox alignItems="Center">
                                 <Avatar src="sap-icon://key-user-settings" displaySize="S" backgroundColor="Transparent" class="sapUiSmallMarginEnd"/>
                                 <VBox>
-                                    <Title text="Role Assignment" level="H5" />
+                                    <Title text="Search &amp; Filter" level="H6" />
                                     <Text text="Search and assign system roles" />
                                 </VBox>
                             </HBox>
 
-                            <HBox alignItems="Center">
+                            <HBox alignItems="Center" class="sapUiSmallMarginEnd">
                                 <SearchField id="searchUser" placeholder="Search Username or Name..." search=".onSearchUser" width="300px" class="sapUiSmallMarginEnd" />
                                 
                                 <ComboBox id="filterRole" placeholder="Filter by Role..." selectionChange=".onSearchUser">
@@ -97,11 +106,11 @@
                                             class="sapUiTinyMarginTop"/>
                                         
                                         <HBox justifyContent="Center">
-        <Button icon="sap-icon://edit" type="Transparent" tooltip="Edit Role" press=".onEditRole" class="sapUiTinyMarginEnd"/>
-        
-        <Button icon="sap-icon://delete" type="Transparent" tooltip="Revoke Role" press=".onRevokeRole" 
-                enabled="{= ${IsAdmin} === true || ${IsAdmin} === 'true' || ${IsManager} === true || ${IsManager} === 'true' || ${IsClerk} === true || ${IsClerk} === 'true' ? true : false }"/>
-    </HBox>
+                                            <Button icon="sap-icon://edit" type="Transparent" tooltip="Edit Role" press=".onEditRole" class="sapUiTinyMarginEnd"/>
+                                            
+                                            <Button icon="sap-icon://delete" type="Transparent" tooltip="Revoke Role" press=".onRevokeRole" 
+                                                    enabled="{= ${IsAdmin} === true || ${IsAdmin} === 'true' || ${IsManager} === true || ${IsManager} === 'true' || ${IsClerk} === true || ${IsClerk} === 'true' ? true : false }"/>
+                                        </HBox>
                                     </cells>
                                 </ColumnListItem>
                             </items>
@@ -110,6 +119,6 @@
                 </f:Card>
 
             </layout:Grid>
-        </content>
-    </Page>
+        </f:content>
+    </f:DynamicPage>
 </mvc:View>
