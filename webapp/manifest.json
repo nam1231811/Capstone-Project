@@ -36,6 +36,13 @@
           "localUri": "localService/mainService/metadata.xml",
           "odataVersion": "4.0"
         }
+      },
+      "auditLogService": {
+        "uri": "/sap/opu/odata4/sap/zsb_audit_log_gsp14/srvd/sap/zsd_audit_log_gsp14/0001/",
+        "type": "OData",
+        "settings": {
+          "odataVersion": "4.0"
+        }
       }
     }
   },
@@ -103,6 +110,15 @@
       "@i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
         "uri": "i18n/i18n.properties"
+      },
+      "auditOData": {
+        "dataSource": "auditLogService",
+        "settings": {
+          "synchronizationMode": "None",
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
       }
     },
     "resources": {
@@ -206,7 +222,7 @@
         },
         "TargetDashboard": {
           "type": "View",
-          "name": "Dashboard", 
+          "name": "Dashboard",
           "id": "ViewDashboard",
           "viewLevel": 2,
           "controlAggregation": "pages"

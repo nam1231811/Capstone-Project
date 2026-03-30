@@ -2,12 +2,29 @@
     controllerName="zapp.controller.MyRequests"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
-    xmlns:layout="sap.ui.layout">
-    <Page title="My Requests" showNavButton="true" navButtonPress=".onNavBack" backgroundDesign="List">
-        <content>
-            <VBox class="sapUiResponsiveContentPadding">
-                <OverflowToolbar class="sapUiSmallMarginBottom">
-                    <Title text="Status:" level="H4" class="sapUiTinyMarginEnd" />
+    xmlns:f="sap.f"
+    xmlns:core="sap.ui.core"
+    xmlns:layout="sap.ui.layout"
+    displayBlock="true">
+    
+    <f:DynamicPage 
+        id="myRequestsPageId" 
+        headerExpanded="true" 
+        class="sapUiResponsiveContentPadding">
+        
+        <f:title>
+            <f:DynamicPageTitle>
+                <f:heading>
+                    <Title text="My Requests" level="H2"/>
+                </f:heading>          
+            </f:DynamicPageTitle>
+        </f:title>
+
+        <f:content>
+            <VBox fitContainer="true" height="100%">
+                
+                <OverflowToolbar class="sapUiSmallMarginBottom sapUiShadow1" design="Solid" style="Clear">
+                    <Title text="Status Filter:" level="H4" class="sapUiTinyMarginEnd" />
                     <SegmentedButton id="statusFilterBar" selectionChange=".onStatusFilterSelect" selectedKey="ALL">
                         <items>
                             <SegmentedButtonItem key="ALL" text="All" />
@@ -17,38 +34,65 @@
                         </items>
                     </SegmentedButton>
                     <ToolbarSpacer />
-                    <Button icon="sap-icon://refresh" text="Refresh" press=".onRefreshList" />
+                    <Button icon="sap-icon://refresh" text="Refresh" press=".onRefreshList" type="Emphasized"/>
                 </OverflowToolbar>
 
-                <Table id="myRequestsTable" 
-                       items="{myreq>/list}" 
-                       noDataText="You have not created any requests"
-                       alternateRowColors="true">
-                    <columns>
-                        <Column width="20%"><Label text="Data Table" design="Bold"/></Column>
-                        <Column width="15%"><Label text="Action" design="Bold"/></Column>
-                        <Column width="20%"><Label text="Status" design="Bold"/></Column>
-                        <Column width="20%"><Label text="Last Updated" design="Bold"/></Column>
-                        <Column width="15%" hAlign="End"><Label text="Action" design="Bold"/></Column>
-                    </columns>
+                <List id="myRequestsTable" 
+                      items="{myreq>/list}" 
+                      noDataText="You have not created any requests yet."
+                      showSeparators="None">
                     <items>
-                        <ColumnListItem>
-                            <cells>
-                                <ObjectIdentifier title="{myreq>tableName}" text="ID: {myreq>reqId}" />
-                                <Text text="{myreq>action}" />
-                                <ObjectStatus text="{myreq>status}" 
-                                              state="{= ${myreq>status} === 'APPROVED' ? 'Success' : (${myreq>status} === 'REJECTED' ? 'Error' : 'Warning') }" 
-                                              icon="{= ${myreq>status} === 'APPROVED' ? 'sap-icon://accept' : (${myreq>status} === 'REJECTED' ? 'sap-icon://decline' : 'sap-icon://pending') }" />
-                                <Text text="{myreq>changedAt}" />
-                                <Button text="{= ${myreq>status} === 'REJECTED' ? 'Edit &amp; Resubmit' : 'View Details' }" 
-                                        type="{= ${myreq>status} === 'REJECTED' ? 'Reject' : 'Transparent' }" 
-                                        icon="{= ${myreq>status} === 'REJECTED' ? 'sap-icon://edit' : 'sap-icon://display' }" 
-                                        press=".onOpenDetailDialog"/>
-                            </cells>
-                        </ColumnListItem>
+                        <CustomListItem type="Navigation" press=".onOpenDetailDialog" class="sapUiSmallMarginBottom sapUiShadow1">
+                            <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
+                                
+                                <HBox alignItems="Center" width="45%">
+                                    <core:Icon 
+                                        src="{= ${myreq>action} === 'CREATE' ? 'sap-icon://add-document' : (${myreq>action} === 'UPDATE' ? 'sap-icon://edit' : 'sap-icon://delete') }"
+                                        size="1.75rem"
+                                        color="{= ${myreq>action} === 'CREATE' ? '#2b7c2b' : (${myreq>action} === 'UPDATE' ? '#e9730c' : '#bb0000') }"
+                                        class="sapUiMediumMarginEnd" />
+                                    
+                                    <VBox>
+                                        <Title text="Table: {myreq>tableName}" level="H4" wrapping="true"/>
+                                        
+                                        <Text text="No. {myreq>indexNo}" class="sapUiTinyMarginTop sapUiTinyMarginBottom sapUiMutedText"/>
+                                        
+                                        <HBox alignItems="Center">
+                                            <Label text="Action:" design="Bold" class="sapUiTinyMarginEnd"/>
+                                            <ObjectStatus 
+                                                text="{myreq>action}" 
+                                                state="{= ${myreq>action} === 'CREATE' ? 'Success' : (${myreq>action} === 'UPDATE' ? 'Warning' : 'Error') }"
+                                                inverted="true" />
+                                        </HBox>
+                                    </VBox>
+                                </HBox>
+
+                                <VBox width="30%" class="sapUiHideOnPhone">
+                                    <Label text="Last Updated:" design="Bold" />
+                                    <Text text="{myreq>changedAt}" />
+                                </VBox>
+
+                                <VBox alignItems="End" width="25%">
+                                    <ObjectStatus 
+                                        text="{myreq>status}" 
+                                        state="{= ${myreq>status} === 'APPROVED' ? 'Success' : (${myreq>status} === 'REJECTED' ? 'Error' : 'Warning') }" 
+                                        icon="{= ${myreq>status} === 'APPROVED' ? 'sap-icon://accept' : (${myreq>status} === 'REJECTED' ? 'sap-icon://decline' : 'sap-icon://pending') }"
+                                        inverted="true" 
+                                        class="sapUiTinyMarginBottom" />
+                                        
+                                    <ObjectStatus 
+                                        text="Action Required" 
+                                        state="Error" 
+                                        icon="sap-icon://message-warning"
+                                        visible="{= ${myreq>status} === 'REJECTED' }" />
+                                </VBox>
+                                
+                            </HBox>
+                        </CustomListItem>
                     </items>
-                </Table>
+                </List>
+
             </VBox>
-        </content>
-    </Page>
+        </f:content>
+    </f:DynamicPage>
 </mvc:View>

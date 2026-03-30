@@ -64,8 +64,8 @@ sap.ui.define([
                     oDashModel.setProperty("/lineData", oParsedData.lineData);
                 })
                 .catch(function(error) {
-                    console.error("Lỗi lấy dữ liệu Dashboard:", error);
-                    sap.m.MessageToast.show("Lỗi tải dữ liệu Dashboard.");
+                    console.error("Error loading data:", error);
+                    sap.m.MessageToast.show("Error loading data");
                 })
                 .finally(function() {
                     if (oCardLine) oCardLine.setBusy(false);
