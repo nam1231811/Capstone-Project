@@ -147,7 +147,8 @@ sap.ui.define([
             }
             
             if (sSearchQuery) {
-                aFilters.push(new Filter("requestedBy", FilterOperator.Contains, sSearchQuery));
+                var sSearchTarget = bIsPending ? "requestedBy" : "processedBy";
+                aFilters.push(new Filter(sSearchTarget, FilterOperator.Contains, sSearchQuery));
             }
             
             oBinding.filter(aFilters);
@@ -160,9 +161,12 @@ sap.ui.define([
             oModel.setProperty("/isPendingMode", !bCurrentMode);
             
             this.byId("actionFilterBar").setSelectedKey("ALL");
+            
             var oSearchField = this.byId("searchRequestedBy");
             if(oSearchField) {
                 oSearchField.setValue(""); 
+                var sPlaceholder = !bCurrentMode ? "Search requestor..." : "Search approver...";
+                oSearchField.setPlaceholder(sPlaceholder);
             }
             
             this._applyFilters(); 
