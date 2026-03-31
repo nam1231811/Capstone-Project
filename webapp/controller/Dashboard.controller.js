@@ -189,7 +189,14 @@ sap.ui.define([
 
         onPressKPI: function(oEvent) {
             var oTile = oEvent.getSource();
-            var sHeader = oTile.getHeader();
+            var sHeader = "";
+            
+            if (oTile.data("kpiTitle")) {
+                sHeader = oTile.data("kpiTitle");
+            } else if (oTile.getHeader) {
+                sHeader = oTile.getHeader();
+            }
+
             var oModel = this.getView().getModel("dash");
 
             if (this._oKPIPopover) {
@@ -201,7 +208,7 @@ sap.ui.define([
             var sPopoverTitle = "";
 
             if (sHeader === "Total of Changes Today") {
-                sPopoverTitle = "Today's Breakdown";
+                sPopoverTitle = "Number of Changes Today";
                 
                 var iCreate = 0, iUpdate = 0, iDelete = 0;
                 var oNow = new Date();
@@ -294,7 +301,7 @@ sap.ui.define([
                 }
             } 
             else {
-                sPopoverTitle = "Data Density Insight";
+                sPopoverTitle = "Data Insight";
                 var iTables = oModel.getProperty("/kpi/totalTables") || 0;
                 var iRecords = oModel.getProperty("/kpi/totalRecords") || 0;
                 var iAvg = iTables > 0 ? Math.round(iRecords / iTables) : 0;
