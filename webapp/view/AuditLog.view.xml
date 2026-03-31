@@ -69,7 +69,6 @@
                         </Table>
                     </f:content>
                 </f:Card>
-
             </layout:Grid>
         </content>
     </Page>

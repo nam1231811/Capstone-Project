@@ -21,7 +21,7 @@ sap.ui.define([
             this.getRouter().initialize();
         },
 
-        _initAuthModel: function() {
+        _initAuthModel: function () {
             var oAuthModel = new JSONModel({
                 isClerk: true,
                 isManager: false,
@@ -31,28 +31,28 @@ sap.ui.define([
             this.setModel(oAuthModel, "auth");
 
             let sCurrentUserId = sap.ushell.Container.getUser().getId();
-            if (sap.ushell && sap.ushell.Container) { 
+            if (sap.ushell && sap.ushell.Container) {
                 sCurrentUserId = sap.ushell.Container.getUser().getId();
-                if (sCurrentUserId === "DEFAULT_USER"){
+                if (sCurrentUserId === "DEFAULT_USER") {
                     // 94 manager, 097 admin, 092 clerk
-                    sCurrentUserId = "DEV-094"; 
+                    sCurrentUserId = "DEV-097";
                 }
             }
-            sCurrentUserId = sCurrentUserId.toUpperCase(); 
+            sCurrentUserId = sCurrentUserId.toUpperCase();
             oAuthModel.setProperty("/currentUser", sCurrentUserId);
             console.log("Current User ID: ", sCurrentUserId);
 
-            var oODataModel = this.getModel(); 
+            var oODataModel = this.getModel();
             if (oODataModel) {
                 var oContextBinding = oODataModel.bindContext("/UserRoleList('" + sCurrentUserId + "')");
-                oContextBinding.requestObject().then(function(oData) {
+                oContextBinding.requestObject().then(function (oData) {
                     console.log("User roles: ", oData);
-                    
+
                     oAuthModel.setProperty("/isClerk", oData.IsClerk);
                     oAuthModel.setProperty("/isManager", oData.IsManager);
                     oAuthModel.setProperty("/isAdmin", oData.IsAdmin);
-                    
-                }).catch(function(e) {
+
+                }).catch(function (e) {
                     console.error("Error fetching user roles: ", e);
                 });
             } else {
