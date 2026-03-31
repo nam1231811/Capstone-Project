@@ -5,8 +5,9 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/ui/core/ResizeHandler",
     "zapp/models/GetData",
-    "zapp/api/DashboardApi"
-], function (Controller, JSONModel, Filter, FilterOperator, ResizeHandler, GetData, DashboardApi) {
+    "zapp/api/DashboardApi",
+    "zapp/utils/DataFormatter"
+], function (Controller, JSONModel, Filter, FilterOperator, ResizeHandler, GetData, DashboardApi, DataFormatter) {
     "use strict";
 
     return Controller.extend("zapp.controller.Dashboard", {
@@ -60,9 +61,96 @@ sap.ui.define([
                     oDashModel.setProperty("/kpi/changedToday", oParsedData.changedToday);
                     oDashModel.setProperty("/kpi/totalRecords", oParsedData.totalRecords);
                     oDashModel.setProperty("/topUsers", oParsedData.topUsers);
-                    oDashModel.setProperty("/recentLogs", oParsedData.recentLogs);
-                    oDashModel.setProperty("/lineData", oParsedData.lineData);
-                })
+
+                    var aFormattedLogs = oParsedData.recentLogs.map(function(log) {
+                        var sOriginalTime = DataFormatter.formatDateTime(log.time);
+                        
+                        if (sOriginalTime && sOriginalTime.indexOf("||") !== -1) {
+                            var aParts = sOriginalTime.split("||");
+                            var sTimePart = aParts[0].trim();
+                            var sDatePart = aParts[1].trim(); 
+                            
+                            var aTimeVals = sTimePart.split(":");
+                            var aDateVals = sDatePart.split("/");
+                            
+                            if (aTimeVals.length === 3 && aDateVals.length === 3) {
+                                var dLocal = new Date(Date.UTC(
+                                    parseInt(aDateVals[2], 10), 
+                                    parseInt(aDateVals[1], 10) - 1, 
+                                    parseInt(aDateVals[0], 10), 
+                                    parseInt(aTimeVals[0], 10), 
+                                    parseInt(aTimeVals[1], 10), 
+                                    parseInt(aTimeVals[2], 10)
+                                ));
+                                
+                                var sNewTime = String(dLocal.getHours()).padStart(2, '0') + ":" + 
+                                               String(dLocal.getMinutes()).padStart(2, '0') + ":" + 
+                                               String(dLocal.getSeconds()).padStart(2, '0');
+                                               
+                                var sNewDate = String(dLocal.getDate()).padStart(2, '0') + "/" + 
+                                               String(dLocal.getMonth() + 1).padStart(2, '0') + "/" + 
+                                               dLocal.getFullYear();
+                                               
+                                log.time = sNewTime + " || " + sNewDate;
+                            } else {
+                                log.time = sOriginalTime;
+                            }
+                        } else {
+                            log.time = sOriginalTime;
+                        }
+
+                        return log;
+                    });
+                    
+                    oDashModel.setProperty("/recentLogs", aFormattedLogs);
+
+                    var aBackendLineData = oParsedData.lineData || [];
+                    var aRealTimeChart = [];
+                    
+                    for (var i = 6; i >= 0; i--) {
+                        var d = new Date();
+                        d.setDate(d.getDate() - i);
+                        
+                        var sChartDate = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
+                        var sLogDateMatch = String(d.getDate()).padStart(2, '0') + "/" + String(d.getMonth() + 1).padStart(2, '0') + "/" + d.getFullYear();
+
+                        var oExisting = aBackendLineData.find(function(item) { return item.date === sChartDate; });
+                        var iCreate = oExisting ? oExisting.create : 0;
+                        var iUpdate = oExisting ? oExisting.update : 0;
+                        var iDelete = oExisting ? oExisting.delete : 0;
+
+                        var iRealCreate = 0, iRealUpdate = 0, iRealDelete = 0;
+                        aFormattedLogs.forEach(function(log) {
+                            if (log.time && log.time.indexOf(sLogDateMatch) !== -1) {
+                                if (log.action === "CREATE") iRealCreate++;
+                                else if (log.action === "UPDATE") iRealUpdate++;
+                                else if (log.action === "DELETE") iRealDelete++;
+                            }
+                        });
+
+                        var iFinalCreate = Math.max(iCreate, iRealCreate);
+                        var iFinalUpdate = Math.max(iUpdate, iRealUpdate);
+                        var iFinalDelete = Math.max(iDelete, iRealDelete);
+
+                        if (i === 0) {
+                            var iTotalKPI = oParsedData.changedToday || 0;
+                            var iSum = iFinalCreate + iFinalUpdate + iFinalDelete;
+                            
+                            if (iSum < iTotalKPI) {
+                                iFinalUpdate += (iTotalKPI - iSum); 
+                            }
+                        }
+
+                        aRealTimeChart.push({
+                            date: sChartDate,
+                            create: iFinalCreate,
+                            update: iFinalUpdate,
+                            delete: iFinalDelete
+                        });
+                    }
+
+                    oDashModel.setProperty("/lineData", aRealTimeChart);
+                }.bind(this))
                 .catch(function(error) {
                     console.error("Error loading data:", error);
                     sap.m.MessageToast.show("Error loading data");
@@ -99,8 +187,144 @@ sap.ui.define([
             }
         },
 
-        onPressKPI: function() {
-            sap.m.MessageToast.show("Press KPI card - future enhancement");
+        onPressKPI: function(oEvent) {
+            var oTile = oEvent.getSource();
+            var sHeader = oTile.getHeader();
+            var oModel = this.getView().getModel("dash");
+
+            if (this._oKPIPopover) {
+                this._oKPIPopover.destroy();
+                this._oKPIPopover = null;
+            }
+
+            var oContent;
+            var sPopoverTitle = "";
+
+            if (sHeader === "Total of Changes Today") {
+                sPopoverTitle = "Today's Breakdown";
+                
+                var iCreate = 0, iUpdate = 0, iDelete = 0;
+                var oNow = new Date();
+
+                var sTodayChartFormat = oNow.getFullYear() + "-" + String(oNow.getMonth() + 1).padStart(2, '0') + "-" + String(oNow.getDate()).padStart(2, '0');
+                var sTodayLogFormat = String(oNow.getDate()).padStart(2, '0') + "/" + String(oNow.getMonth() + 1).padStart(2, '0') + "/" + oNow.getFullYear();
+
+                var aLogs = oModel.getProperty("/recentLogs") || [];
+                aLogs.forEach(function(log) {
+                    if (log.time && log.time.indexOf(sTodayLogFormat) !== -1) {
+                        if (log.action === "CREATE") iCreate++;
+                        else if (log.action === "UPDATE") iUpdate++;
+                        else if (log.action === "DELETE") iDelete++;
+                    }
+                });
+
+                var aLineData = oModel.getProperty("/lineData") || [];
+                var oTodayChart = aLineData.find(function(item) { return item.date === sTodayChartFormat; });
+                
+                if (oTodayChart) {
+                    var iChartSum = (oTodayChart.create || 0) + (oTodayChart.update || 0) + (oTodayChart.delete || 0);
+                    if (iChartSum > (iCreate + iUpdate + iDelete)) {
+                        iCreate = Math.max(iCreate, oTodayChart.create || 0);
+                        iUpdate = Math.max(iUpdate, oTodayChart.update || 0);
+                        iDelete = Math.max(iDelete, oTodayChart.delete || 0);
+                    }
+                }
+
+                oContent = new sap.m.VBox({
+                    items: [
+                        new sap.m.ObjectStatus({ text: "Create: " + iCreate, state: "Success", icon: "sap-icon://add-document" }).addStyleClass("sapUiTinyMarginBottom"),
+                        new sap.m.ObjectStatus({ text: "Update: " + iUpdate, state: "Warning", icon: "sap-icon://edit" }).addStyleClass("sapUiTinyMarginBottom"),
+                        new sap.m.ObjectStatus({ text: "Delete: " + iDelete, state: "Error", icon: "sap-icon://delete" })
+                    ]
+                }).addStyleClass("sapUiSmallMargin");
+
+            } 
+            else if (sHeader === "Total of Custom Tables") {
+                sPopoverTitle = "Recently Active Tables";
+                var aLogsTable = oModel.getProperty("/recentLogs") || [];
+                var aUniqueTableNames = [];
+                
+                aLogsTable.forEach(function(log) {
+                    if (log.tableName && aUniqueTableNames.indexOf(log.tableName) === -1 && aUniqueTableNames.length < 3) {
+                        aUniqueTableNames.push(log.tableName);
+                    }
+                });
+
+                var oList = new sap.m.List({ showSeparators: "Inner", busyIndicatorDelay: 0 });
+                oContent = oList;
+
+                if (aUniqueTableNames.length === 0) {
+                    oList.addItem(new sap.m.StandardListItem({ title: "No recent activity", icon: "sap-icon://sys-cancel" }));
+                } else {
+                    oList.setBusy(true); 
+                    var oMainODataModel = this.getOwnerComponent().getModel(); 
+
+                    var aPromises = aUniqueTableNames.map(function(sTableName) {
+                        return GetData.loadMeta(oMainODataModel, sTableName, "", "E")
+                            .then(function(oPayload) {
+                                var oMeta = (oPayload.metadata && oPayload.metadata.length > 0) ? oPayload.metadata[0] : {};
+                                return {
+                                    name: sTableName,
+                                    desc: oMeta.tableDescription || oMeta.table_description || "No Description",
+                                    cols: oPayload.metadata ? oPayload.metadata.length : 0 
+                                };
+                            })
+                            .catch(function() {
+                                return { name: sTableName, desc: "Error loading details", cols: 0 };
+                            });
+                    });
+
+                    Promise.all(aPromises).then(function(aResults) {
+                        oList.setBusy(false);
+                        aResults.forEach(function(t) {
+                            oList.addItem(new sap.m.ObjectListItem({
+                                title: t.name,
+                                icon: "sap-icon://table-chart",
+                                attributes: [
+                                    new sap.m.ObjectAttribute({ text: t.desc }) 
+                                ],
+                                firstStatus: new sap.m.ObjectStatus({
+                                    text: t.cols + " Cols", 
+                                    icon: "sap-icon://add-column",
+                                    state: "Information"
+                                })
+                            }));
+                        });
+                    });
+                }
+            } 
+            else {
+                sPopoverTitle = "Data Density Insight";
+                var iTables = oModel.getProperty("/kpi/totalTables") || 0;
+                var iRecords = oModel.getProperty("/kpi/totalRecords") || 0;
+                var iAvg = iTables > 0 ? Math.round(iRecords / iTables) : 0;
+
+                oContent = new sap.m.VBox({
+                    items: [
+                        new sap.m.Text({ text: "Average records per table:" }).addStyleClass("sapUiTinyMarginBottom"),
+                        new sap.m.ObjectNumber({
+                            number: iAvg,
+                            unit: "Records / Table",
+                            state: "Success"
+                        })
+                    ]
+                }).addStyleClass("sapUiSmallMargin");
+            }
+
+            this._oKPIPopover = new sap.m.Popover({
+                title: sPopoverTitle,
+                contentWidth: "320px",
+                placement: "Bottom",
+                content: [oContent],
+                endButton: new sap.m.Button({
+                    icon: "sap-icon://decline",
+                    type: "Transparent",
+                    press: function () { this._oKPIPopover.close(); }.bind(this)
+                })
+            });
+
+            this.getView().addDependent(this._oKPIPopover);
+            this._oKPIPopover.openBy(oTile);
         },
 
         onValueHelpRequest: function (oEvent) {

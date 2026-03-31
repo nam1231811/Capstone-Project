@@ -27,6 +27,9 @@ sap.ui.define([
             this.getView().getModel("viewModel").setProperty("/isEditMode", false);
 
             this._record = oEvent.getParameter("arguments").rowId || this._record || "0";
+
+            this._tableName = oEvent.getParameter("arguments").tableName || this.getView().getModel("overall").getProperty("/tableName");
+
             var aData = this.getView().getModel("displayModel").getProperty("/Data");  
             
             if (aData.length === 0) {
@@ -63,20 +66,12 @@ sap.ui.define([
             var oView = this.getView();
             var oModel = oView.getModel();
             var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
-            var tableName = this.getView().getModel("overall").getProperty("/tableName");
-            var oDisplayModel = oView.getModel("displayModel");
-            var aDisplayData = oDisplayModel.getProperty("/Data");
+            var tableName = this._tableName;
             var enUuid = Object.values(oDetailModel)[0].uuid;
 
             var oAuthModel = this.getOwnerComponent().getModel("auth");
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
             var bIsAdmin   = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
-
-            var iIndex = aDisplayData.findIndex(row => row["0"].uuid === enUuid);
-            if (iIndex !== -1) {
-                aDisplayData[iIndex] = JSON.parse(JSON.stringify(oDetailModel)); 
-                oDisplayModel.setProperty("/Data", aDisplayData);
-            }
 
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
@@ -113,8 +108,7 @@ sap.ui.define([
                 sap.ui.core.BusyIndicator.hide();
                 sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
                 
-                oView.getModel("viewModel").setProperty("/isEditMode", false);
-                this._updateDisplayModelAfterSave(oDetailModel);
+                this.onCancelEdit();
             }.bind(this)).catch(function(oError){
                 sap.ui.core.BusyIndicator.hide();
                 sap.m.MessageBox.error("Error updating temporary table: " + oError.message);
@@ -145,7 +139,7 @@ sap.ui.define([
 
         onRollback: function () {
             var oFCL = this.oView.getParent().getParent();
-            var tableName = this.getView().getModel("overall").getProperty("/tableName");
+            var tableName = this._tableName;
             if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.OneColumn);
 

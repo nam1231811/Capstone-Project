@@ -8,6 +8,7 @@
     xmlns:viz="sap.viz.ui5.controls"
     xmlns:viz.data="sap.viz.ui5.data"
     xmlns:viz.feeds="sap.viz.ui5.controls.common.feeds"
+    xmlns:core="sap.ui.core"
     displayBlock="true"
     height="100%">
     
@@ -152,23 +153,40 @@
                     <f:content>
                         <ScrollContainer width="100%" height="320px" vertical="true">
                             <List items="{dash>/recentLogs}" showSeparators="Inner" width="100%">
-                                <ObjectListItem 
-                                    title="Table: {dash>tableName}" 
-                                    type="Navigation" 
-                                    press=".onRecentLogPress">
-                                    
-                                    <firstStatus>
-                                        <ObjectStatus 
-                                            text="{dash>action}" 
-                                            state="{= ${dash>action} === 'CREATE' ? 'Success' : (${dash>action} === 'DELETE' ? 'Error' : 'Warning') }" />
-                                    </firstStatus>
+                                <CustomListItem type="Navigation" press=".onRecentLogPress" class="sapUiSmallMarginBottom sapUiShadow1">
+                                    <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
+                                        
+                                        <HBox alignItems="Center">
+                                            <core:Icon 
+                                                src="{= ${dash>action} === 'CREATE' ? 'sap-icon://add-document' : (${dash>action} === 'UPDATE' ? 'sap-icon://edit' : 'sap-icon://delete') }"
+                                                size="1.5rem"
+                                                color="{= ${dash>action} === 'CREATE' ? '#2b7c2b' : (${dash>action} === 'UPDATE' ? '#e9730c' : '#bb0000') }"
+                                                class="sapUiMediumMarginEnd" />
+                                            
+                                            <VBox>
+                                                <Title text="Table: {dash>tableName}" level="H5" />
+                                                
+                                                <HBox class="sapUiTinyMarginTop">
+                                                    <Label text="By:" design="Bold" class="sapUiTinyMarginEnd"/>
+                                                    <Text text="{dash>user}" />
+                                                </HBox>
+                                                
+                                                <HBox class="sapUiTinyMarginTop">
+                                                    <Label text="At:" design="Bold" class="sapUiTinyMarginEnd"/>
+                                                    <Text text="{dash>time}" />
+                                                </HBox>
+                                            </VBox>
+                                        </HBox>
 
-                                    <attributes>
-                                        <ObjectAttribute title="By" text="{dash>user}" />
-                                        <ObjectAttribute title="At" text="{dash>time}" />
-                                    </attributes>
-                                    
-                                </ObjectListItem>
+                                        <VBox alignItems="End">
+                                            <ObjectStatus 
+                                                text="{dash>action}" 
+                                                state="{= ${dash>action} === 'CREATE' ? 'Success' : (${dash>action} === 'UPDATE' ? 'Warning' : 'Error') }"
+                                                inverted="true" />
+                                        </VBox>
+
+                                    </HBox>
+                                </CustomListItem>
                             </List>
                         </ScrollContainer>
                     </f:content>

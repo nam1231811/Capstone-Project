@@ -29,7 +29,7 @@
 
                 <VBox visible="{= ${auth>/isManager} || ${auth>/isAdmin} }" width="100%">
                     
-                    <OverflowToolbar height="3.5rem" class="sapUiSmallMarginBottom sapUiShadow1" design="Solid">
+                <OverflowToolbar height="3.5rem" class="sapUiSmallMarginBottom sapUiShadow1" design="Solid">
                         <Title text="Filter Action:" level="H4" class="sapUiTinyMarginEnd" />
                         <SegmentedButton id="actionFilterBar" selectionChange=".onActionFilterSelect" selectedKey="ALL">
                             <items>
@@ -41,6 +41,13 @@
                         </SegmentedButton>
 
                         <ToolbarSpacer />
+
+                        <SearchField id="searchRequestedBy" 
+                                     placeholder="Search requester..." 
+                                     width="250px" 
+                                     showSearchButton="false"
+                                     liveChange=".onSearchUser" 
+                                     class="sapUiSmallMarginEnd"/>
 
                         <Button id="modeToggleBtn"
                                 text="{= ${approval>/isPendingMode} ? 'Pending (' + ${approval>/pendingCount} + ')' : 'History (' + ${approval>/historyCount} + ')' }"
