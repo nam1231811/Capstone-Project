@@ -21,11 +21,10 @@ sap.ui.define([
 
         onNavToDashboard: function () {
             var oAuthModel = this.getOwnerComponent().getModel("auth");
-            var bIsClerk = oAuthModel.getProperty("/isClerk");
             var bIsAdmin = oAuthModel.getProperty("/isAdmin");
 
-            if (bIsClerk && !bIsAdmin) {
-                MessageBox.warning("Dashboard function is only available for Managers and Admins!\nYou do not have permission to access!", {
+            if (!bIsAdmin) {
+                MessageBox.warning("Dashboard function is only available for Admins!\nYou do not have permission to access!", {
                     title: "Access Denied"
                 });
                 return;

@@ -1,99 +1,95 @@
-/* --- 1. XÓA ĐƯỜNG KẺ DỌC TOÀN BẢNG --- */
 .myCustomCleanTable .sapUiTableCtrl :not(.sapUiTableCHdr) .sapUiTableTr > td {
     border-right: none !important;
 }
-/* --- 3. ÉP HEADER HIỆN VẠCH DỌC --- */
-/* Phải trỏ cực sâu vào lớp Header Cell */
+
 .myCustomCleanTable .sapUiTableCHdr .sapUiTableCHdrCell {
     border-right: 1px solid #d9d9d9 !important;
     border-bottom: 1px solid #d9d9d9 !important;
 }
-/* Xóa khung focus xanh của ô khi click */
+
 .myCustomCleanTable .sapUiTableCtrl tr > td:focus {
     outline: none !important;
 }
 
-/* Hiệu ứng trỏ chuột để người dùng biết hàng này bấm được */
 .myCustomCleanTable .sapUiTableTr {
     cursor: pointer;
 }
 
-/* Khi di chuột qua thì highlight cả hàng cho giống Navigation */
 .myCustomCleanTable .sapUiTableTr:hover {
     background-color: #f5f5f5 !important;
 }
 
-/* Xóa khung xanh khi click vào ô (Focus) */
 .myCustomCleanTable .sapUiTableCtrl tr > td:focus,
 .myCustomCleanTable .sapUiTableCtrl tr > td:focus-within,
 .myCustomCleanTable .sapUiTableCtrl tr > td > .sapUiTableTableCellInner:focus {
     outline: none !important;
-    box-shadow: none !important; /* Quan trọng: Theme mới dùng shadow để làm khung xanh */
+    box-shadow: none !important;
 }
 
-/* Xóa khung vạch đứt (dotted) hoặc vạch liền xuất hiện bao quanh ô */
 .myCustomCleanTable .sapUiTableCtrl .sapUiTableColSf {
     outline: none !important;
 }
 
-/* Đảm bảo khi hàng được chọn, nó không hiện khung focus riêng lẻ từng ô */
 .myCustomCleanTable .sapUiTableTr.sapUiTableRowSel > td {
     outline: none !important;
     box-shadow: inset 0 0 0 1px transparent !important;
 }
-/* 1. Ép lớp phủ Busy Indicator thành màu trắng đặc */
+
 .sapUiLocalBusyIndicator {
     background-color: white !important;
     opacity: 1 !important;
 }
 
-/* 2. Đảm bảo phần animation (3 dấu chấm) vẫn hiển thị trên nền trắng */
 .sapUiLocalBusyIndicatorAnimation > div {
-    background-color: #0070f2 !important; /* Màu xanh chuẩn SAP */
+    background-color: #0070f2 !important;
 }
 
-/* 3. Chặn hoàn toàn việc nhìn xuyên qua lớp phủ của Table */
 .sapUiTableBusyCovers {
     background-color: white !important;
     opacity: 1 !important;
-    z-index: 10; /* Đẩy lên trên cùng */
+    z-index: 10;
 }
 
-/* 4. Ẩn nội dung bên dưới để chắc chắn không bị lộ */
 .sapUiTable[data-sap-ui-busy="true"] .sapUiTableCCnt,
 .sapUiTable[data-sap-ui-busy="true"] .sapUiTableCtrl {
     opacity: 0 !important;
 }
 
-/* Ẩn hoàn toàn thanh cuộn dọc của ui:Table */
 .myHiddenScrollbarTable .sapUiTableVSb {
     visibility: hidden !important;
-}
 
-/* 1. Bo tròn và tạo viền cho toàn bộ khối bao gồm cả Toolbar và Table */
+}
 .roundedTableWrapper {
-    border-radius: 12px; /* Độ bo tròn của toàn khối */
-    overflow: hidden; /* Cắt phần góc nhọn bị thừa ra */
-    border: 1px solid #d9d9d9; /* Viền bao quanh toàn khối */
-    background-color: #ffffff; /* Nền trắng */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Bóng đổ nhẹ nhàng */
-    margin: 1rem 0; /* Khoảng cách trên dưới cho thoáng (tùy chỉnh theo ý bạn) */
+    border-radius: 12px;
+    overflow: hidden; 
+    border: 1px solid #d9d9d9; 
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); 
+    margin: 1rem 0; 
 }
 
-/* 2. Bỏ viền thừa của Toolbar để tránh bị viền đè lên nhau */
 .roundedTableWrapper .sapMTB {
     border-top: none !important;
     border-left: none !important;
     border-right: none !important;
-    border-bottom: 1px solid #e5e5e5; /* Kẻ 1 vạch mỏng ngăn cách giữa Toolbar và header của Table */
-    background: transparent; /* Đồng bộ nền với Wrapper */
+    border-bottom: 1px solid #e5e5e5;
+    background: transparent; 
 }
-
-/* 3. Bỏ viền ngoài của UI5 Table bên trong để không bị viền kép với Wrapper */
 .roundedTableWrapper .sapUiTable {
     border: none !important;
 }
 
 .roundedTableWrapper .sapUiTableCnt {
     border: none !important;
+}
+
+.hoverableCard {
+    transition: all 0.3s ease-in-out !important;
+    border-radius: 8px;
+}
+
+.hoverableCard:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
+    cursor: pointer;
 }

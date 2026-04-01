@@ -47,7 +47,7 @@ sap.ui.define([
             ]);
             
             var oAuditModel = this.getOwnerComponent().getModel("auditOData");
-            var oHistoryBinding = oAuditModel.bindList("/AuditLog", null, null, null); 
+            var oHistoryBinding = oAuditModel.bindList("/AuditLog", null, null, null);
 
             Promise.all([
                 oPendingBinding.requestContexts(0, 500),
@@ -93,7 +93,7 @@ sap.ui.define([
                 var sStatusCode = oData.status || oData.Status || "";
                 var sStatusText = bIsPending ? "PENDING" : (sStatusCode === "A" ? "APPROVED" : "REJECTED");
 
-                var sRawTime = bIsPending ? (oData.created_at || oData.CreatedAt) : (oData.changed_at || oData.ChangedAt);
+                var sRawTime = oData.changed_at || oData.ChangedAt || oData.created_at || oData.CreatedAt;
 
                 var aDiff = [];
                 var sRawData = oData.data || oData.Data || oData.old_data || oData.OldData;
@@ -121,12 +121,37 @@ sap.ui.define([
                     requestedBy: oData.created_by || oData.CreatedBy || oData.changed_by || "USER",
                     processedBy: oData.changed_by || oData.ChangedBy || "",
                     rawDataTime: sRawTime,
-                    requestedAt: DataFormatter.formatDateTime(oData.created_at || oData.CreatedAt || oData.changed_at),
+                    requestedAt: DataFormatter.formatDateTime(oData.changed_at || oData.ChangedAt || oData.created_at || oData.CreatedAt),
                     processedAt: DataFormatter.formatDateTime(oData.changed_at || oData.ChangedAt),
                     
                     diff: aDiff
                 };
             });
+        },
+        
+        _applyFilters: function() {
+            var sActionKey = this.byId("actionFilterBar").getSelectedKey();
+            var oSearchField = this.byId("searchRequestedBy");
+            var sSearchQuery = oSearchField ? oSearchField.getValue().trim() : "";
+            
+            var bIsPending = this.getView().getModel("approval").getProperty("/isPendingMode");
+            var sTableId = bIsPending ? "pendingTable" : "historyTable";
+            var oTable = this.byId(sTableId);
+            if (!oTable) return;
+
+            var oBinding = oTable.getBinding("items");
+            var aFilters = [];
+            
+            if (sActionKey && sActionKey !== "ALL") {
+                aFilters.push(new Filter("action", FilterOperator.EQ, sActionKey));
+            }
+            
+            if (sSearchQuery) {
+                var sSearchTarget = bIsPending ? "requestedBy" : "processedBy";
+                aFilters.push(new Filter(sSearchTarget, FilterOperator.Contains, sSearchQuery));
+            }
+            
+            oBinding.filter(aFilters);
         },
 
         onToggleMode: function() {
@@ -134,22 +159,25 @@ sap.ui.define([
             var bCurrentMode = oModel.getProperty("/isPendingMode");
             
             oModel.setProperty("/isPendingMode", !bCurrentMode);
+            
             this.byId("actionFilterBar").setSelectedKey("ALL");
-            this.onActionFilterSelect(); 
+            
+            var oSearchField = this.byId("searchRequestedBy");
+            if(oSearchField) {
+                oSearchField.setValue(""); 
+                var sPlaceholder = !bCurrentMode ? "Search requestor..." : "Search approver...";
+                oSearchField.setPlaceholder(sPlaceholder);
+            }
+            
+            this._applyFilters(); 
         },
 
         onActionFilterSelect: function (oEvent) {
-            var sKey = this.byId("actionFilterBar").getSelectedKey();
-            var bIsPending = this.getView().getModel("approval").getProperty("/isPendingMode");
-            var sTableId = bIsPending ? "pendingTable" : "historyTable";
-            var oTable = this.byId(sTableId);
-            var oBinding = oTable.getBinding("items");
+            this._applyFilters();
+        },
 
-            if (sKey === "ALL") {
-                oBinding.filter([]);
-            } else {
-                oBinding.filter([new Filter("action", FilterOperator.EQ, sKey)]);
-            }
+        onSearchUser: function (oEvent) {
+            this._applyFilters();
         },
 
         onViewDiffDetail: function (oEvent) {

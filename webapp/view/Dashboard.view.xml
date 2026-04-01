@@ -8,6 +8,7 @@
     xmlns:viz="sap.viz.ui5.controls"
     xmlns:viz.data="sap.viz.ui5.data"
     xmlns:viz.feeds="sap.viz.ui5.controls.common.feeds"
+    xmlns:core="sap.ui.core"
     displayBlock="true"
     height="100%">
     
@@ -16,32 +17,91 @@
         <f:title>
             <f:DynamicPageTitle>
                 <f:heading>
-                    <Title text="Dashboard Admin" level="H2" />
+                    <Title text="Admin Dashboard" level="H2" />
                 </f:heading>
             </f:DynamicPageTitle>
         </f:title>
 
         <f:header>
             <f:DynamicPageHeader pinnable="true">
-                <HBox wrap="Wrap" fitContainer="true" alignItems="Center">
-                    <GenericTile class="sapUiTinyMarginEnd sapUiTinyMarginBottom" header="Total of Custom Tables" subheader="In the system" press="onPressKPI">
-                        <TileContent>
-                            <NumericContent value="{dash>/kpi/totalTables}" valueColor="Good" indicator="Up" />
-                        </TileContent>
-                    </GenericTile>
+                <layout:Grid defaultSpan="XL4 L4 M4 S12" hSpacing="1" vSpacing="1">
                     
-                    <GenericTile class="sapUiTinyMarginEnd sapUiTinyMarginBottom" header="Total of Changes Today" subheader="Real-time" press="onPressKPI">
-                        <TileContent>
-                            <NumericContent value="{dash>/kpi/changedToday}" valueColor="Critical" indicator="Up" />
-                        </TileContent>
-                    </GenericTile>
+                    <f:Card width="100%" class="hoverableCard">
+                        <f:content>
+                            <List showSeparators="None">
+                                <CustomListItem type="Active" press=".onPressKPI">
+                                    <customData>
+                                        <core:CustomData key="kpiTitle" value="Total of Custom Tables" />
+                                    </customData>
+                                    <HBox width="100%" justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
+                                        
+                                        <HBox alignItems="Center">
+                                            <core:Icon src="sap-icon://grid" size="2.5rem" class="sapUiMediumMarginEnd" color="#2b7c2b" />
+                                            <VBox>
+                                                <Title text="Total Custom Tables" level="H4"/>
+                                                <Text text="In audit log table" class="sapUiMutedText"/>
+                                            </VBox>
+                                        </HBox>
+                                        
+                                        <Title text="{dash>/kpi/totalTables}" level="H1" titleStyle="H1" class="sapThemeGoodText sapUiLargeMarginEnd" />
+                                    
+                                    </HBox>
+                                </CustomListItem>
+                            </List>
+                        </f:content>
+                    </f:Card>
                     
-                    <GenericTile class="sapUiTinyMarginBottom" header="Total of Data" subheader="In all Custom Tables" press="onPressKPI">
-                        <TileContent>
-                            <NumericContent value="{dash>/kpi/totalRecords}" valueColor="Neutral" />
-                        </TileContent>
-                    </GenericTile>
-                </HBox>
+                    <f:Card width="100%" class="hoverableCard">
+                        <f:content>
+                            <List showSeparators="None">
+                                <CustomListItem type="Active" press=".onPressKPI">
+                                    <customData>
+                                        <core:CustomData key="kpiTitle" value="Total of Changes Today" />
+                                    </customData>
+                                    <HBox width="100%" justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
+                                        
+                                        <HBox alignItems="Center">
+                                            <core:Icon src="sap-icon://history" size="2.5rem" class="sapUiMediumMarginEnd" color="#e9730c" />
+                                            <VBox>
+                                                <Title text="Total Changes Today" level="H4"/>
+                                                <Text text="Real-time updates" class="sapUiMutedText"/>
+                                            </VBox>
+                                        </HBox>
+                                        
+                                        <Title text="{dash>/kpi/changedToday}" level="H1" titleStyle="H1" class="sapThemeCriticalText sapUiLargeMarginEnd" />
+                                    
+                                    </HBox>
+                                </CustomListItem>
+                            </List>
+                        </f:content>
+                    </f:Card>
+                    
+                    <f:Card width="100%" class="hoverableCard">
+                        <f:content>
+                            <List showSeparators="None">
+                                <CustomListItem type="Active" press=".onPressKPI">
+                                    <customData>
+                                        <core:CustomData key="kpiTitle" value="Total of Data" />
+                                    </customData>
+                                    <HBox width="100%" justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
+                                        
+                                        <HBox alignItems="Center">
+                                            <core:Icon src="sap-icon://product" size="2.5rem" class="sapUiMediumMarginEnd" color="#107e3e" />
+                                            <VBox>
+                                                <Title text="Total Records" level="H4"/>
+                                                <Text text="In custom tables" class="sapUiMutedText"/>
+                                            </VBox>
+                                        </HBox>
+                                        
+                                        <Title text="{dash>/kpi/totalRecords}" level="H1" titleStyle="H1" class="sapThemeNeutralText sapUiLargeMarginEnd" />
+                                    
+                                    </HBox>
+                                </CustomListItem>
+                            </List>
+                        </f:content>
+                    </f:Card>
+
+                </layout:Grid>
             </f:DynamicPageHeader>
         </f:header>
 
@@ -152,23 +212,40 @@
                     <f:content>
                         <ScrollContainer width="100%" height="320px" vertical="true">
                             <List items="{dash>/recentLogs}" showSeparators="Inner" width="100%">
-                                <ObjectListItem 
-                                    title="Table: {dash>tableName}" 
-                                    type="Navigation" 
-                                    press=".onRecentLogPress">
-                                    
-                                    <firstStatus>
-                                        <ObjectStatus 
-                                            text="{dash>action}" 
-                                            state="{= ${dash>action} === 'CREATE' ? 'Success' : (${dash>action} === 'DELETE' ? 'Error' : 'Warning') }" />
-                                    </firstStatus>
+                                <CustomListItem type="Navigation" press=".onRecentLogPress" class="sapUiSmallMarginBottom sapUiShadow1">
+                                    <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
+                                        
+                                        <HBox alignItems="Center">
+                                            <core:Icon 
+                                                src="{= ${dash>action} === 'CREATE' ? 'sap-icon://add-document' : (${dash>action} === 'UPDATE' ? 'sap-icon://edit' : 'sap-icon://delete') }"
+                                                size="1.5rem"
+                                                color="{= ${dash>action} === 'CREATE' ? '#2b7c2b' : (${dash>action} === 'UPDATE' ? '#e9730c' : '#bb0000') }"
+                                                class="sapUiMediumMarginEnd" />
+                                            
+                                            <VBox>
+                                                <Title text="Table: {dash>tableName}" level="H5" />
+                                                
+                                                <HBox class="sapUiTinyMarginTop">
+                                                    <Label text="By:" design="Bold" class="sapUiTinyMarginEnd"/>
+                                                    <Text text="{dash>user}" />
+                                                </HBox>
+                                                
+                                                <HBox class="sapUiTinyMarginTop">
+                                                    <Label text="At:" design="Bold" class="sapUiTinyMarginEnd"/>
+                                                    <Text text="{dash>time}" />
+                                                </HBox>
+                                            </VBox>
+                                        </HBox>
 
-                                    <attributes>
-                                        <ObjectAttribute title="By" text="{dash>user}" />
-                                        <ObjectAttribute title="At" text="{dash>time}" />
-                                    </attributes>
-                                    
-                                </ObjectListItem>
+                                        <VBox alignItems="End">
+                                            <ObjectStatus 
+                                                text="{dash>action}" 
+                                                state="{= ${dash>action} === 'CREATE' ? 'Success' : (${dash>action} === 'UPDATE' ? 'Warning' : 'Error') }"
+                                                inverted="true" />
+                                        </VBox>
+
+                                    </HBox>
+                                </CustomListItem>
                             </List>
                         </ScrollContainer>
                     </f:content>
