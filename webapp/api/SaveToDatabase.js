@@ -5,23 +5,20 @@ sap.ui.define([
     "use strict";
 
     return {
-
-    onSaveDB: function (sTableName, oView) {
+        onSaveDB: function (sTableName, oView, aCustomData) {
             var oModel = oView.getModel();
-            var aData = oView.getModel("displayModel").getProperty("/Data") || [];
-            var dataUpdate = []
-            console.log(aData);
+            
+            var aData = aCustomData || oView.getModel("displayModel").getProperty("/Data") || [];
+            var dataUpdate = [];
             
             if (!sTableName) {
-                sap.m.MessageBox.error("Table is unknow");
-                return;
+                sap.m.MessageBox.error("Table is unknown");
+                return Promise.reject(new Error("Table is unknown"));
             }
         
-            var aDataToSave = oView.getModel("displayModel").getProperty("/Data");
-        
-            if (!aDataToSave || aDataToSave.length === 0) {
+            if (!aData || aData.length === 0) {
                 sap.m.MessageToast.show("No data to update");
-                return;
+                return Promise.reject(new Error("No data to update"));
             }
 
             aData.forEach(oRow => {
@@ -32,15 +29,14 @@ sap.ui.define([
                         if (oCell && oCell.fieldname) {
                             aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                         } else {
-                            console.warn("On Save" + key + "error");
+                            console.warn("On Save " + key + " error");
                         }
                     }
                 });
                 dataUpdate.push(aPromises)
             });
-            console.log(dataUpdate);
             
-            var sBase64Data = GetData.encodeFunction(dataUpdate)
+            var sBase64Data = GetData.encodeFunction(dataUpdate);
 
             var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
             var oActionContext = oModel.bindContext(sActionPath);
@@ -49,11 +45,11 @@ sap.ui.define([
             oActionContext.setParameter("json_data", sBase64Data);
 
             return oActionContext.execute().then(function () {
-                sap.m.MessageToast.show("Already update to database");
-            }.bind(this)).catch(function (oError) {
+            }).catch(function (oError) {
                 sap.ui.core.BusyIndicator.hide();
-                sap.m.MessageBox.error("Something is wrong, try another time: " + (oError.message || "Xem Console"));
+                sap.m.MessageBox.error("Database error: " + oError.message);
                 console.error(oError);
+                throw oError; 
             });
         }
     }
