@@ -35,7 +35,7 @@ sap.ui.define([
                 sCurrentUserId = sap.ushell.Container.getUser().getId();
                 if (sCurrentUserId === "DEFAULT_USER") {
                     // 94 manager, 097 admin, 092 clerk
-                    sCurrentUserId = "DEV-097";
+                    sCurrentUserId = "DEV-092";
                 }
             }
             sCurrentUserId = sCurrentUserId.toUpperCase();
