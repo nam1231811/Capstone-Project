@@ -3,102 +3,127 @@
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:f="sap.f"
-    xmlns:layout="sap.ui.layout"
+    xmlns:core="sap.ui.core"
     displayBlock="true">
 
-    <Page title="Approval Management" backgroundDesign="List">
-        <content>
-            
-            <MessagePage 
-                id="accessDeniedPage"
-                visible="{= !(${auth>/isManager} || ${auth>/isAdmin}) }" 
-                showHeader="false"
-                icon="sap-icon://locked"
-                text="You do not have permission"
-                description="This feature is only available for Managers and Admins. Please contact support if you need access."/>
+    <f:DynamicPage id="approvalPageId" headerExpanded="true" class="sapUiResponsiveContentPadding">
+        
+        <f:title>
+            <f:DynamicPageTitle>
+                <f:heading>
+                    <Title text="Approval Management" level="H2"/>
+                </f:heading>
+            </f:DynamicPageTitle>
+        </f:title>
 
-            <VBox visible="{= ${auth>/isManager} || ${auth>/isAdmin} }" class="sapUiResponsiveContentPadding" width="100%">
+        <f:content>
+            <VBox fitContainer="true" height="100%">
                 
-                <OverflowToolbar height="3.5rem" class="sapUiSmallMarginBottom">
+                <MessagePage 
+                    id="accessDeniedPage"
+                    visible="{= !(${auth>/isManager} || ${auth>/isAdmin}) }" 
+                    showHeader="false"
+                    icon="sap-icon://locked"
+                    text="You do not have permission"
+                    description="This feature is only available for Managers and Admins!"/>
+
+                <VBox visible="{= ${auth>/isManager} || ${auth>/isAdmin} }" width="100%">
                     
-                    <Title text="Filter Action:" level="H4" class="sapUiTinyMarginEnd" />
-                    <SegmentedButton id="actionFilterBar" selectionChange=".onActionFilterSelect" selectedKey="ALL">
+                <OverflowToolbar height="3.5rem" class="sapUiSmallMarginBottom sapUiShadow1" design="Solid">
+                        <Title text="Filter Action:" level="H4" class="sapUiTinyMarginEnd" />
+                        <SegmentedButton id="actionFilterBar" selectionChange=".onActionFilterSelect" selectedKey="ALL">
+                            <items>
+                                <SegmentedButtonItem key="ALL" text="All" />
+                                <SegmentedButtonItem key="CREATE" text="Create" icon="sap-icon://add" />
+                                <SegmentedButtonItem key="UPDATE" text="Update" icon="sap-icon://edit" />
+                                <SegmentedButtonItem key="DELETE" text="Delete" icon="sap-icon://delete" />
+                            </items>
+                        </SegmentedButton>
+
+                        <ToolbarSpacer />
+
+                        <SearchField id="searchRequestedBy" 
+                                     placeholder="Search requester..." 
+                                     width="250px" 
+                                     showSearchButton="false"
+                                     liveChange=".onSearchUser" 
+                                     class="sapUiSmallMarginEnd"/>
+
+                        <Button id="modeToggleBtn"
+                                text="{= ${approval>/isPendingMode} ? 'Pending (' + ${approval>/pendingCount} + ')' : 'History (' + ${approval>/historyCount} + ')' }"
+                                icon="{= ${approval>/isPendingMode} ? 'sap-icon://pending' : 'sap-icon://history' }"
+                                type="Emphasized"
+                                press=".onToggleMode" />
+                    </OverflowToolbar>
+
+                    <Table id="pendingTable" 
+                        items="{approval>/pendingList}" 
+                        noDataText="No pending approval requests"
+                        sticky="ColumnHeaders"
+                        class="sapUiSmallMarginBottom sapUiShadow1"
+                        visible="{approval>/isPendingMode}">
+                        <columns>
+                            <Column width="15%"><Label text="No." design="Bold"/></Column>
+                            <Column width="20%"><Label text="Data Table" design="Bold"/></Column>
+                            <Column width="15%" hAlign="Center"><Label text="Action" design="Bold"/></Column>
+                            <Column width="20%" demandPopin="true" minScreenWidth="Tablet"><Label text="Requested By" design="Bold"/></Column>
+                            <Column width="20%" demandPopin="true" minScreenWidth="Desktop"><Label text="Requested At" design="Bold"/></Column>
+                            <Column width="10%" hAlign="End"><Label text="Details" design="Bold"/></Column>
+                        </columns>
                         <items>
-                            <SegmentedButtonItem key="ALL" text="All" />
-                            <SegmentedButtonItem key="CREATE" text="Create" icon="sap-icon://add" />
-                            <SegmentedButtonItem key="UPDATE" text="Update" icon="sap-icon://edit" />
-                            <SegmentedButtonItem key="DELETE" text="Delete" icon="sap-icon://delete" />
+                            <ColumnListItem type="Navigation" press=".onViewDiffDetail">
+                                <cells>
+                                    <Text text="{approval>indexNo}" class="sapUiMutedText" />
+                                    <VBox>
+                                        <Text text="{approval>tableName}"/>
+                                        <Text text="ID: {approval>reqId}" visible="false" /> </VBox>
+                                    <ObjectStatus text="{approval>action}" 
+                                                state="{= ${approval>action} === 'CREATE' ? 'Success' : (${approval>action} === 'DELETE' ? 'Error' : 'Warning') }" 
+                                                icon="{= ${approval>action} === 'CREATE' ? 'sap-icon://add' : (${approval>action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }" 
+                                                inverted="true" /> 
+                                    <Text text="{approval>requestedBy}" />
+                                    <Text text="{approval>requestedAt}" />
+                                    <Button icon="sap-icon://compare" type="Transparent" press=".onViewDiffDetail"/>
+                                </cells>
+                            </ColumnListItem>
                         </items>
-                    </SegmentedButton>
+                    </Table>
 
-                    <ToolbarSpacer />
+                    <Table id="historyTable" 
+                        items="{approval>/historyList}" 
+                        noDataText="No history data available"
+                        sticky="ColumnHeaders"
+                        class="sapUiSmallMarginBottom sapUiShadow1"
+                        visible="{= !${approval>/isPendingMode} }">
+                        <columns>
+                            <Column width="15%"><Label text="No." design="Bold"/></Column>
+                            <Column width="15%" demandPopin="true" minScreenWidth="Tablet"><Label text="Data Table" design="Bold"/></Column>
+                            <Column width="15%" demandPopin="true" minScreenWidth="Tablet"><Label text="Action" design="Bold"/></Column>
+                            <Column width="20%"><Label text="Approval Status" design="Bold"/></Column>
+                            <Column width="20%" demandPopin="true" minScreenWidth="Desktop"><Label text="Approved At" design="Bold"/></Column>
+                            <Column width="15%" demandPopin="true" minScreenWidth="Desktop"><Label text="Approver" design="Bold"/></Column>
+                        </columns>
+                        <items>
+                            <ColumnListItem>
+                                <cells>
+                                    <Text text="{approval>indexNo}" class="sapUiMutedText" />
+                                    <Text text="{approval>tableName}" />
+                                    <ObjectStatus text="{approval>action}" 
+                                                state="{= ${approval>action} === 'CREATE' ? 'Success' : (${approval>action} === 'DELETE' ? 'Error' : 'Warning') }" 
+                                                inverted="true" />
+                                    <ObjectStatus text="{approval>status}" 
+                                                state="{= ${approval>status} === 'APPROVED' ? 'Success' : 'Error' }"
+                                                icon="{= ${approval>status} === 'APPROVED' ? 'sap-icon://accept' : 'sap-icon://decline' }" 
+                                                inverted="true" />
+                                    <Text text="{approval>processedAt}" />
+                                    <Text text="{approval>processedBy}" />
+                                </cells>
+                            </ColumnListItem>
+                        </items>
+                    </Table>
 
-                    <Button id="modeToggleBtn"
-                            text="{= ${approval>/isPendingMode} ? 'Pending (' + ${approval>/pendingCount} + ')' : 'History (' + ${approval>/historyCount} + ')' }"
-                            icon="{= ${approval>/isPendingMode} ? 'sap-icon://pending' : 'sap-icon://history' }"
-                            type="Emphasized"
-                            press=".onToggleMode" />
-                </OverflowToolbar>
-
-                <Table id="pendingTable" 
-                       items="{approval>/pendingList}" 
-                       noDataText="No pending approval requests"
-                       alternateRowColors="true"
-                       visible="{approval>/isPendingMode}">
-                    <columns>
-                        <Column width="15%"><Label text="Request ID" design="Bold"/></Column>
-                        <Column width="20%"><Label text="Data Table" design="Bold"/></Column>
-                        <Column width="15%"><Label text="Action" design="Bold"/></Column>
-                        <Column width="20%"><Label text="Requested By" design="Bold"/></Column>
-                        <Column width="20%"><Label text="Requested At" design="Bold"/></Column>
-                        <Column width="10%" hAlign="End"><Label text="Details" design="Bold"/></Column>
-                    </columns>
-                    <items>
-                        <ColumnListItem type="Navigation" press=".onViewDiffDetail">
-                            <cells>
-                                <ObjectIdentifier title="{approval>reqId}" />
-                                <Text text="{approval>tableName}" />
-                                <ObjectStatus text="{approval>action}" 
-                                              state="{= ${approval>action} === 'CREATE' ? 'Success' : (${approval>action} === 'DELETE' ? 'Error' : 'Warning') }" 
-                                              icon="{= ${approval>action} === 'CREATE' ? 'sap-icon://add' : (${approval>action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }" />
-                                <Text text="{approval>requestedBy}" />
-                                <Text text="{approval>requestedAt}" />
-                                <Button icon="sap-icon://compare" type="Transparent" press=".onViewDiffDetail" tooltip="Xem so sánh dữ liệu"/>
-                            </cells>
-                        </ColumnListItem>
-                    </items>
-                </Table>
-
-                <Table id="historyTable" 
-                       items="{approval>/historyList}" 
-                       noDataText="No history data available"
-                       alternateRowColors="true"
-                       visible="{= !${approval>/isPendingMode} }">
-                    <columns>
-                        <Column width="15%"><Label text="Request ID" design="Bold"/></Column>
-                        <Column width="15%"><Label text="Data Table" design="Bold"/></Column>
-                        <Column width="15%"><Label text="Action" design="Bold"/></Column>
-                        <Column width="20%"><Label text="Approval Status" design="Bold"/></Column>
-                        <Column width="20%"><Label text="Approved At" design="Bold"/></Column>
-                        <Column width="15%"><Label text="Approver" design="Bold"/></Column>
-                    </columns>
-                    <items>
-                        <ColumnListItem>
-                            <cells>
-                                <Text text="{approval>reqId}" />
-                                <Text text="{approval>tableName}" />
-                                <Text text="{approval>action}" />
-                                <ObjectStatus text="{approval>status}" 
-                                              state="{= ${approval>status} === 'APPROVED' ? 'Success' : 'Error' }"
-                                              icon="{= ${approval>status} === 'APPROVED' ? 'sap-icon://accept' : 'sap-icon://decline' }" />
-                                <Text text="{approval>processedAt}" />
-                                <Text text="{approval>processedBy}" />
-                            </cells>
-                        </ColumnListItem>
-                    </items>
-                </Table>
-
+                </VBox>
             </VBox>
-        </content>
-    </Page>
+        </f:content>
+    </f:DynamicPage>
 </mvc:View>

@@ -5,8 +5,9 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "zapp/models/GetData" 
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData) {
+    "zapp/models/GetData",
+    "zapp/utils/DataFormatter" 
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData, DataFormatter) { 
     "use strict";
 
     return Controller.extend("zapp.controller.MyRequests", {
@@ -45,59 +46,103 @@ sap.ui.define([
             var oAuthModel = this.getOwnerComponent().getModel("auth"); 
 
             if (!oODataModel) return;
-
             oView.setBusy(true);
 
             var sCurrentUser = oAuthModel.getProperty("/currentUser");
-            var oBinding = oODataModel.bindList("/Data", null, null, null);
+            
+            var oPendingBinding = oODataModel.bindList("/Data", null, null, [
+                new Filter({
+                    filters: [
+                        new Filter("status", FilterOperator.EQ, "P"),
+                        new Filter("status", FilterOperator.EQ, "R")
+                    ],
+                    and: false
+                })
+            ]);
+             
+            var oAuditModel = this.getOwnerComponent().getModel("auditOData");
+            var oHistoryBinding = oAuditModel.bindList("/AuditLog", null, null, null);
 
-            oBinding.requestContexts(0, 500).then(function (aContexts) {
+            Promise.all([
+                oPendingBinding.requestContexts(0, 500),
+                oHistoryBinding.requestContexts(0, 500)
+            ]).then(function (aResults) {
                 var aList = []; 
+                var aAllContexts = [];
                 
-                aContexts.forEach(function(oContext) {
-                    var oData = oContext.getObject();
-
-                    var sRecordOwner = oData.CreatedBy || oData.created_by || oData.Createdby || "";
+                aResults[0].forEach(ctx => aAllContexts.push({ ctx: ctx, isPending: true }));
+                aResults[1].forEach(ctx => aAllContexts.push({ ctx: ctx, isPending: false }));
+                
+                aAllContexts.forEach(function(oWrapper) {
+                    var oData = oWrapper.ctx.getObject();
+                    var sRecordOwner = oData.created_by || oData.CreatedBy || oData.changed_by || oData.ChangedBy || "";
                     if (sRecordOwner.toUpperCase() !== sCurrentUser.toUpperCase()) {
                         return; 
                     }
 
-                    var sActionCode = oData.action_type || oData.ActionType || "";
+                    var sActionCode = oData.action_type || oData.ActionType || oData.action || "";
                     var sActionText = sActionCode === "C" ? "CREATE" : (sActionCode === "U" ? "UPDATE" : "DELETE");
-
                     var sStatusCode = oData.status || oData.Status || "";
-                    var sStatusText = sStatusCode === "A" ? "APPROVED" : (sStatusCode === "R" ? "REJECTED" : "PENDING");
+                    var sStatusText = oWrapper.isPending ? "PENDING" : (sStatusCode === "R" ? "REJECTED" : "APPROVED");
 
-                    var aFields = [];
-                    var sRawData = oData.data || oData.Data;
+                    var sOldDataStr = oData.old_data || oData.OldData || "";
+                    var sNewDataStr = oData.new_data || oData.NewData || oData.data || oData.Data || "";
 
-                    if (sRawData) {
+                    var oParsedOld = {};
+                    if (sOldDataStr) {
                         try {
-                            var oParsed = (!sRawData.startsWith("{") && !sRawData.startsWith("[")) 
-                                        ? GetData.decodeFunction({ json_string: sRawData }) 
-                                        : JSON.parse(sRawData);
-
-                            Object.keys(oParsed).forEach(function (key) {
-                                aFields.push({ 
-                                    field: key, 
-                                    // SỬA Ở ĐÂY: Thêm thuộc tính oldData mặc định
-                                    oldData: sActionCode === "C" ? "-" : "Loading...", 
-                                    value: oParsed[key] 
-                                });
-                            });
-                        } catch (e) { console.error("JSON parsing error", e); }
+                            oParsedOld = (!sOldDataStr.startsWith("{") && !sOldDataStr.startsWith("[")) 
+                                        ? GetData.decodeFunction({ json_string: sOldDataStr }) 
+                                        : JSON.parse(sOldDataStr);
+                        } catch (e) {}
                     }
 
+                    var oParsedNew = {};
+                    if (sNewDataStr) {
+                        try {
+                            oParsedNew = (!sNewDataStr.startsWith("{") && !sNewDataStr.startsWith("[")) 
+                                        ? GetData.decodeFunction({ json_string: sNewDataStr }) 
+                                        : JSON.parse(sNewDataStr);
+                        } catch (e) {}
+                    }
+
+                    var aFields = [];
+                    var aAllKeys = Object.keys(oParsedNew);
+                    Object.keys(oParsedOld).forEach(k => { if (!aAllKeys.includes(k)) aAllKeys.push(k); });
+
+                    aAllKeys.forEach(function (key) {
+                        var sOldVal = "-";
+                        if (sActionCode !== "C") {
+                            sOldVal = oParsedOld[key] !== undefined ? String(oParsedOld[key]) : "Loading...";
+                        }
+                        var sNewVal = oParsedNew[key] !== undefined ? String(oParsedNew[key]) : "-";
+
+                        aFields.push({ 
+                            field: key, 
+                            oldData: sOldVal, 
+                            value: sNewVal 
+                        });
+                    });
+
                     aList.push({
-                        _odataContext: oContext,
-                        reqId: oData.uuid || oData.Uuid,
+                        _odataContext: oWrapper.ctx,
+                        reqId: oData.uuid || oData.log_uuid,
                         tableName: oData.table_name || oData.TableName || "",
                         action: sActionText,
                         status: sStatusText,
-                        changedAt: oData.changed_at || oData.ChangedAt || "",
-                        rejectReason: oData.RejectReason || oData.reject_reason || "No comments from manager.",
+                        rawDataDate: new Date(oData.changed_at || oData.ChangedAt || oData.created_at), 
+                        changedAt: DataFormatter.formatDateTime(oData.changed_at || oData.ChangedAt),
+                        rejectReason: oData.RejectReason || oData.reject_reason || "",
                         fields: aFields
                     });
+                });
+
+                aList.sort(function(a, b) {
+                    return b.rawDataDate - a.rawDataDate;
+                });
+
+                aList.forEach(function(item, index) {
+                    item.indexNo = index + 1;
                 });
 
                 oMyReqModel.setProperty("/list", aList);
@@ -106,7 +151,7 @@ sap.ui.define([
 
             }.bind(this)).catch(function(e) {
                 oView.setBusy(false);
-                sap.m.MessageToast.show("Error fetching data!");
+                console.error(e);
             });
         },
 
@@ -134,27 +179,43 @@ sap.ui.define([
 
             if (!this._oResubmitDialog) {
                 this._oResubmitDialog = new sap.m.Dialog({
-                    contentWidth: "800px", // Tăng size lên để chứa thêm cột
+                    contentWidth: "800px", 
+                    contentHeight: "500px",
                     resizable: true,
+                    draggable: true,
                     content: [
                         new sap.m.VBox({
-                            class: "sapUiSmallMargin",
                             items: [
+                                new sap.m.ObjectHeader({
+                                    title: "Target Table: {myreq>/currentDetail/tableName}",
+                                    icon: "sap-icon://form",
+                                    responsive: true,
+                                    fullScreenOptimized: true,
+                                    statuses: [
+                                        new sap.m.ObjectStatus({
+                                            text: "{myreq>/currentDetail/action}",
+                                            state: "{= ${myreq>/currentDetail/action} === 'CREATE' ? 'Success' : (${myreq>/currentDetail/action} === 'DELETE' ? 'Error' : 'Warning') }",
+                                            icon: "{= ${myreq>/currentDetail/action} === 'CREATE' ? 'sap-icon://add' : (${myreq>/currentDetail/action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }",
+                                            inverted: true
+                                        })
+                                    ]
+                                }),
+
                                 new sap.m.MessageStrip({
-                                    text: "Reason: {myreq>/currentDetail/rejectReason}",
+                                    text: "Comment for this Rejection: {myreq>/currentDetail/rejectReason}",
                                     type: "Error",
                                     showIcon: true,
-                                    visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }",
-                                    class: "sapUiSmallMarginBottom"
-                                }),
+                                    visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }"
+                                }).addStyleClass("sapUiSmallMargin"),
+                                
                                 new sap.m.Table({
                                     backgroundDesign: "Solid",
+                                    sticky: ["ColumnHeaders"],
                                     items: {
                                         path: "myreq>/currentDetail/fields",
                                         template: new sap.m.ColumnListItem({
                                             cells: [
                                                 new sap.m.Text({ text: "{myreq>field}", design: "Bold" }),
-                                                // CỘT MỚI: Hiển thị Old Data
                                                 new sap.m.Text({ text: "{myreq>oldData}" }),
                                                 
                                                 new sap.m.HBox({
@@ -163,9 +224,11 @@ sap.ui.define([
                                                             value: "{myreq>value}", 
                                                             visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }" 
                                                         }),
-                                                        new sap.m.Text({ 
+                                                        new sap.m.ObjectStatus({ 
                                                             text: "{myreq>value}", 
-                                                            visible: "{= ${myreq>/currentDetail/status} !== 'REJECTED' }" 
+                                                            visible: "{= ${myreq>/currentDetail/status} !== 'REJECTED' }", 
+                                                            state: "{= ${myreq>oldData} !== ${myreq>value} && ${myreq>oldData} !== 'N/A' && ${myreq>oldData} !== '-' ? 'Warning' : 'Success' }",
+                                                            icon: "{= ${myreq>oldData} !== ${myreq>value} && ${myreq>oldData} !== 'N/A' && ${myreq>oldData} !== '-' ? 'sap-icon://edit' : 'sap-icon://sys-enter-2' }"
                                                         })
                                                     ]
                                                 })
@@ -173,12 +236,11 @@ sap.ui.define([
                                         })
                                     },
                                     columns: [
-                                        new sap.m.Column({ header: new sap.m.Label({ text: "Field", design: "Bold" }), width: "30%" }),
-                                        // KHAI BÁO CỘT MỚI
+                                        new sap.m.Column({ header: new sap.m.Label({ text: "Field", design: "Bold" }), width: "25%" }),
                                         new sap.m.Column({ header: new sap.m.Label({ text: "Old Data", design: "Bold" }), width: "35%" }),
-                                        new sap.m.Column({ header: new sap.m.Label({ text: "New Data", design: "Bold" }), width: "35%" })
+                                        new sap.m.Column({ header: new sap.m.Label({ text: "New Data", design: "Bold" }), width: "40%" })
                                     ]
-                                })
+                                }).addStyleClass("sapUiTinyMargin")
                             ]
                         })
                     ],
@@ -191,7 +253,7 @@ sap.ui.define([
                             press: this._processDeleteDraft.bind(this)
                         }),
                         new sap.m.Button({
-                            text: "Resubmit",
+                            text: "Resubmit Request",
                             type: "Accept",
                             icon: "sap-icon://paper-plane",
                             visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }",
@@ -199,6 +261,7 @@ sap.ui.define([
                         }),
                         new sap.m.Button({
                             text: "Close",
+                            type: "Transparent",
                             press: function() { this._oResubmitDialog.close(); }.bind(this)
                         })
                     ]
@@ -210,10 +273,10 @@ sap.ui.define([
             this._oResubmitDialog.setTitle(bIsRejected ? "Edit Rejected Request" : "Request Details");
             this._oResubmitDialog.open();
 
-            // =========================================================
-            // BỔ SUNG LOGIC LOAD OLD DATA (GIỐNG HỆT BÊN APPROVAL)
-            // =========================================================
-            if (oRowData.action === "CREATE") return;
+            if (oRowData.action === "CREATE" || oRowData.status !== "PENDING") {
+                this._oResubmitDialog.setBusy(false);
+                return;
+            }
 
             this._oResubmitDialog.setBusy(true);
 
@@ -241,7 +304,7 @@ sap.ui.define([
                     return {
                         field: d.field,
                         oldData: sOldValue,
-                        value: d.value
+                        value: d.value 
                     };
                 });
 

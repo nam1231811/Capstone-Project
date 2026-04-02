@@ -17,7 +17,7 @@ sap.ui.define([], function () {
                 var sToken = oResponse.headers.get("X-CSRF-Token");
                 console.log("CSRF Token:", sToken);
 
-                var pKpi = fetch(sBaseUrl + "/Log/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getKpi", {
+                var pKpi = fetch(sBaseUrl + "/AuditLog/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getKpi", {
                     method: "POST",
                     headers: { "X-CSRF-Token": sToken, "Content-Type": "application/json" }
                 }).then(function(res) { 
@@ -28,7 +28,7 @@ sap.ui.define([], function () {
                     return res.json(); 
                 });
 
-                var pChart = fetch(sBaseUrl + "/Log/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getChartData", {
+                var pChart = fetch(sBaseUrl + "/AuditLog/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getChartData", {
                     method: "POST",
                     headers: { "X-CSRF-Token": sToken, "Content-Type": "application/json" }
                 }).then(function(res) { 
