@@ -80,8 +80,23 @@ sap.ui.define([
                         return; 
                     }
 
-                    var sActionCode = oData.action_type || oData.ActionType || oData.action || "";
-                    var sActionText = sActionCode === "C" ? "CREATE" : (sActionCode === "U" ? "UPDATE" : "DELETE");
+                    var sActionCode = String(oData.action_type || oData.ActionType || oData.action || "").toUpperCase();
+                    var sActionText = "UPDATE";
+                    
+                    if (sActionCode === "C" || sActionCode === "CREATE") {
+                        sActionText = "CREATE";
+                    } else if (sActionCode === "D" || sActionCode === "DELETE") {
+                        sActionText = "DELETE";
+                    } else if (sActionCode === "U" || sActionCode === "UPDATE") {
+                        sActionText = "UPDATE";
+                    } else {
+                        var bHasOld = !!(oData.old_data || oData.OldData);
+                        var bHasNew = !!(oData.new_data || oData.NewData || oData.data || oData.Data);
+                        
+                        if (bHasOld && !bHasNew) sActionText = "DELETE";
+                        else if (!bHasOld && bHasNew) sActionText = "CREATE";
+                        else sActionText = "UPDATE";
+                    }
                     var sStatusCode = oData.status || oData.Status || "";
                     var sStatusText = oWrapper.isPending ? "PENDING" : (sStatusCode === "R" ? "REJECTED" : "APPROVED");
 

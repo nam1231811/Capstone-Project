@@ -77,7 +77,10 @@ sap.ui.define([
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
 
-                SaveToDatabase.onSaveDB(tableName, oView).then(function () {
+                var aFullData = JSON.parse(JSON.stringify(oView.getModel("displayModel").getProperty("/Data")));
+                aFullData[this._record] = oDetailModel;
+
+                SaveToDatabase.onSaveDB(tableName, oView, aFullData).then(function () {
                     sap.ui.core.BusyIndicator.hide();
                     sap.m.MessageToast.show("Updated to database successfully!");
 
@@ -107,12 +110,24 @@ sap.ui.define([
             sap.ui.core.BusyIndicator.show(0);
             oModel.submitBatch("updateGroup").then(function(){
                 sap.ui.core.BusyIndicator.hide();
+
+                if (oModel.hasPendingChanges()) {
+                    var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
+                    var sErrorMsg = "System validation failed! Request was not sent.";
+                    if (aMessages && aMessages.length > 0) {
+                        var aErrors = aMessages.filter(function(m) { return m.type === "Error"; });
+                        if (aErrors.length > 0) { sErrorMsg = aErrors[aErrors.length - 1].message; }
+                    }
+                    sap.m.MessageBox.error(sErrorMsg);
+                    return; 
+                }
+
                 sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
-                
                 this.onCancelEdit();
+
             }.bind(this)).catch(function(oError){
                 sap.ui.core.BusyIndicator.hide();
-                sap.m.MessageBox.error("Error updating temporary table: " + oError.message);
+                sap.m.MessageBox.error("Error updating temporary table: " + (oError.message || "Unknown error"));
             });
         },
 
