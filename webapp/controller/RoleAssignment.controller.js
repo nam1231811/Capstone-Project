@@ -149,24 +149,23 @@ sap.ui.define([
             var sUserId = oFormData.userId;
 
             if (!sUserId) {
-                sap.m.MessageBox.error("Vui lòng nhập User Account!");
+                sap.m.MessageBox.error("Please enter your User Account!");
                 return;
             }
 
             if (!oFormData.roleId) {
-                sap.m.MessageBox.error("Vui lòng chọn một Role để gán!");
+                sap.m.MessageBox.error("Please select a Role to assign!");
                 return;
             }
 
             // 1. LẤY NGÀY TRỰC TIẾP TỪ MODEL (Không cần tìm ID nữa)
-            // Nhờ thuộc tính valueFormat="yyyyMMdd", oFormData.validTo đã tự động là chuỗi 8 ký tự (VD: "20260410")
             var sValidTo = oFormData.validTo;
-            var sFormattedDate = "99991231"; // Mặc định là vô cực nếu để trống
+            var sFormattedDate = "99991231";
 
             if (sValidTo && sValidTo.trim() !== "") {
 
                 if (!/^\d{8}$/.test(sValidTo)) {
-                    sap.m.MessageBox.error("Ngày hết hạn không hợp lệ! Vui lòng nhập đúng định dạng DD/MM/YYYY hoặc chọn từ biểu tượng lịch.");
+                    sap.m.MessageBox.error("Invalid expiration date! Please enter the correct format DD/MM/YYYY or select from the calendar icon.");
                     return;
                 }
 
@@ -179,7 +178,7 @@ sap.ui.define([
                 var sTodayStr = sYear + sMonth + sDay;
 
                 if (sFormattedDate < sTodayStr) {
-                    sap.m.MessageBox.error("Vui lòng chọn ngày hết hạn lớn hơn hoặc bằng ngày hiện tại!");
+                    sap.m.MessageBox.error("Please select an expiration date greater than or equal to the current date!");
                     return;
                 }
             }
@@ -207,7 +206,6 @@ sap.ui.define([
                 sap.m.MessageToast.show("Successfully assigned " + oFormData.roleId + " role to " + sUserId + "!");
                 this._oRoleDialog.close();
 
-                // Dùng setTimeout chờ 1.5s để Backend ABAP lưu xong mới Refresh giật data mới
                 setTimeout(function () {
                     this.byId("usersTable").getBinding("items").refresh();
                     sap.ui.core.BusyIndicator.hide();
