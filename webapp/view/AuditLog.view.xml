@@ -5,10 +5,109 @@
     xmlns:f="sap.f"
     xmlns:card="sap.f.cards"
     xmlns:layout="sap.ui.layout"
+    xmlns:core="sap.ui.core"
+    xmlns:suite="sap.suite.ui.commons"
     displayBlock="true">
-    
-    <Page title="Audit Log Management" showNavButton="true" navButtonPress=".onNavBack" backgroundDesign="List">
-        <content>
+
+    <f:DynamicPage id="auditDynamicPage" headerExpanded="true" toggleHeaderOnTitleClick="true" class="sapUiResponsiveContentPadding">
+        
+        <f:dependents>
+            <Dialog id="auditTrailDialog"
+                    title="Audit Trail - Record ID: {audit>/selectedRowId}"
+                    contentWidth="1000px"
+                    contentHeight="600px"
+                    resizable="true"
+                    draggable="true">
+                <content>
+                    <ScrollContainer width="100%" height="100%" vertical="true" horizontal="true">
+                        <suite:ProcessFlow
+                            id="auditProcessFlow"
+                            scrollable="true"
+                            foldedCorners="true"
+                            nodePress=".onNodePress"
+                            nodes="{audit>/processNodes}"
+                            lanes="{audit>/processLanes}">
+                            <suite:nodes>
+                                <suite:ProcessFlowNode
+                                    laneId="{audit>lane}"
+                                    nodeId="{audit>id}"
+                                    title="{audit>title}"
+                                    titleAbbreviation="{audit>titleAbbreviation}"
+                                    children="{audit>children}"
+                                    state="{audit>state}"
+                                    texts="{audit>texts}"
+                                    focused="{audit>focused}" />
+                            </suite:nodes>
+                            <suite:lanes>
+                                <suite:ProcessFlowLaneHeader
+                                    laneId="{audit>id}"
+                                    iconSrc="{audit>icon}"
+                                    text="{audit>label}"
+                                    position="{audit>position}" />
+                            </suite:lanes>
+                        </suite:ProcessFlow>
+                    </ScrollContainer>
+                </content>
+                <buttons>
+                    <Button text="Close" press=".onCloseTrailDialog" type="Transparent"/>
+                </buttons>
+            </Dialog>
+
+            <Dialog id="detailNodeDialog"
+                    title="Details: {audit>/selectedNodeAction}"
+                    contentWidth="700px"
+                    contentHeight="500px"
+                    resizable="true"
+                    draggable="true">
+                <customHeader>
+                    <OverflowToolbar>
+                        <Title text="Timestamp: {audit>/selectedNodeTime}" class="sapUiTinyMarginBegin"/>
+                        <ToolbarSpacer />
+                        <Button text="Revert Action"
+                                icon="sap-icon://undo"
+                                type="Emphasized"
+                                visible="{= ${audit>/selectedNodeAction} === 'UPDATE' || ${audit>/selectedNodeAction} === 'DELETE'}"
+                                press=".onRequestRevert" />
+                    </OverflowToolbar>
+                </customHeader>
+                <content>
+                    <Table items="{audit>/selectedNodeChanges}"
+                           noDataText="No changes recorded for this action"
+                           backgroundDesign="Transparent"
+                           showSeparators="Inner">
+                        <columns>
+                            <Column width="30%"><Label text="Field Changed" design="Bold" /></Column>
+                            <Column width="35%"><Label text="Old Value" /></Column>
+                            <Column width="35%"><Label text="New Value" /></Column>
+                        </columns>
+                        <items>
+                            <ColumnListItem>
+                                <cells>
+                                    <Text text="{audit>field}" />
+                                    <Text text="{audit>oldValue}" />
+                                    <ObjectStatus text="{audit>newValue}" state="{= ${audit>oldValue} !== '-' ? 'Success' : 'None' }" />
+                                </cells>
+                            </ColumnListItem>
+                        </items>
+                    </Table>
+                </content>
+                <buttons>
+                    <Button text="Close Details" press=".onCloseDetailDialog" type="Transparent"/>
+                </buttons>
+            </Dialog>
+        </f:dependents>
+
+        <f:title>
+            <f:DynamicPageTitle>
+                <f:heading>
+                    <HBox alignItems="Center">
+                        <Title text="Audit Log" level="H2"/>
+                    </HBox>
+                </f:heading>
+            </f:DynamicPageTitle>
+        </f:title>
+        
+        <f:content>
             <layout:Grid defaultSpan="XL12 L12 M12 S12" class="sapUiSmallMarginTop">
                 
                 <f:Card>
@@ -18,12 +117,12 @@
                     <f:content>
                         <HBox alignItems="Center" wrap="Wrap" class="sapUiSmallMargin">
                             <Label text="Data Table:" design="Bold" class="sapUiTinyMarginEnd sapUiTinyMarginTopBottom" />
-                            <Input id="auditSearchInput" 
-                                   placeholder="Example: ZEMPLOYEE_105..." 
-                                   showValueHelp="true" 
-                                   valueHelpRequest=".onValueHelpRequest" 
-                                   submit=".onSearchAuditLog" 
-                                   width="400px" 
+                            <Input id="auditSearchInput"
+                                   placeholder="Enter table name..."
+                                   showValueHelp="true"
+                                   valueHelpRequest=".onValueHelpRequest"
+                                   submit=".onSearchAuditLog"
+                                   width="400px"
                                    class="sapUiTinyMarginEnd" />
                             <Button text="Search" type="Emphasized" icon="sap-icon://search" press=".onSearchAuditLog" class="sapUiTinyMarginEnd"/>
                             <Button text="Clear" type="Transparent" icon="sap-icon://clear-filter" press=".onClearAuditSearch" tooltip="Clear search criteria"/>
@@ -36,27 +135,27 @@
                         <card:Header title="Recent Changes" subtitle="Click the details button to view the data lifecycle (Audit Trail)" iconSrc="sap-icon://table-view"/>
                     </f:header>
                     <f:content>
-                        <Table id="auditMasterTable" 
-                               items="{audit>/mainLogs}" 
-                               noDataText="No data available. Please select a table to view its audit log."
+                        <Table id="auditMasterTable"
+                               items="{audit>/mainLogs}"
+                               noDataText="No data available. Please select a table to view its audit log"
                                alternateRowColors="true"
                                growing="true"
                                growingThreshold="20"
                                class="sapUiTinyMarginBottom">
                             <columns>
-                                <Column width="20%"><Label text="Data Key (Row ID)" design="Bold"/></Column>
+                                <Column width="20%"><Label text="Data Key" design="Bold"/></Column>
                                 <Column width="20%"><Label text="Latest Action" design="Bold"/></Column>
                                 <Column width="20%"><Label text="Performed by" design="Bold"/></Column>
                                 <Column width="25%"><Label text="Timestamp" design="Bold"/></Column>
-                                <Column width="15%" hAlign="End"><Label text="Action" design="Bold"/></Column>
+                                <Column width="15%"><Label text="Action" design="Bold"/></Column>
                             </columns>
                             <items>
                                 <ColumnListItem>
                                     <cells>
                                         <ObjectIdentifier title="{audit>rowId}" text="ID" />
                                         
-                                        <ObjectStatus text="{audit>lastAction}" 
-                                                      state="{= ${audit>lastAction} === 'CREATE' ? 'Success' : (${audit>lastAction} === 'DELETE' ? 'Error' : 'Warning') }" 
+                                        <ObjectStatus text="{audit>lastAction}"
+                                                      state="{= ${audit>lastAction} === 'CREATE' ? 'Success' : (${audit>lastAction} === 'DELETE' ? 'Error' : 'Warning') }"
                                                       icon="{= ${audit>lastAction} === 'CREATE' ? 'sap-icon://add' : (${audit>lastAction} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }"/>
                                         
                                         <Text text="{audit>lastUser}" />
@@ -70,6 +169,6 @@
                     </f:content>
                 </f:Card>
             </layout:Grid>
-        </content>
-    </Page>
+        </f:content>
+    </f:DynamicPage>
 </mvc:View>

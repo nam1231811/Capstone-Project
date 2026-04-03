@@ -196,13 +196,13 @@ sap.ui.define([
                         oDisplayModel.setProperty("/Data", null);
                     }
 
-                    sap.m.MessageToast.show("Đã tìm thấy " + aMatchedTables.length + " bảng khớp.");
+                    sap.m.MessageToast.show("Founded " + aMatchedTables.length + " matching tables.");
                     return;
                 }
 
                 var oDisplayModel = oView.getModel("displayModel");
                 if (!oDisplayModel) {
-                    oDisplayModel = new sap.ui.model.JSON.JSONModel();
+                    oDisplayModel = new sap.ui.model.json.JSONModel();
                     oView.setModel(oDisplayModel, "displayModel");
                 }
                 oDisplayModel.setProperty("/Meta", oPayload.metadata);
@@ -219,8 +219,19 @@ sap.ui.define([
 
             }.bind(this)).catch(function (oError) {
                 oTable.setBusy(false);
-                sap.m.MessageBox.error(oError.message || "Lỗi tải dữ liệu");
-            });
+                
+                var sBackendError = oError.message ? oError.message.toLowerCase() : "";
+
+                if (sBackendError.includes("không nhận được dữ liệu") || 
+                    sBackendError.includes("not found") || 
+                    sBackendError.includes("no data")) {
+                    
+                    var sInfoMsg = sName ? oBundle.getText("msgTableNotFound", [sName]) : oBundle.getText("msgNoDataFound");
+                    sap.m.MessageBox.information(sInfoMsg);
+                } else {
+                    sap.m.MessageBox.error(oError.message);
+                }
+            }.bind(this));
         },
         
         _updateUniqueTablesList: function(oPayload) {

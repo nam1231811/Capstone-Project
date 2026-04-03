@@ -82,7 +82,8 @@
         "sap.uxap": {},
         "sap.ui.comp": {},
         "sap.ui.table": {},
-        "sap.viz": {}
+        "sap.viz": {},
+        "sap.suite.ui.commons": {}
       }
     },
     "contentDensities": {
