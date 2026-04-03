@@ -328,39 +328,61 @@ sap.ui.define([
             var oTable = this.byId("dataTable");
             var aData = this.getView().getModel("displayModel").getProperty("/Data");
             var aNewRows = aData.filter(row => row[0] && row[0].isNew);
-            console.log(aData);
             
             oTable.setBusy(true);
 
-            if (aNewRows.length === 0) return;
+            if (aNewRows.length === 0) {
+                oTable.setBusy(false);
+                return;
+            }
 
             var aPromises = {};
             var tableName = "";
+            var bHasError = false;
+            var sErrorMessage = "";
 
             aNewRows.forEach(oRow => {
                 Object.keys(oRow).forEach(key => {
                     if (!isNaN(key)) {
                         var oCell = oRow[key];
                         if (oCell && oCell.fieldname) {
-                            tableName = oCell.table_name
-                            aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
+                            tableName = oCell.table_name;
+                            
+                            var oValidation = UploadExcelData._validateCellFormat(
+                                oCell.value, 
+                                oCell.datatype, 
+                                { fieldname: oCell.fieldname }
+                            );
+                            
+                            if (!oValidation.valid) {
+                                bHasError = true;
+                                sErrorMessage += "Field [" + oCell.fieldname + "]: " + oValidation.msg + "\n";
+                            } else {
+                                aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
+                            }
+                            
                         } else {
-                            console.warn("On Save" + key + "error");
+                            console.warn("On Save " + key + " error");
                         }
                     }
                 });
             });
             
-            var codeData = GetData.encodeFunction(aPromises)
+            if (bHasError) {
+                oTable.setBusy(false);
+                sap.m.MessageBox.error("Invalid data format detected. Please fix the errors below before saving:\n\n" + sErrorMessage);
+                return; 
+            }
+            
+            var codeData = GetData.encodeFunction(aPromises);
             if(codeData){
-                this._sendToBackend(tableName, codeData)
-            } else{
-                oTable.setBusy(false)
+                this._sendToBackend(tableName, codeData);
+            } else {
+                oTable.setBusy(false);
                 sap.m.MessageBox.error("Can't add more row", {
                     title: "Warning",
-                onClose: function() {
-                    this.onRollback(); 
-                }.bind(this)})
+                    onClose: function() { this.onRollback(); }.bind(this)
+                });
             }
         },
 

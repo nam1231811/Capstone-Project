@@ -6,7 +6,8 @@ sap.ui.define([
     "zapp/api/SaveToDatabase",
     "zapp/models/DataFormatter",
     "zapp/models/GetData",
-], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase, DataFormatter, GetData) {
+    "zapp/utils/UploadExcelData"
+], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase, DataFormatter, GetData, UploadExcelData) {
     "use strict";
 
     return Controller.extend("zapp.controller.DetailData", {
@@ -74,6 +75,34 @@ sap.ui.define([
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
             var bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
 
+            var bHasError = false;
+            var sErrorMessage = "";
+            var aPromises = {};
+
+            var arrayData = Object.values(oDetailModel);
+            arrayData.forEach(oCell => {
+                if (oCell && oCell.fieldname) {
+                    
+                    var oValidation = UploadExcelData._validateCellFormat(
+                        oCell.value, 
+                        oCell.datatype, 
+                        { fieldname: oCell.fieldname }
+                    );
+
+                    if (!oValidation.valid) {
+                        bHasError = true;
+                        sErrorMessage += "Field [" + oCell.fieldname + "]: " + oValidation.msg + "\n";
+                    } else {
+                        aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
+                    }
+                }
+            });
+
+            if (bHasError) {
+                sap.m.MessageBox.error("Invalid data format detected. Please fix the errors below before saving:\n\n" + sErrorMessage);
+                return; 
+            }
+
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
 
@@ -92,14 +121,6 @@ sap.ui.define([
                 return;
             }
 
-            var aPromises = {};
-            var arrayData = Object.values(oDetailModel);
-            arrayData.forEach(oCell => {
-                if (oCell && oCell.fieldname) {
-                    aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
-                }
-            });
-            
             var codeData = GetData.encodeFunction(aPromises);
             var path = "/Data(uuid=" + enUuid + ")";
 

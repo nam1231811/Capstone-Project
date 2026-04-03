@@ -4,33 +4,35 @@ sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
-    "sap/m/MessageToast"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast) {
+    "sap/m/MessageToast",
+    "zapp/utils/DataFormatter"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatter) {
     "use strict";
 
     return Controller.extend("zapp.controller.AuditLog", {
+        formatter: DataFormatter,
+
         onInit: function () {
             var oModel = new JSONModel({
                 mainLogs: [],
-                currentTrail: [],
+                allLogs: [],
                 selectedRowId: "",
-                allLogs: [] // Chứa bộ nhớ đệm toàn bộ Log tải từ DB
+                processNodes: [],
+                processLanes: [],
+                selectedNodeChanges: [],
+                selectedNodeAction: undefined,
+                selectedNodeTime: "",
+                selectedLogUuid: ""
             });
             this.getView().setModel(oModel, "audit");
         },
 
-        onNavBack: function () {
-            var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteHome", {}, true);
-        },
-
         onValueHelpRequest: function (oEvent) {
             var oView = this.getView();
-            var oBundle = oView.getModel("i18n") ? oView.getModel("i18n").getResourceBundle() : null;
 
             if (!this._pValueHelpDialog) {
                 this._pValueHelpDialog = new sap.m.TableSelectDialog({
-                    title: "List of Tables",
+                    title: "List of tables",
                     busyIndicatorDelay: 0,
                     noDataText: "No data available",
                     contentWidth: "50%",
@@ -88,7 +90,7 @@ sap.ui.define([
             var oODataModel = this.getOwnerComponent().getModel("auditOData");
 
             if (!oODataModel) {
-                sap.m.MessageBox.error("Không tìm thấy Model kết nối đến Backend. Vui lòng kiểm tra lại manifest.json!");
+                sap.m.MessageBox.error("No model found for backend connection");
                 return;
             }
 
@@ -98,9 +100,8 @@ sap.ui.define([
                 return;
             }
 
-            this.getView().setBusy(true);
+            this.byId("auditMasterTable").setBusy(true);
 
-            // GỌI ODATA V4 LẤY LOG TỪ BACKEND
             var oListBinding = oODataModel.bindList("/AuditLog");
             oListBinding.filter(new sap.ui.model.Filter("TableName", sap.ui.model.FilterOperator.EQ, sTableName.toUpperCase()));
 
@@ -110,14 +111,12 @@ sap.ui.define([
                     aAllLogs.push(oCtx.getObject());
                 });
 
-                // Sắp xếp Mới nhất -> Cũ nhất
                 aAllLogs.sort(function (a, b) {
                     return new Date(b.ChangedAt) - new Date(a.ChangedAt);
                 });
 
                 oLocalModel.setProperty("/allLogs", aAllLogs);
 
-                // GOM NHÓM THEO ROW ID (Chỉ lấy hành động mới nhất)
                 var oLatestLogsMap = {};
                 var aMainLogs = [];
 
@@ -129,17 +128,7 @@ sap.ui.define([
                         if (oLog.Action === 'C') sAction = "CREATE";
                         if (oLog.Action === 'D') sAction = "DELETE";
 
-                        var sTime = "";
-                        if (oLog.ChangedAt) {
-                            var oDate = new Date(oLog.ChangedAt); // Tự động quy đổi từ UTC sang giờ máy tính (VD: GMT+7)
-                            var yyyy = oDate.getFullYear();
-                            var MM = String(oDate.getMonth() + 1).padStart(2, '0');
-                            var dd = String(oDate.getDate()).padStart(2, '0');
-                            var HH = String(oDate.getHours()).padStart(2, '0');
-                            var mm = String(oDate.getMinutes()).padStart(2, '0');
-                            var ss = String(oDate.getSeconds()).padStart(2, '0');
-                            sTime = yyyy + "-" + MM + "-" + dd + " " + HH + ":" + mm + ":" + ss;
-                        }
+                        var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
 
                         aMainLogs.push({
                             rowId: oLog.RecordKey,
@@ -148,15 +137,15 @@ sap.ui.define([
                             lastTimestamp: sTime
                         });
                     }
-                });
+                }); 
 
                 oLocalModel.setProperty("/mainLogs", aMainLogs);
-                this.getView().setBusy(false);
+                this.byId("auditMasterTable").setBusy(false);
                 sap.m.MessageToast.show("Loaded audit log for table: " + sTableName.toUpperCase());
 
             }.bind(this)).catch(function (oError) {
-                this.getView().setBusy(false);
-                sap.m.MessageBox.error("Lỗi khi tải dữ liệu Audit Log: " + oError.message);
+                this.byId("auditMasterTable").setBusy(false);
+                sap.m.MessageBox.error("Error occurred while loading audit log data: " + oError.message);
             }.bind(this));
         },
 
@@ -173,175 +162,139 @@ sap.ui.define([
             var sRowId = oRowData.rowId;
             oLocalModel.setProperty("/selectedRowId", sRowId);
 
-            // THUẬT TOÁN JSON DIFFING
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
-            var aTrailUI = [];
-
             var aTrailLogs = aAllLogs.filter(function (l) { return l.RecordKey === sRowId; });
 
-            aTrailLogs.forEach(function (oLog) {
-                var sAction = oLog.Action === 'C' ? 'CREATE' : (oLog.Action === 'U' ? 'UPDATE' : 'DELETE');
-                var sTime = "";
-                if (oLog.ChangedAt) {
-                    var oDate = new Date(oLog.ChangedAt);
-                    var yyyy = oDate.getFullYear();
-                    var MM = String(oDate.getMonth() + 1).padStart(2, '0');
-                    var dd = String(oDate.getDate()).padStart(2, '0');
-                    var HH = String(oDate.getHours()).padStart(2, '0');
-                    var mm = String(oDate.getMinutes()).padStart(2, '0');
-                    var ss = String(oDate.getSeconds()).padStart(2, '0');
-                    sTime = yyyy + "-" + MM + "-" + dd + " " + HH + ":" + mm + ":" + ss;
-                }
-                var aChanges = [];
-
-                var oOld = {}, oNew = {};
-                try { if (oLog.OldData) oOld = JSON.parse(oLog.OldData); } catch (e) { }
-                try { if (oLog.NewData) oNew = JSON.parse(oLog.NewData); } catch (e) { }
-
-                var aAllKeys = Object.keys(oOld).concat(Object.keys(oNew));
-                var aUniqueKeys = aAllKeys.filter(function (item, pos) { return aAllKeys.indexOf(item) === pos; });
-
-                aUniqueKeys.forEach(function (sKey) {
-                    if (sKey.toUpperCase() === 'MANDT') return;
-
-                    var sOldVal = oOld.hasOwnProperty(sKey) ? String(oOld[sKey]) : "-";
-                    var sNewVal = oNew.hasOwnProperty(sKey) ? String(oNew[sKey]) : "-";
-
-                    if (sOldVal !== sNewVal) {
-                        aChanges.push({
-                            field: sKey,
-                            oldValue: sOldVal,
-                            newValue: sNewVal
-                        });
-                    }
-                });
-
-                if (aChanges.length === 0) {
-                    aChanges.push({ field: "Không có thay đổi chi tiết", oldValue: "-", newValue: "-" });
-                }
-
-
-                aTrailUI.push({
-                    logId: oLog.LogUuid,
-                    timestamp: sTime,
-                    user: oLog.ChangedBy,
-                    action: sAction,
-                    changes: aChanges
-                });
+            aTrailLogs.sort(function(a, b) {
+                return new Date(a.ChangedAt) - new Date(b.ChangedAt);
             });
 
-            oLocalModel.setProperty("/currentTrail", aTrailUI);
+            var aProcessNodes = [];
+            var aProcessLanes = [];
 
-            // TẠO DIALOG HIỂN THỊ
-            if (!this._oTrailDialog) {
-                this._oTrailDialog = new sap.m.Dialog({
-                    title: "Detailed Audit Trail - Record ID: {audit>/selectedRowId}",
-                    contentWidth: "900px",
-                    contentHeight: "600px",
-                    resizable: true,
-                    draggable: true,
-                    content: [
-                        new sap.m.ScrollContainer({
-                            width: "100%",
-                            height: "100%",
-                            vertical: true,
-                            content: [
-                                new sap.m.VBox({
-                                    class: "sapUiSmallMargin",
-                                    items: {
-                                        path: "audit>/currentTrail",
-                                        template: new sap.m.Panel({
-                                            expandable: true,
-                                            expanded: true,
-                                            width: "auto",
-                                            class: "sapUiTinyMarginBottom",
-                                            headerToolbar: new sap.m.OverflowToolbar({
-                                                style: "Clear",
-                                                content: [
-                                                    new sap.m.Avatar({
-                                                        src: "{= ${audit>action} === 'CREATE' ? 'sap-icon://add' : (${audit>action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit-property') }",
-                                                        displaySize: "XS",
-                                                        backgroundColor: "{= ${audit>action} === 'CREATE' ? 'Accent3' : (${audit>action} === 'DELETE' ? 'Accent2' : 'Accent1') }"
-                                                    }),
-                                                    new sap.m.Label({ text: "{audit>user}", design: "Bold" }),
-                                                    new sap.m.Text({ text: "•" }),
-                                                    new sap.m.Text({ text: "{audit>timestamp}" }),
+            aTrailLogs.forEach(function (oLog, index) {
+                var sAction = oLog.Action === 'C' ? 'CREATE' : (oLog.Action === 'U' ? 'UPDATE' : 'DELETE');
+                
+                var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
 
-                                                    new sap.m.ToolbarSpacer(),
-
-                                                    new sap.m.ObjectStatus({
-                                                        text: "{audit>action}",
-                                                        state: "{= ${audit>action} === 'CREATE' ? 'Success' : (${audit>action} === 'DELETE' ? 'Error' : 'Warning') }"
-                                                    }),
-                                                    new sap.m.ToolbarSeparator(),
-                                                    new sap.m.Button({
-                                                        text: "Revert",
-                                                        icon: "sap-icon://undo",
-                                                        type: "Transparent",
-                                                        visible: "{= ${audit>action} === 'UPDATE' || ${audit>action} === 'DELETE'}",
-                                                        press: this.onRequestRevert.bind(this)
-                                                    })
-                                                ]
-                                            }),
-                                            content: [
-                                                new sap.m.Table({
-                                                    backgroundDesign: "Transparent",
-                                                    showSeparators: "Inner",
-                                                    columns: [
-                                                        new sap.m.Column({ width: "30%", header: new sap.m.Label({ text: "Field Changed", design: "Bold" }) }),
-                                                        new sap.m.Column({ width: "35%", header: new sap.m.Label({ text: "Old Value" }) }),
-                                                        new sap.m.Column({ width: "35%", header: new sap.m.Label({ text: "New Value" }) })
-                                                    ],
-                                                    items: {
-                                                        path: "audit>changes",
-                                                        template: new sap.m.ColumnListItem({
-                                                            cells: [
-                                                                new sap.m.Text({ text: "{audit>field}" }),
-                                                                new sap.m.Text({ text: "{audit>oldValue}" }),
-                                                                new sap.m.ObjectStatus({
-                                                                    text: "{audit>newValue}",
-                                                                    state: "{= ${audit>oldValue} !== '-' ? 'Success' : 'None' }"
-                                                                })
-                                                            ]
-                                                        })
-                                                    }
-                                                })
-                                            ]
-                                        })
-                                    }
-                                })
-                            ]
-                        })
-                    ],
-                    endButton: new sap.m.Button({
-                        text: "Close Dialog",
-                        press: function () {
-                            this._oTrailDialog.close();
-                        }.bind(this)
-                    })
+                var sLaneId = "lane_" + index;
+                aProcessLanes.push({
+                    id: sLaneId,
+                    icon: sAction === 'CREATE' ? 'sap-icon://add' : (sAction === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit'),
+                    label: sAction + " (" + sTime + ")",
+                    position: index
                 });
-                this.getView().addDependent(this._oTrailDialog);
-            }
 
-            this._oTrailDialog.open();
+                var sNodeId = oLog.LogUuid;
+                var aChildren = [];
+                if (index < aTrailLogs.length - 1) {
+                    aChildren.push(aTrailLogs[index + 1].LogUuid);
+                }
+
+                var sState = "";
+                if (sAction === 'CREATE') {
+                    sState = "Positive";
+                } else if (sAction === 'DELETE') {
+                    sState = "Negative";
+                } else if (sAction === 'UPDATE') {
+                    sState = "Critical";
+                }
+
+                aProcessNodes.push({
+                    id: sNodeId,
+                    lane: sLaneId,
+                    title: "User: " + oLog.ChangedBy,
+                    titleAbbreviation: oLog.ChangedBy.substring(0, 2).toUpperCase(),
+                    children: aChildren,
+                    state: sState,
+                    texts: ["Click to view details"]
+                });
+            }); 
+
+            oLocalModel.setProperty("/processNodes", aProcessNodes);
+            oLocalModel.setProperty("/processLanes", aProcessLanes);
+
+            var oDialog = this.byId("auditTrailDialog");
+            oDialog.open();
+            
+            var oProcessFlow = this.byId("auditProcessFlow");
+            if (oProcessFlow) {
+                oProcessFlow.setZoomLevel("One");
+                oProcessFlow.updateModel();
+            }
         },
 
-        onRequestRevert: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext("audit");
-            var oLogEntry = oContext.getObject();
-            var sTableName = this.byId("auditSearchInput").getValue();
-            var sRowId = this.getView().getModel("audit").getProperty("/selectedRowId");
+        onNodePress: function (oEvent) {
+            var oParameters = oEvent.getParameters();
+            var sLogId = oParameters.getNodeId();
+            var oLocalModel = this.getView().getModel("audit");
+            
+            var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
+            var oSelectedLog = aAllLogs.find(function(l) { return l.LogUuid === sLogId; });
 
-            var sMessage = "You are about to revert the record [ID: " + sRowId + "] to the state at: " + oLogEntry.timestamp + ".\n\n" +
+            if (!oSelectedLog) return;
+
+            var sAction = oSelectedLog.Action === 'C' ? 'CREATE' : (oSelectedLog.Action === 'U' ? 'UPDATE' : 'DELETE');
+            
+            var sTime = DataFormatter.formatDateTime(oSelectedLog.ChangedAt);
+
+            var aChanges = [];
+            var oOld = {}, oNew = {};
+            try { if (oSelectedLog.OldData) oOld = JSON.parse(oSelectedLog.OldData); } catch (e) { }
+            try { if (oSelectedLog.NewData) oNew = JSON.parse(oSelectedLog.NewData); } catch (e) { }
+
+            var aAllKeys = Object.keys(oOld).concat(Object.keys(oNew));
+            var aUniqueKeys = aAllKeys.filter(function (item, pos) { return aAllKeys.indexOf(item) === pos; });
+
+            aUniqueKeys.forEach(function (sKey) {
+                if (sKey.toUpperCase() === 'MANDT') return;
+
+                var sOldVal = oOld.hasOwnProperty(sKey) ? String(oOld[sKey]) : "-";
+                var sNewVal = oNew.hasOwnProperty(sKey) ? String(oNew[sKey]) : "-";
+
+                if (sOldVal !== sNewVal) {
+                    aChanges.push({
+                        field: sKey,
+                        oldValue: sOldVal,
+                        newValue: sNewVal
+                    });
+                }
+            });
+
+            oLocalModel.setProperty("/selectedNodeChanges", aChanges);
+            oLocalModel.setProperty("/selectedNodeAction", sAction);
+            oLocalModel.setProperty("/selectedNodeTime", sTime);
+            oLocalModel.setProperty("/selectedLogUuid", sLogId);
+
+            this.byId("detailNodeDialog").open();
+        },
+
+        onCloseTrailDialog: function () {
+            this.byId("auditTrailDialog").close();
+        },
+
+        onCloseDetailDialog: function () {
+            this.byId("detailNodeDialog").close();
+        },
+
+        onRequestRevert: function () {
+            var oLocalModel = this.getView().getModel("audit");
+            var sLogId = oLocalModel.getProperty("/selectedLogUuid");
+            var sTime = oLocalModel.getProperty("/selectedNodeTime");
+            
+            var sTableName = this.byId("auditSearchInput").getValue();
+            var sRowId = oLocalModel.getProperty("/selectedRowId");
+
+            var sMessage = "You are about to revert the record [ID: " + sRowId + "] to the state at: " + sTime + ".\n\n" +
                 "This request will be sent to the Manager for approval. Are you sure you want to create this Request?";
 
             MessageBox.confirm(sMessage, {
                 title: "Confirm Revert Request",
                 icon: MessageBox.Icon.WARNING,
                 actions: [MessageBox.Action.YES, MessageBox.Action.NO],
-                onClose: function (sAction) {
-                    if (sAction === MessageBox.Action.YES) {
-                        this._sendRevertRequestToBackend(sTableName, sRowId, oLogEntry.logId);
+                onClose: function (sConfirmAction) {
+                    if (sConfirmAction === MessageBox.Action.YES) {
+                        this._sendRevertRequestToBackend(sTableName, sRowId, sLogId);
                     }
                 }.bind(this)
             });
@@ -350,25 +303,20 @@ sap.ui.define([
         _sendRevertRequestToBackend: function (sTableName, sRowId, sLogId) {
             var oView = this.getView();
             var oLocalModel = oView.getModel("audit");
-            // Gọi Model mặc định (mainService) để bắn data vào bảng ZTEMP_DATA_GSP14
             var oMainModel = oView.getModel();
 
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
             var oOriginalLog = aAllLogs.find(function (l) { return l.LogUuid === sLogId; });
 
             if (!oOriginalLog || !oOriginalLog.OldData || oOriginalLog.OldData === "") {
-                sap.m.MessageBox.error("Không có dữ liệu gốc để khôi phục!");
+                sap.m.MessageBox.error("No original data available for revert");
                 return;
             }
 
             oView.setBusy(true);
 
-            // Mã hóa dữ liệu JSON thành chuỗi Base64
             var sBase64Data = btoa(unescape(encodeURIComponent(oOriginalLog.OldData)));
 
-            // ===================================================================
-            // CHÌA KHÓA NẰM Ở ĐÂY: Format ID sang chuẩn Edm.Guid (8-4-4-4-12)
-            // ===================================================================
             var sFormattedUuid = sRowId;
             if (sFormattedUuid.length === 32 && sFormattedUuid.indexOf("-") === -1) {
                 sFormattedUuid = sFormattedUuid.substring(0, 8) + "-" +
@@ -377,11 +325,9 @@ sap.ui.define([
                     sFormattedUuid.substring(16, 20) + "-" +
                     sFormattedUuid.substring(20);
             }
-            // OData V4 thường ưu tiên chữ thường cho GUID
             sFormattedUuid = sFormattedUuid.toLowerCase();
 
             if (oOriginalLog.Action === 'D') {
-                // TRƯỜNG HỢP 1: REVERT LỆNH DELETE (CREATE LẠI DỮ LIỆU)
                 var oFinalPayload = {
                     "table_name": sTableName.toUpperCase(),
                     "data": sBase64Data
@@ -391,40 +337,41 @@ sap.ui.define([
 
                 oContext.created().then(function () {
                     oView.setBusy(false);
-                    sap.m.MessageToast.show("Đã gửi yêu cầu Revert (Khôi phục bản ghi)! Vui lòng kiểm tra Approval.");
-                    this._oTrailDialog.close();
+                    sap.m.MessageToast.show("Request sent for revert. Please check Approval");
+                    
+                    this.byId("detailNodeDialog").close();
+                    this.byId("auditTrailDialog").close();
                 }.bind(this)).catch(function (oError) {
                     oView.setBusy(false);
                     if (oContext.isTransient()) { oContext.delete(); }
-                    sap.m.MessageBox.error("Lỗi khi gửi yêu cầu Revert: " + oError.message);
+                    sap.m.MessageBox.error("Error while sending revert request: " + oError.message);
                 }.bind(this));
 
             } else {
-                // TRƯỜNG HỢP 2: REVERT LỆNH UPDATE (GỬI LỆNH PATCH)
                 var sPath = "/Data(uuid=" + sFormattedUuid + ")";
-
-                // Gom nhóm request y hệt như file DetailData
                 var oContextBinding = oMainModel.bindContext(sPath, null, {
                     $$updateGroupId: "updateGroup"
                 });
-                var oContext = oContextBinding.getBoundContext();
+                var oContextData = oContextBinding.getBoundContext();
 
-                oContext.setProperty("table_name", sTableName.toUpperCase());
-                oContext.setProperty("data", sBase64Data);
+                oContextData.setProperty("table_name", sTableName.toUpperCase());
+                oContextData.setProperty("data", sBase64Data);
 
                 oMainModel.submitBatch("updateGroup").then(function () {
                     if (oMainModel.hasPendingChanges("updateGroup")) {
                         oView.setBusy(false);
-                        sap.m.MessageBox.error("Lỗi: Yêu cầu cập nhật bị từ chối từ Backend.");
+                        sap.m.MessageBox.error("Error: Update request was rejected by backend");
                         oMainModel.resetChanges("updateGroup");
                     } else {
                         oView.setBusy(false);
-                        sap.m.MessageToast.show("Đã gửi yêu cầu Revert (Hoàn tác Update)! Vui lòng kiểm tra Approval.");
-                        this._oTrailDialog.close();
+                        sap.m.MessageToast.show("Request sent for revert. Please check Approval");
+                        
+                        this.byId("detailNodeDialog").close();
+                        this.byId("auditTrailDialog").close();
                     }
                 }.bind(this)).catch(function (oError) {
                     oView.setBusy(false);
-                    sap.m.MessageBox.error("Lỗi hoàn tác Update: " + oError.message);
+                    sap.m.MessageBox.error("Error while reverting update: " + oError.message);
                 }.bind(this));
             }
         }

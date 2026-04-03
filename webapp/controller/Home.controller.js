@@ -49,6 +49,16 @@ sap.ui.define([
         },
 
         onNavToAuditLog: function () {
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            var bIsAdmin = oAuthModel.getProperty("/isAdmin");
+
+            if (!bIsAdmin) {
+                MessageBox.warning("Audit Log function is only available for Admins!\nYou do not have permission to access!", {
+                    title: "Access Denied"
+                });
+                return;
+            }
+
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("RouteAuditLog"); 
         },
