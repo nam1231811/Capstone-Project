@@ -117,26 +117,21 @@ sap.ui.define([
 
                 oLocalModel.setProperty("/allLogs", aAllLogs);
 
-                var oLatestLogsMap = {};
                 var aMainLogs = [];
 
                 aAllLogs.forEach(function (oLog) {
-                    if (!oLatestLogsMap[oLog.RecordKey]) {
-                        oLatestLogsMap[oLog.RecordKey] = true;
+                    var sAction = "UPDATE";
+                    if (oLog.Action === 'C') sAction = "CREATE";
+                    if (oLog.Action === 'D') sAction = "DELETE";
 
-                        var sAction = "UPDATE";
-                        if (oLog.Action === 'C') sAction = "CREATE";
-                        if (oLog.Action === 'D') sAction = "DELETE";
+                    var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
 
-                        var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
-
-                        aMainLogs.push({
-                            rowId: oLog.RecordKey,
-                            lastAction: sAction,
-                            lastUser: oLog.ChangedBy,
-                            lastTimestamp: sTime
-                        });
-                    }
+                    aMainLogs.push({
+                        rowId: oLog.RecordKey,
+                        lastAction: sAction,
+                        lastUser: oLog.ChangedBy,
+                        lastTimestamp: sTime
+                    });
                 }); 
 
                 oLocalModel.setProperty("/mainLogs", aMainLogs);
