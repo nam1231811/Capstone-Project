@@ -12,9 +12,8 @@ sap.ui.define([
     "sap/m/Bar",
     "sap/m/Title",
     "sap/m/VBox",
-    "sap/ui/model/json/JSONModel",
-    "zapp/utils/TablePaginationData"
-], function(Filter, FilterOperator, Dialog, Button, Grid, Label, MultiInput, Token, SelectDialog, StandardListItem, Bar, Title, VBox, JSONModel, TablePaginationData) {
+    "sap/ui/model/json/JSONModel"
+], function(Filter, FilterOperator, Dialog, Button, Grid, Label, MultiInput, Token, SelectDialog, StandardListItem, Bar, Title, VBox, JSONModel) {
     "use strict";
 
     var FilterHelper = {
@@ -100,9 +99,11 @@ sap.ui.define([
                     oEvent.getSource().getBinding("items").filter([oFilter]);
                 },
                 confirm: function(oEvent) {
-                    oMultiInput.removeAllTokens(); 
                     oEvent.getParameter("selectedItems").forEach(function(oItem) {
-                        oMultiInput.addToken(new Token({ key: oItem.getTitle(), text: oItem.getTitle() }));
+                        var bExists = oMultiInput.getTokens().some(function(t) { return t.getKey() === oItem.getTitle(); });
+                        if (!bExists) {
+                            oMultiInput.addToken(new Token({ key: oItem.getTitle(), text: oItem.getTitle() }));
+                        }
                     });
                 }
             });
@@ -121,22 +122,35 @@ sap.ui.define([
 
         _clearAdaptFilters: function() {
             if (this._aFilterInputs) {
-                this._aFilterInputs.forEach(function(oInput) { oInput.removeAllTokens(); });
+                this._aFilterInputs.forEach(function(oInput) { 
+                    oInput.removeAllTokens(); 
+                    oInput.setValue("");
+                });
             }
         },
 
         _applyAdaptFilters: function() {
-            var oTable = this.byId("dataTable");
-            var oBinding = oTable.getBinding("rows");
+            var oTable = this.byId("dataTable") || this.byId("TablePage");
+            var oBinding = oTable ? oTable.getBinding("rows") : null;
+            if (!oBinding) return;
+
             var oFilterGroups = {};
             var bHasFilter = false;
             this._oActiveFilterTokens = {}; 
 
             this._aFilterInputs.forEach(function(oInput) {
                 var aTokens = oInput.getTokens();
-                if (aTokens.length > 0) {
+                var aValues = aTokens.map(function(t) { return t.getKey(); });
+
+                var sTypedValue = oInput.getValue().trim();
+                if (sTypedValue && aValues.indexOf(sTypedValue) === -1) {
+                    aValues.push(sTypedValue);
+                    oInput.setValue("");
+                    oInput.addToken(new sap.m.Token({ key: sTypedValue, text: sTypedValue })); 
+                }
+
+                if (aValues.length > 0) {
                     var sColIndex = oInput.data("colIndex");
-                    var aValues = aTokens.map(function(t) { return t.getKey(); });
                     oFilterGroups[sColIndex] = aValues;
                     this._oActiveFilterTokens[sColIndex] = aValues; 
                     bHasFilter = true;
@@ -146,17 +160,22 @@ sap.ui.define([
             if (!bHasFilter) {
                 oBinding.filter([]); 
             } else {
-                var oCustomFilter = new Filter({
+                var oCustomFilter = new sap.ui.model.Filter({
                     path: "", 
                     test: function(oRow) {
-                        //Cho phép quét object thay vì ép phải là array
                         if (!oRow || typeof oRow !== "object") return false;
                         for (var sColIndex in oFilterGroups) {
                             var aAllowedValues = oFilterGroups[sColIndex]; 
                             var oCell = oRow[sColIndex];
                             if (!oCell) return false;
+                            
                             var sCellVal = oCell.value !== undefined && oCell.value !== null ? oCell.value.toString().trim() : "";
-                            if (!aAllowedValues.some(function(sAllowed) { return sCellVal === sAllowed; })) { return false; }
+                            
+                            var bMatch = aAllowedValues.some(function(sAllowed) { 
+                                return sCellVal === sAllowed; 
+                            });
+                            
+                            if (!bMatch) { return false; }
                         }
                         return true; 
                     }
@@ -166,14 +185,22 @@ sap.ui.define([
 
             var iFilteredLength = oBinding.getLength(); 
             var iNewVisibleRows = iFilteredLength === 0 ? 1 : (iFilteredLength < 10 ? iFilteredLength : 10);
-            var oDisplayModel = this.getView().getModel("displayModel");
             
-            oDisplayModel.setProperty("/visibleRowCount", iNewVisibleRows);
-            oDisplayModel.setProperty("/hasMore", iFilteredLength > iNewVisibleRows);
-            oDisplayModel.setProperty("/hasLess", false); 
+            var oOverallModel = this.getView().getModel("overall");
+            if (oOverallModel) {
+                oOverallModel.setProperty("/count", iFilteredLength);
+                oOverallModel.setProperty("/minRecord", iNewVisibleRows);
+            }
 
-            if (TablePaginationData && TablePaginationData.applyScrollLock) {
-                TablePaginationData.applyScrollLock(oTable, true);
+            var oDisplayModel = this.getView().getModel("displayModel");
+            if (oDisplayModel) {
+                oDisplayModel.setProperty("/visibleRowCount", iNewVisibleRows);
+                oDisplayModel.setProperty("/hasMore", iFilteredLength > iNewVisibleRows);
+                oDisplayModel.setProperty("/hasLess", false); 
+            }
+
+            if (oTable) {
+                oTable.setFirstVisibleRow(0);
             }
         }
     };
