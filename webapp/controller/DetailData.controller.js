@@ -75,6 +75,62 @@ sap.ui.define([
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
             var bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
 
+            var aAllData = oView.getModel("displayModel").getProperty("/Data") || [];
+            var aMeta = oView.getModel("displayModel").getProperty("/Meta") || [];
+
+            var aKeyIndexes = [];
+            
+            aMeta.forEach(function(col, idx) {
+                var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
+                if (col.keyflag === "X" || col.keyFlag === "X" || 
+                    col.isKey === true || col.is_key === true || col.IsKey === true || 
+                    sColName === "ID" || sColName === "CODE" || 
+                    sColName.indexOf("_ID") !== -1 || sColName.indexOf("_CODE") !== -1) {
+                    aKeyIndexes.push(idx);
+                }
+            });
+
+            if (aKeyIndexes.length === 0 && aMeta.length > 0) {
+                aKeyIndexes.push(0); 
+            }
+
+            var sCurrentRecordIdx = parseInt(this._record, 10);
+            var oOriginalRow = aAllData[sCurrentRecordIdx];
+
+            var bIsKeyModified = false;
+            var aModifiedKeys = [];
+
+            aKeyIndexes.forEach(function(iKey) {
+                var sNewVal = oDetailModel[iKey] ? String(oDetailModel[iKey].value).trim() : "";
+                var sOldVal = oOriginalRow[iKey] ? String(oOriginalRow[iKey].value).trim() : "";
+                
+                if (sNewVal !== sOldVal) {
+                    bIsKeyModified = true;
+                    aModifiedKeys.push(aMeta[iKey].fieldname || aMeta[iKey].fieldName);
+                }
+            });
+
+            if (bIsKeyModified) {
+                sap.m.MessageBox.error("Cannot edit Primary Key!\nYou are not allowed to change the value of [" + aModifiedKeys.join(", ") + "].");
+                return;
+            }
+
+            var bIsDuplicate = aAllData.some(function(oOldRow, idx) {
+                if (idx === sCurrentRecordIdx) return false; 
+
+                return aKeyIndexes.every(function(iKey) {
+                    var sNewVal = oDetailModel[iKey] ? String(oDetailModel[iKey].value).trim().toUpperCase() : "";
+                    var sOldVal = oOldRow[iKey] ? String(oOldRow[iKey].value).trim().toUpperCase() : "";
+                    return sNewVal === sOldVal && sNewVal !== ""; 
+                });
+            });
+
+            if (bIsDuplicate) {
+                var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
+                sap.m.MessageBox.error("Duplicate Key Error: The value for [" + sKeyNames + "] already exists in another record!");
+                return; 
+            }
+
             var bHasError = false;
             var sErrorMessage = "";
             var aPromises = {};
@@ -82,7 +138,6 @@ sap.ui.define([
             var arrayData = Object.values(oDetailModel);
             arrayData.forEach(oCell => {
                 if (oCell && oCell.fieldname) {
-                    
                     var oValidation = UploadExcelData._validateCellFormat(
                         oCell.value, 
                         oCell.datatype, 
@@ -102,7 +157,6 @@ sap.ui.define([
                 sap.m.MessageBox.error("Invalid data format detected. Please fix the errors below before saving:\n\n" + sErrorMessage);
                 return; 
             }
-
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
 

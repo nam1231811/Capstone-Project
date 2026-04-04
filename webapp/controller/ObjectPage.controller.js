@@ -326,8 +326,13 @@ sap.ui.define([
 
         onSave: function () {
             var oTable = this.byId("dataTable");
-            var aData = this.getView().getModel("displayModel").getProperty("/Data");
+            var oModel = this.getView().getModel("displayModel");
+            var aData = oModel.getProperty("/Data");
+            var aMeta = oModel.getProperty("/Meta");
+
             var aNewRows = aData.filter(row => row[0] && row[0].isNew);
+
+            var aOldRows = aData.filter(row => !(row[0] && row[0].isNew));
 
             oTable.setBusy(true);
 
@@ -340,6 +345,45 @@ sap.ui.define([
             var tableName = "";
             var bHasError = false;
             var sErrorMessage = "";
+
+            var aKeyIndexes = [];
+
+            aMeta.forEach(function (col, idx) {
+                var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
+
+                if (col.keyflag === "X" || col.keyFlag === "X" ||
+                    col.isKey === true || col.is_key === true || col.IsKey === true ||
+                    sColName === "ID" || sColName === "CODE" ||
+                    sColName.indexOf("_ID") !== -1 || sColName.indexOf("_CODE") !== -1) {
+                    aKeyIndexes.push(idx);
+                }
+            });
+
+            if (aKeyIndexes.length === 0) {
+                aKeyIndexes.push(0);
+            }
+
+            aNewRows.forEach(function (oNewRow) {
+                var bIsDuplicate = aOldRows.some(function (oOldRow) {
+                    return aKeyIndexes.every(function (iKey) {
+                        var sNewVal = oNewRow[iKey] ? String(oNewRow[iKey].value).trim().toUpperCase() : "";
+                        var sOldVal = oOldRow[iKey] ? String(oOldRow[iKey].value).trim().toUpperCase() : "";
+                        return sNewVal === sOldVal && sNewVal !== "";
+                    });
+                });
+
+                if (bIsDuplicate) {
+                    bHasError = true;
+                    var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
+                    sErrorMessage += "Duplicate Error: The value for [" + sKeyNames + "] already exists!\n";
+                }
+            });
+
+            if (bHasError) {
+                oTable.setBusy(false);
+                sap.m.MessageBox.error(sErrorMessage);
+                return;
+            }
 
             aNewRows.forEach(oRow => {
                 Object.keys(oRow).forEach(key => {
@@ -360,9 +404,6 @@ sap.ui.define([
                             } else {
                                 aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                             }
-
-                        } else {
-                            console.warn("On Save " + key + " error");
                         }
                     }
                 });

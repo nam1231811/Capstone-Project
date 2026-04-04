@@ -11,13 +11,12 @@ sap.ui.define([
             var oColumn = oEvent.getParameter("column");
             if (!oColumn) return;
 
-            //Rút dữ liệu trực tiếp từ cột
             var iColIndex = oColumn.data("colIndex"); 
             var sColName = oColumn.data("colName"); 
             var that = this;
 
-            var oTable = this.byId("dataTable");
-            var oBinding = oTable.getBinding("rows");
+            var oTable = this.byId("dataTable") || this.byId("TablePage");
+            var oBinding = oTable ? oTable.getBinding("rows") : null;
             var aSorters = oBinding ? oBinding.aSorters : [];
             
             var sCurrentSortKey = "none"; 
@@ -102,12 +101,16 @@ sap.ui.define([
                                         customTextOn: " ", customTextOff: " ",
                                         change: function(oEventSwitch) {
                                             var bState = oEventSwitch.getParameter("state");
-                                            that.onSortColumnDirect(false, iColIndex, false, bState);
                                             
                                             if (bState) {
+                                                that.onSortColumnDirect(false, iColIndex, false, true);
                                                 sap.m.MessageToast.show("Data grouped by: " + sColName);
                                             } else {
-                                                sap.m.MessageToast.show("Cancelled");
+                                                var oTargetTable = that.byId("dataTable") || that.byId("TablePage");
+                                                if (oTargetTable && oTargetTable.getBinding("rows")) {
+                                                    oTargetTable.getBinding("rows").sort(null); 
+                                                }
+                                                sap.m.MessageToast.show("Group removed, data reset");
                                             }
                                         }
                                     })
@@ -119,38 +122,34 @@ sap.ui.define([
             });
 
             this.getView().addDependent(this._oColumnPopover);
-            
-            this._oColumnPopover.openBy(oColumn.getLabel()); //Mở popup dựa vào vị trí của label bên trong cột
+            this._oColumnPopover.openBy(oColumn.getLabel()); 
         },
 
         onSortColumnDirect: function(bDescending, iColIndex, bMultiSort, bGroup) {
-            var oTable = this.byId("dataTable");
-            var oBinding = oTable.getBinding("rows");
+            var oTable = this.byId("dataTable") || this.byId("TablePage");
+            var oBinding = oTable ? oTable.getBinding("rows") : null;
 
             if (!oBinding) return;
 
             var sPath = iColIndex + "/value";
             
-            var oNewSorter = new Sorter({
-                path: sPath,
-                descending: bDescending,
-                group: bGroup ? function(oContext) { return oContext.getProperty(sPath); } : false,
-                comparator: function(a, b) {
-                    if (a === b) return 0;
-                    if (a === null || a === undefined) return -1;
-                    if (b === null || b === undefined) return 1;
-                    
-                    var numA = parseFloat(a);
-                    var numB = parseFloat(b);
-                    
-                    if (!isNaN(numA) && !isNaN(numB)) {
-                        return numA - numB;
-                    }
-                    
-                    return a.toString().localeCompare(b.toString());
+            var fnGroup = bGroup ? function(oContext) { return oContext.getProperty(sPath); } : false;
+            var fnComparator = function(a, b) {
+                if (a === b) return 0;
+                if (a === null || a === undefined) return -1;
+                if (b === null || b === undefined) return 1;
+                
+                var numA = parseFloat(a);
+                var numB = parseFloat(b);
+                
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return numA - numB;
                 }
-            });
+                
+                return a.toString().localeCompare(b.toString());
+            };
 
+            var oNewSorter = new Sorter(sPath, bDescending, fnGroup, fnComparator);
             var aFinalSorters = [];
 
             if (!bGroup) {
@@ -159,8 +158,11 @@ sap.ui.define([
                     aFinalSorters = aCurrentSorters.filter(function(oSorter) {
                         return oSorter.sPath !== sPath;
                     });
+
+                    aFinalSorters.push(oNewSorter);
+                } else {
+                    aFinalSorters = [oNewSorter];
                 }
-                aFinalSorters.push(oNewSorter);
             } else {
                 aFinalSorters = [oNewSorter]; 
             }
