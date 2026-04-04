@@ -231,17 +231,18 @@ sap.ui.define([
                         oOperation.execute().then(function () {
                             sap.m.MessageToast.show("Successfully revoked role for " + sUsername + "!");
 
+                            // Hẹn giờ làm mới bảng và tắt vòng xoay
                             setTimeout(function () {
-                                oContext.refresh();
+                                this.byId("usersTable").getBinding("items").refresh();
                                 sap.ui.core.BusyIndicator.hide();
-                            }, 1500);
+                            }.bind(this), 1500); // <--- Bí kíp .bind(this) nằm ở đây
 
-                        }).catch(function (oError) {
+                        }.bind(this)).catch(function (oError) {
                             sap.m.MessageBox.error("Error revoking role: " + oError.message);
                             sap.ui.core.BusyIndicator.hide();
                         });
                     }
-                }
+                }.bind(this)
             });
         }
     });
