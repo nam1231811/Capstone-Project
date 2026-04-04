@@ -207,7 +207,7 @@
                         <layout:GridData span="XL6 L6 M12 S12" />
                     </f:layoutData>
                     <f:header>
-                        <card:Header title="Recent Changes" subtitle="Top 5 recent actions" iconSrc="sap-icon://history"/>
+                        <card:Header title="Recent Changes" subtitle="Top 20 latest actions" iconSrc="sap-icon://history"/>
                     </f:header>
                     <f:content>
                         <ScrollContainer width="100%" height="320px" vertical="true">
