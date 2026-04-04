@@ -1,7 +1,6 @@
 sap.ui.define([
     "sap/ui/model/Filter",
-    "zapp/utils/TablePaginationData"
-], function (Filter, TablePaginationData) {
+], function (Filter) {
     "use strict";
 
     return {
@@ -12,7 +11,6 @@ sap.ui.define([
             }
             sQuery = sQuery ? sQuery.toString().toLowerCase().trim() : "";
 
-            //Highlight text cho bảng
             this.getView().getModel("displayModel").setProperty("/searchQuery", sQuery);
 
             var oTable = this.byId("dataTable");
@@ -27,7 +25,6 @@ sap.ui.define([
                     test: function (oRow) {
                         if (!oRow || typeof oRow !== "object") return false;
                         
-                        //Chuyển object thành mảng để quét qua các cột
                         var aCells = Object.keys(oRow).map(function(key) { return oRow[key]; });
                         
                         return aCells.some(function (oCell) {
@@ -41,14 +38,23 @@ sap.ui.define([
 
             var iFilteredLength = oBinding.getLength();
             var iNewVisibleRows = iFilteredLength === 0 ? 1 : (iFilteredLength < 10 ? iFilteredLength : 10);
-            var oDisplayModel = this.getView().getModel("displayModel");
             
-            oDisplayModel.setProperty("/visibleRowCount", iNewVisibleRows);
-            oDisplayModel.setProperty("/hasMore", iFilteredLength > iNewVisibleRows);
-            oDisplayModel.setProperty("/hasLess", false);
+            var oOverallModel = this.getView().getModel("overall");
+            if (oOverallModel) {
+                oOverallModel.setProperty("/count", iFilteredLength);
 
-            if (TablePaginationData && TablePaginationData.applyScrollLock) {
-                TablePaginationData.applyScrollLock(oTable, true);
+                oOverallModel.setProperty("/minRecord", iNewVisibleRows);
+            }
+
+            var oDisplayModel = this.getView().getModel("displayModel");
+            if (oDisplayModel) {
+                oDisplayModel.setProperty("/visibleRowCount", iNewVisibleRows);
+                oDisplayModel.setProperty("/hasMore", iFilteredLength > iNewVisibleRows);
+                oDisplayModel.setProperty("/hasLess", false);
+            }
+
+            if (oTable) {
+                oTable.setFirstVisibleRow(0);
             }
         }
     };

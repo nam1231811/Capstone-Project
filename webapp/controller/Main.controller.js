@@ -227,7 +227,7 @@ sap.ui.define([
                     sBackendError.includes("no data")) {
                     
                     var sInfoMsg = sName ? oBundle.getText("msgTableNotFound", [sName]) : oBundle.getText("msgNoDataFound");
-                    sap.m.MessageBox.information(sInfoMsg);
+                    sap.m.MessageBox.warning(sInfoMsg);
                 } else {
                     sap.m.MessageBox.error(oError.message);
                 }
