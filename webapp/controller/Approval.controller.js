@@ -87,30 +87,77 @@ sap.ui.define([
             return aContexts.map(function (oContext) {
                 var oData = oContext.getObject();
 
-                var sActionCode = oData.action_type || oData.ActionType || oData.action || oData.Action || "";
-                var sActionText = sActionCode === "C" ? "CREATE" : (sActionCode === "U" ? "UPDATE" : "DELETE");
+                var sActionCode = String(oData.action_type || oData.ActionType || oData.action || oData.Action || "").toUpperCase();
+                var sActionText = "UPDATE";
+                
+                if (sActionCode === "C" || sActionCode === "CREATE") sActionText = "CREATE";
+                else if (sActionCode === "D" || sActionCode === "DELETE") sActionText = "DELETE";
+                else if (sActionCode === "U" || sActionCode === "UPDATE") sActionText = "UPDATE";
 
                 var sStatusCode = oData.status || oData.Status || "";
                 var sStatusText = bIsPending ? "PENDING" : (sStatusCode === "A" ? "APPROVED" : "REJECTED");
 
                 var sRawTime = oData.changed_at || oData.ChangedAt || oData.created_at || oData.CreatedAt;
 
-                var aDiff = [];
-                var sRawData = oData.data || oData.Data || oData.old_data || oData.OldData;
-                if (sRawData) {
-                    try {
-                        var oParsed = (!sRawData.startsWith("{") && !sRawData.startsWith("[")) 
-                                    ? GetData.decodeFunction({ json_string: sRawData }) 
-                                    : JSON.parse(sRawData);
-                        Object.keys(oParsed).forEach(function (key) {
-                            aDiff.push({
-                                field: key,
-                                oldData: sActionCode === "C" ? "-" : "Loading...", 
-                                newData: oParsed[key]
-                            });
-                        });
-                    } catch (e) { console.error(e); }
+                var sOldDataStr = oData.old_data || oData.OldData || "";
+                var sNewDataStr = oData.new_data || oData.NewData || "";
+
+                var sTempData = oData.data || oData.Data || "";
+                if (sTempData) {
+                    if (sActionText === "DELETE") sOldDataStr = sTempData;
+                    else if (sActionText === "CREATE") sNewDataStr = sTempData; 
+                    else sNewDataStr = sTempData;
                 }
+
+                if (sActionText === "DELETE" && !sOldDataStr && sNewDataStr) {
+                    sOldDataStr = sNewDataStr;
+                    sNewDataStr = "";          
+                }
+
+                if (sActionText === "CREATE" && !sNewDataStr && sOldDataStr) {
+                    sNewDataStr = sOldDataStr; 
+                    sOldDataStr = "";
+                }
+
+                var oParsedOld = {};
+                if (sOldDataStr) {
+                    try {
+                        oParsedOld = (!sOldDataStr.startsWith("{") && !sOldDataStr.startsWith("[")) 
+                                    ? GetData.decodeFunction({ json_string: sOldDataStr }) 
+                                    : JSON.parse(sOldDataStr);
+                    } catch (e) {}
+                }
+
+                var oParsedNew = {};
+                if (sNewDataStr) {
+                    try {
+                        oParsedNew = (!sNewDataStr.startsWith("{") && !sNewDataStr.startsWith("[")) 
+                                    ? GetData.decodeFunction({ json_string: sNewDataStr }) 
+                                    : JSON.parse(sNewDataStr);
+                    } catch (e) {}
+                }
+
+                var aDiff = [];
+                var aAllKeys = Object.keys(oParsedNew);
+                Object.keys(oParsedOld).forEach(k => { if (!aAllKeys.includes(k)) aAllKeys.push(k); });
+
+                aAllKeys.forEach(function (key) {
+                    var sOldVal = "-";
+                    if (sActionText !== "CREATE") {
+                        sOldVal = oParsedOld[key] !== undefined ? String(oParsedOld[key]) : "Loading...";
+                    }
+                    
+                    var sNewVal = "-";
+                    if (sActionText !== "DELETE") {
+                        sNewVal = oParsedNew[key] !== undefined ? String(oParsedNew[key]) : "-";
+                    }
+
+                    aDiff.push({ 
+                        field: key, 
+                        oldData: sOldVal, 
+                        newData: sNewVal 
+                    });
+                });
 
                 return {
                     _odataContext: oContext,
@@ -228,11 +275,16 @@ sap.ui.define([
                                         template: new sap.m.ColumnListItem({
                                             cells: [
                                                 new sap.m.Text({ text: "{approval>field}", design: "Bold" }),
-                                                new sap.m.Text({ text: "{approval>oldData}" }),
+                                                
+                                                new sap.m.ObjectStatus({ 
+                                                    text: "{approval>oldData}",
+                                                    state: "{= ${approval>/currentDetail/action} === 'DELETE' ? 'Warning' : 'None' }"
+                                                }),
+
                                                 new sap.m.ObjectStatus({ 
                                                     text: "{approval>newData}", 
-                                                    state: "{= ${approval>oldData} !== ${approval>newData} && ${approval>oldData} !== 'N/A' ? 'Warning' : 'Success' }",
-                                                    icon: "{= ${approval>oldData} !== ${approval>newData} && ${approval>oldData} !== 'N/A' ? 'sap-icon://edit' : 'sap-icon://sys-enter-2' }"
+                                                    state: "{= ${approval>/currentDetail/action} === 'DELETE' ? 'None' : (${approval>oldData} !== ${approval>newData} && ${approval>oldData} !== 'N/A' && ${approval>oldData} !== '-' ? 'Warning' : 'Success') }",
+                                                    icon: "{= ${approval>/currentDetail/action} === 'DELETE' ? '' : (${approval>oldData} !== ${approval>newData} && ${approval>oldData} !== 'N/A' && ${approval>oldData} !== '-' ? 'sap-icon://edit' : 'sap-icon://sys-enter-2') }"
                                                 })
                                             ]
                                         })
@@ -280,7 +332,9 @@ sap.ui.define([
                 var aMasterData = oPayload.dataRows || oPayload.Data || [];
                 
                 var oNewDataMapped = {};
-                oRowData.diff.forEach(function(d) { oNewDataMapped[d.field] = d.newData; });
+                oRowData.diff.forEach(function(d) { 
+                    oNewDataMapped[d.field] = (oRowData.action === "DELETE") ? d.oldData : d.newData; 
+                });
 
                 var oOldRow = aMasterData.find(function(row) {
                     var oJson = JSON.parse(row.data || "{}");
@@ -291,7 +345,7 @@ sap.ui.define([
                 });
 
                 var aUpdatedDiff = oRowData.diff.map(function(d) {
-                    var sOldValue = "N/A";
+                    var sOldValue = d.oldData;
                     if (oOldRow) {
                         var oOldJson = JSON.parse(oOldRow.data || "{}");
                         sOldValue = oOldJson[d.field] !== undefined ? String(oOldJson[d.field]) : "N/A";
