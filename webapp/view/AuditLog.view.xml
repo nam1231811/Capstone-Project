@@ -15,7 +15,7 @@
             <Dialog id="auditTrailDialog"
                     title="Audit Trail - Record ID: {audit>/selectedRowId}"
                     contentWidth="1000px"
-                    contentHeight="600px"
+                    contentHeight="400px"
                     resizable="true"
                     draggable="true">
                 <content>
@@ -35,6 +35,7 @@
                                     titleAbbreviation="{audit>titleAbbreviation}"
                                     children="{audit>children}"
                                     state="{audit>state}"
+                                    stateText="{audit>sText}"
                                     texts="{audit>texts}"
                                     focused="{audit>focused}" />
                             </suite:nodes>

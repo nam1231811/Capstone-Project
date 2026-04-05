@@ -78,8 +78,13 @@ sap.ui.define([
             }
 
             var oBinding = this._pValueHelpDialog.getBinding("items");
-            if (oBinding) { oBinding.filter([]); }
-            if (this._pValueHelpDialog._oSearchField) { this._pValueHelpDialog._oSearchField.setValue(""); }
+            if (oBinding) { 
+                oBinding.filter([]); 
+            }
+            
+            if (this._pValueHelpDialog._oSearchField) { 
+                this._pValueHelpDialog._oSearchField.setValue(""); 
+            }
 
             this._pValueHelpDialog.open();
         },
@@ -159,7 +164,8 @@ sap.ui.define([
 
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
             var aTrailLogs = aAllLogs.filter(function (l) { return l.RecordKey === sRowId; });
-
+            console.log(aAllLogs);
+            
             aTrailLogs.sort(function(a, b) {
                 return new Date(a.ChangedAt) - new Date(b.ChangedAt);
             });
@@ -169,7 +175,8 @@ sap.ui.define([
 
             aTrailLogs.forEach(function (oLog, index) {
                 var sAction = oLog.Action === 'C' ? 'CREATE' : (oLog.Action === 'U' ? 'UPDATE' : 'DELETE');
-                
+                var sStatus = oLog.Status === 'A' ? 'Approved' : (oLog.Status === 'R' ? 'Rejected' : 'Pending');
+
                 var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
 
                 var sLaneId = "lane_" + index;
@@ -186,15 +193,43 @@ sap.ui.define([
                     aChildren.push(aTrailLogs[index + 1].LogUuid);
                 }
 
-                var sState = "";
-                if (sAction === 'CREATE') {
-                    sState = "Positive";
-                } else if (sAction === 'DELETE') {
-                    sState = "Negative";
-                } else if (sAction === 'UPDATE') {
-                    sState = "Critical";
-                }
+                // if(sAction){
+                //     var action = "";
 
+                //     switch (sAction) {
+                //         case 'CREATE':
+                //             action = "Positive";
+                //             text = "Created";
+                //             break;
+
+                //         case 'DELETE':
+                //             action = "Negative";
+                //             text = "Deleted";
+                //             break;
+                //         case 'UPDATE':
+                //             action = "Critical";
+                //             text = "Updated";
+                //             break;
+                //     }
+                // }
+
+                var sState = "";
+                if(sStatus){
+                    switch (sStatus) {
+                        case 'Approved':
+                            sState = "Positive";
+                            break;
+
+                        case 'Rejected':
+                            sState = "Negative";
+                            break;
+
+                        case 'Pending':
+                            sState = "Critical";
+                            break;
+                    }
+                }
+                
                 aProcessNodes.push({
                     id: sNodeId,
                     lane: sLaneId,
@@ -202,10 +237,12 @@ sap.ui.define([
                     titleAbbreviation: oLog.ChangedBy.substring(0, 2).toUpperCase(),
                     children: aChildren,
                     state: sState,
-                    texts: ["Click to view details"]
+                    sText: sStatus,
+                    texts: ["ok bro"],
                 });
             }); 
-
+            console.log(aProcessNodes);
+            
             oLocalModel.setProperty("/processNodes", aProcessNodes);
             oLocalModel.setProperty("/processLanes", aProcessLanes);
 
@@ -214,7 +251,7 @@ sap.ui.define([
             
             var oProcessFlow = this.byId("auditProcessFlow");
             if (oProcessFlow) {
-                oProcessFlow.setZoomLevel("One");
+                oProcessFlow.setZoomLevel("Two");
                 oProcessFlow.updateModel();
             }
         },
