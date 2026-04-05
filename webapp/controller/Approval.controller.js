@@ -31,6 +31,15 @@ sap.ui.define([
         },
 
         _onRouteMatched: function () {
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            var bIsManager = oAuthModel.getProperty("/isManager");
+            var bIsAdmin = oAuthModel.getProperty("/isAdmin");
+
+            if (!bIsManager && !bIsAdmin) {
+                this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true);
+                return;
+            }
+
             this._loadApprovalData();
         },
 

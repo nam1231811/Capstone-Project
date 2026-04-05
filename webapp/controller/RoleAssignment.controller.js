@@ -21,6 +21,21 @@ sap.ui.define([
             };
             var oLocalModel = new JSONModel(oData);
             this.getView().setModel(oLocalModel, "roleLocal");
+
+            var oRouter = this.getOwnerComponent().getRouter();
+            if (oRouter.getRoute("RouteRoleAssignment")) {
+                oRouter.getRoute("RouteRoleAssignment").attachPatternMatched(this._onRouteMatched, this);
+            }
+        },
+
+        _onRouteMatched: function () {
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            
+            if (!oAuthModel.getProperty("/isAdmin")) {
+                sap.m.MessageBox.error("Access Denied! You do not have permission to view this page.");
+                this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true); 
+                return;
+            } 
         },
 
         onNavBack: function () {
