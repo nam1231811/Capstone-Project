@@ -83,8 +83,14 @@ sap.ui.define([
             this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname || prop.fieldName);
 
             var sActualTableName = this._oMetaRaw[0]?.tableName || this._oMetaRaw[0]?.table_name || "Unknown";
+            var sActualTableDesc = this._oMetaRaw[0]?.tableDescription || this._oMetaRaw[0]?.table_description || this._oMetaRaw[0]?.Description || "No description available";
+            var iColCount = this._oMetaRaw.length;
+
             this.getView().getModel("view")?.setProperty("/tableName", sActualTableName);
             this.getView().getModel("overall")?.setProperty("/tableName", sActualTableName);
+            this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);
+            this.getView().getModel("overall")?.setProperty("/colCount", iColCount);
+
             this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
             this.getView().getModel("displayModel").setProperty("/Data", oPayload.dataRows);
             this.getView().getModel("displayModel").setProperty("/UiMeta", this._oMetaRaw);

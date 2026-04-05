@@ -9,6 +9,7 @@
     xmlns:viz.data="sap.viz.ui5.data"
     xmlns:viz.feeds="sap.viz.ui5.controls.common.feeds"
     xmlns:core="sap.ui.core"
+    xmlns:mc="sap.suite.ui.microchart"
     displayBlock="true"
     height="100%">
     
@@ -163,7 +164,7 @@
                         <layout:GridData span="XL6 L6 M12 S12" />
                     </f:layoutData>
                     <f:header>
-                        <card:Header title="Data Management" subtitle="Manage and analyze your data" iconSrc="sap-icon://pie-chart" statusText="Warning"/>
+                        <card:Header title="Data Management" subtitle="Manage and analyze your data" iconSrc="sap-icon://pie-chart" statusText="{= 'Measured ' + ${dash>/qualityPercentage} + '% valid'}"/>
                     </f:header>
                     <f:content>
                         <VBox width="100%" height="100%">
@@ -178,26 +179,45 @@
                                 <ToolbarSpacer />
                             </Toolbar>
                             
-                            <viz:VizFrame id="idPieChart" uiConfig="{applicationSet:'fiori'}" vizType="donut" width="100%" height="280px" 
-                                vizProperties="{
-                                    title: {visible: false},
-                                    legendGroup: {layout: {position: 'left'}}
-                                }">
-                                <viz:dataset>
-                                    <viz.data:FlattenedDataset data="{dash>/pieData}">
-                                        <viz.data:dimensions>
-                                            <viz.data:DimensionDefinition name="Trạng thái" value="{dash>status}" />
-                                        </viz.data:dimensions>
-                                        <viz.data:measures>
-                                            <viz.data:MeasureDefinition name="Số lượng" value="{dash>count}" />
-                                        </viz.data:measures>
-                                    </viz.data:FlattenedDataset>
-                                </viz:dataset>
-                                <viz:feeds>
-                                    <viz.feeds:FeedItem uid="size" type="Measure" values="Số lượng" />
-                                    <viz.feeds:FeedItem uid="color" type="Dimension" values="Trạng thái" />
-                                </viz:feeds>
-                            </viz:VizFrame>
+                            <HBox width="100%" alignItems="Center" justifyContent="SpaceBetween">
+                                
+                                <VBox width="65%">
+                                    <viz:VizFrame id="idPieChart" uiConfig="{applicationSet:'fiori'}" vizType="donut" width="100%" height="280px" 
+                                        vizProperties="{
+                                            title: {visible: false},
+                                            legendGroup: {
+                                                layout: {
+                                                    position: 'bottom', 
+                                                    alignment: 'center'
+                                                }
+                                            }
+                                        }">
+                                        <viz:dataset>
+                                            <viz.data:FlattenedDataset data="{dash>/pieData}">
+                                                <viz.data:dimensions>
+                                                    <viz.data:DimensionDefinition name="Status" value="{dash>status}" />
+                                                </viz.data:dimensions>
+                                                <viz.data:measures>
+                                                    <viz.data:MeasureDefinition name="Count" value="{dash>count}" />
+                                                </viz.data:measures>
+                                            </viz.data:FlattenedDataset>
+                                        </viz:dataset>
+                                        <viz:feeds>
+                                            <viz.feeds:FeedItem uid="size" type="Measure" values="Count" />
+                                            <viz.feeds:FeedItem uid="color" type="Dimension" values="Status" />
+                                        </viz:feeds>
+                                    </viz:VizFrame>
+                                </VBox>
+
+                                <VBox width="35%" alignItems="Center" justifyContent="Center">
+                                    <mc:RadialMicroChart 
+                                        size="L" 
+                                        percentage="{dash>/qualityPercentage}" 
+                                        valueColor="{dash>/qualityColor}" />
+                                    <Label text="Data Quality Percentage" design="Bold" class="sapUiSmallMarginTop" textAlign="Center" wrapping="true"/>
+                                </VBox>
+
+                            </HBox>
                         </VBox>
                     </f:content>
                 </f:Card>
