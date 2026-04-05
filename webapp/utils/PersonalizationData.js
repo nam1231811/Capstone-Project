@@ -13,7 +13,6 @@ sap.ui.define([
             var oTable = this.byId("dataTable");
             var aColumns = oTable.getColumns();
 
-            //Lấy index của cột từ CustomData
             var getColIndex = function(oCol) {
                 var aCustomData = oCol.getCustomData();
                 var oData = aCustomData.find(function(d) { return d.getKey() === "colIndex"; });
@@ -33,16 +32,13 @@ sap.ui.define([
                         type: "Emphasized",
                         text: "OK",
                         press: function () {
-                            //Lấy danh sách các cột được tích
                             var aSelectedItems = that._oPersoList.getSelectedItems();
                             var aPersoState = [];
                             
-                            //Ẩn tất cả đi
                             aColumns.forEach(function (oCol) {
                                 oCol.setVisible(false);
                             });
 
-                            //Hiện lại những cột được tích
                             aSelectedItems.forEach(function (oItem) {
                                 var iItemKey = parseInt(oItem.data("colIndex"), 10);
                                 var oTargetCol = aColumns.find(function(c) { return getColIndex(c) === iItemKey; });
@@ -51,7 +47,6 @@ sap.ui.define([
                                 }
                             });
 
-                            //Quét lại để lấy trạng thái mới nhất
                             aColumns.forEach(function(oCol) {
                                 aPersoState.push({
                                     index: getColIndex(oCol),
@@ -59,7 +54,6 @@ sap.ui.define([
                                 });
                             });
 
-                            //Lưu vào local storage
                             var sTableName = that.getView().getModel("overall").getProperty("/tableName") || "DefaultTable";
                             var sStorageKey = "myApp_" + sTableName + "_GridPerso";
                             
@@ -85,7 +79,6 @@ sap.ui.define([
 
             this._oPersoList.removeAllItems();
 
-            //Nạp lại danh sách cột hiện tại vào list
             aColumns.forEach(function (oCol) {
                 var sColName = oCol.getLabel() ? oCol.getLabel().getText() : "Column";
                 var iColIndex = getColIndex(oCol);

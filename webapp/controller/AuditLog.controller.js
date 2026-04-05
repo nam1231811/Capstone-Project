@@ -137,7 +137,7 @@ sap.ui.define([
                         lastUser: oLog.ChangedBy,
                         lastTimestamp: sTime
                     });
-                }); 
+                });
 
                 oLocalModel.setProperty("/mainLogs", aMainLogs);
                 this.byId("auditMasterTable").setBusy(false);
@@ -164,9 +164,8 @@ sap.ui.define([
 
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
             var aTrailLogs = aAllLogs.filter(function (l) { return l.RecordKey === sRowId; });
-            console.log(aAllLogs);
-            
-            aTrailLogs.sort(function(a, b) {
+
+            aTrailLogs.sort(function (a, b) {
                 return new Date(a.ChangedAt) - new Date(b.ChangedAt);
             });
 
@@ -240,15 +239,14 @@ sap.ui.define([
                     sText: sStatus,
                     texts: ["ok bro"],
                 });
-            }); 
-            console.log(aProcessNodes);
-            
+            });
+
             oLocalModel.setProperty("/processNodes", aProcessNodes);
             oLocalModel.setProperty("/processLanes", aProcessLanes);
 
             var oDialog = this.byId("auditTrailDialog");
             oDialog.open();
-            
+
             var oProcessFlow = this.byId("auditProcessFlow");
             if (oProcessFlow) {
                 oProcessFlow.setZoomLevel("Two");
@@ -260,14 +258,14 @@ sap.ui.define([
             var oParameters = oEvent.getParameters();
             var sLogId = oParameters.getNodeId();
             var oLocalModel = this.getView().getModel("audit");
-            
+
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
-            var oSelectedLog = aAllLogs.find(function(l) { return l.LogUuid === sLogId; });
+            var oSelectedLog = aAllLogs.find(function (l) { return l.LogUuid === sLogId; });
 
             if (!oSelectedLog) return;
 
             var sAction = oSelectedLog.Action === 'C' ? 'CREATE' : (oSelectedLog.Action === 'U' ? 'UPDATE' : 'DELETE');
-            
+
             var sTime = DataFormatter.formatDateTime(oSelectedLog.ChangedAt);
 
             var aChanges = [];
@@ -313,12 +311,12 @@ sap.ui.define([
             var oLocalModel = this.getView().getModel("audit");
             var sLogId = oLocalModel.getProperty("/selectedLogUuid");
             var sTime = oLocalModel.getProperty("/selectedNodeTime");
-            
+
             var sTableName = this.byId("auditSearchInput").getValue();
             var sRowId = oLocalModel.getProperty("/selectedRowId");
 
             var sMessage = "You are about to revert the record [ID: " + sRowId + "] to the state at: " + sTime + ".\n\n" +
-                "This request will be sent to the Manager for approval. Are you sure you want to create this Request?";
+                "Are you sure you want to create this Request?";
 
             MessageBox.confirm(sMessage, {
                 title: "Confirm Revert Request",
@@ -340,72 +338,61 @@ sap.ui.define([
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
             var oOriginalLog = aAllLogs.find(function (l) { return l.LogUuid === sLogId; });
 
+            // Kiểm tra xem có OldData không (Không thể revert lệnh Create ban đầu vì lúc đó OldData rỗng)
             if (!oOriginalLog || !oOriginalLog.OldData || oOriginalLog.OldData === "") {
-                sap.m.MessageBox.error("No original data available for revert");
+                sap.m.MessageBox.error("Không có dữ liệu gốc để khôi phục!");
                 return;
             }
 
             oView.setBusy(true);
 
-            var sBase64Data = btoa(unescape(encodeURIComponent(oOriginalLog.OldData)));
-
-            var sFormattedUuid = sRowId;
-            if (sFormattedUuid.length === 32 && sFormattedUuid.indexOf("-") === -1) {
-                sFormattedUuid = sFormattedUuid.substring(0, 8) + "-" +
-                    sFormattedUuid.substring(8, 12) + "-" +
-                    sFormattedUuid.substring(12, 16) + "-" +
-                    sFormattedUuid.substring(16, 20) + "-" +
-                    sFormattedUuid.substring(20);
+            // ===================================================================
+            // CHUẨN BỊ PAYLOAD TRỰC TIẾP
+            // ===================================================================
+            var oOldDataObj = {};
+            try {
+                oOldDataObj = JSON.parse(oOriginalLog.OldData);
+            } catch (e) {
+                oView.setBusy(false);
+                sap.m.MessageBox.error("Lỗi: Dữ liệu lịch sử bị sai định dạng JSON.");
+                return;
             }
-            sFormattedUuid = sFormattedUuid.toLowerCase();
 
-            if (oOriginalLog.Action === 'D') {
-                var oFinalPayload = {
-                    "table_name": sTableName.toUpperCase(),
-                    "data": sBase64Data
-                };
-                var oListBinding = oMainModel.bindList("/Data");
-                var oContext = oListBinding.create(oFinalPayload);
+            // ABAP Backend (fs_itab) yêu cầu đầu vào là một MẢNG (Array) các Object
+            var aDataToSave = [oOldDataObj];
+            var sJsonString = JSON.stringify(aDataToSave);
 
-                oContext.created().then(function () {
-                    oView.setBusy(false);
-                    sap.m.MessageToast.show("Request sent for revert. Please check Approval");
-                    
-                    this.byId("detailNodeDialog").close();
-                    this.byId("auditTrailDialog").close();
-                }.bind(this)).catch(function (oError) {
-                    oView.setBusy(false);
-                    if (oContext.isTransient()) { oContext.delete(); }
-                    sap.m.MessageBox.error("Error while sending revert request: " + oError.message);
-                }.bind(this));
+            // Mã hóa chuẩn UTF-8 sang Base64
+            var sBase64Data = btoa(unescape(encodeURIComponent(sJsonString)));
 
-            } else {
-                var sPath = "/Data(uuid=" + sFormattedUuid + ")";
-                var oContextBinding = oMainModel.bindContext(sPath, null, {
-                    $$updateGroupId: "updateGroup"
-                });
-                var oContextData = oContextBinding.getBoundContext();
+            // ===================================================================
+            // GỌI API ACTION LƯU THẲNG DATABASE MASTER BỎ QUA APPROVAL
+            // ===================================================================
+            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
+            var oActionContext = oMainModel.bindContext(sActionPath);
 
-                oContextData.setProperty("table_name", sTableName.toUpperCase());
-                oContextData.setProperty("data", sBase64Data);
+            oActionContext.setParameter("table_name", sTableName.toUpperCase());
+            oActionContext.setParameter("json_data", sBase64Data);
 
-                oMainModel.submitBatch("updateGroup").then(function () {
-                    if (oMainModel.hasPendingChanges("updateGroup")) {
-                        oView.setBusy(false);
-                        sap.m.MessageBox.error("Error: Update request was rejected by backend");
-                        oMainModel.resetChanges("updateGroup");
-                    } else {
-                        oView.setBusy(false);
-                        sap.m.MessageToast.show("Request sent for revert. Please check Approval");
-                        
-                        this.byId("detailNodeDialog").close();
-                        this.byId("auditTrailDialog").close();
-                    }
-                }.bind(this)).catch(function (oError) {
-                    oView.setBusy(false);
-                    sap.m.MessageBox.error("Error while reverting update: " + oError.message);
-                }.bind(this));
-            }
+            oActionContext.execute().then(function () {
+                oView.setBusy(false);
+                sap.m.MessageToast.show("Khôi phục thành công! Dữ liệu đã được cập nhật thẳng vào Database.");
+
+                // Đóng các cửa sổ
+                var oDetailDialog = this.byId("detailNodeDialog");
+                if (oDetailDialog) oDetailDialog.close();
+
+                var oAuditDialog = this.byId("auditTrailDialog");
+                if (oAuditDialog) oAuditDialog.close();
+
+                // Cập nhật lại màn hình Audit Log mới nhất
+                this.onSearchAuditLog(sTableName);
+
+            }.bind(this)).catch(function (oError) {
+                oView.setBusy(false);
+                sap.m.MessageBox.error("Lỗi khi ghi đè Database: " + oError.message);
+                console.error(oError);
+            }.bind(this));
         }
     });
 });

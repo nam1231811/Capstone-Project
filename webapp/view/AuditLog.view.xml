@@ -64,7 +64,7 @@
                     <OverflowToolbar>
                         <Title text="Timestamp: {audit>/selectedNodeTime}" class="sapUiTinyMarginBegin"/>
                         <ToolbarSpacer />
-                        <Button text="Revert Action"
+                        <Button text="Revert"
                                 icon="sap-icon://undo"
                                 type="Emphasized"
                                 visible="{= ${audit>/selectedNodeAction} === 'UPDATE' || ${audit>/selectedNodeAction} === 'DELETE'}"

@@ -80,28 +80,50 @@ sap.ui.define([
                         return; 
                     }
 
-                    var sActionCode = String(oData.action_type || oData.ActionType || oData.action || "").toUpperCase();
+                    var sActionCode = String(oData.action_type || oData.ActionType || oData.action || oData.Action || "").toUpperCase();
                     var sActionText = "UPDATE";
                     
-                    if (sActionCode === "C" || sActionCode === "CREATE") {
-                        sActionText = "CREATE";
-                    } else if (sActionCode === "D" || sActionCode === "DELETE") {
-                        sActionText = "DELETE";
-                    } else if (sActionCode === "U" || sActionCode === "UPDATE") {
-                        sActionText = "UPDATE";
-                    } else {
+                    if (sActionCode === "C" || sActionCode === "CREATE") sActionText = "CREATE";
+                    else if (sActionCode === "D" || sActionCode === "DELETE") sActionText = "DELETE";
+                    else if (sActionCode === "U" || sActionCode === "UPDATE") sActionText = "UPDATE";
+                    else {
                         var bHasOld = !!(oData.old_data || oData.OldData);
                         var bHasNew = !!(oData.new_data || oData.NewData || oData.data || oData.Data);
-                        
                         if (bHasOld && !bHasNew) sActionText = "DELETE";
                         else if (!bHasOld && bHasNew) sActionText = "CREATE";
                         else sActionText = "UPDATE";
                     }
+
                     var sStatusCode = oData.status || oData.Status || "";
-                    var sStatusText = oWrapper.isPending ? "PENDING" : (sStatusCode === "R" ? "REJECTED" : "APPROVED");
+                    var sStatusText = "";
+
+                    if (sStatusCode === "R") {
+                        sStatusText = "REJECTED";
+                    } else if (sStatusCode === "P") {
+                        sStatusText = "PENDING";
+                    } else {
+                        sStatusText = oWrapper.isPending ? "PENDING" : "APPROVED";
+                    };
 
                     var sOldDataStr = oData.old_data || oData.OldData || "";
-                    var sNewDataStr = oData.new_data || oData.NewData || oData.data || oData.Data || "";
+                    var sNewDataStr = oData.new_data || oData.NewData || "";
+
+                    var sTempData = oData.data || oData.Data || "";
+                    if (sTempData) {
+                        if (sActionText === "DELETE") sOldDataStr = sTempData;
+                        else if (sActionText === "CREATE") sNewDataStr = sTempData; 
+                        else sNewDataStr = sTempData;
+                    }
+
+                    if (sActionText === "DELETE" && !sOldDataStr && sNewDataStr) {
+                        sOldDataStr = sNewDataStr;
+                        sNewDataStr = "";          
+                    }
+
+                    if (sActionText === "CREATE" && !sNewDataStr && sOldDataStr) {
+                        sNewDataStr = sOldDataStr; 
+                        sOldDataStr = "";
+                    }
 
                     var oParsedOld = {};
                     if (sOldDataStr) {
@@ -127,10 +149,14 @@ sap.ui.define([
 
                     aAllKeys.forEach(function (key) {
                         var sOldVal = "-";
-                        if (sActionCode !== "C") {
+                        if (sActionText !== "CREATE") {
                             sOldVal = oParsedOld[key] !== undefined ? String(oParsedOld[key]) : "Loading...";
                         }
-                        var sNewVal = oParsedNew[key] !== undefined ? String(oParsedNew[key]) : "-";
+                        
+                        var sNewVal = "-";
+                        if (sActionText !== "DELETE") {
+                            sNewVal = oParsedNew[key] !== undefined ? String(oParsedNew[key]) : "-";
+                        }
 
                         aFields.push({ 
                             field: key, 
@@ -141,16 +167,46 @@ sap.ui.define([
 
                     aList.push({
                         _odataContext: oWrapper.ctx,
-                        reqId: oData.uuid || oData.log_uuid,
+                        reqId: oData.uuid || oData.Uuid || oData.UUID || oData.log_uuid || oData.LogUuid || oData.LOG_UUID || "",
                         tableName: oData.table_name || oData.TableName || "",
                         action: sActionText,
                         status: sStatusText,
-                        rawDataDate: new Date(oData.changed_at || oData.ChangedAt || oData.created_at), 
-                        changedAt: DataFormatter.formatDateTime(oData.changed_at || oData.ChangedAt),
+                        rawDataDate: new Date(oData.changed_at || oData.ChangedAt || oData.created_at || oData.CreatedAt), 
+                        changedAt: DataFormatter.formatDateTime(oData.changed_at || oData.ChangedAt || oData.created_at || oData.CreatedAt),
                         rejectReason: oData.RejectReason || oData.reject_reason || "",
                         fields: aFields
                     });
                 });
+
+                var aUniqueList = [];
+                var oSeenIds = {};
+                var oSeenSignatures = {};
+
+                aList.forEach(function(item) {
+                    var bIsDuplicate = false;
+
+                    if (item.reqId && oSeenIds[item.reqId]) {
+                        bIsDuplicate = true;
+                    }
+
+                    var sRecordId = "";
+                    var oIdField = item.fields.find(f => f.field === "ID" || f.field === "UUID" || f.field === "CODE");
+                    if (oIdField) {
+                        sRecordId = oIdField.oldData !== "-" ? oIdField.oldData : oIdField.value;
+                    }
+                    var sSignature = item.tableName + "_" + item.action + "_" + item.status + "_" + sRecordId + "_" + item.changedAt;
+
+                    if (oSeenSignatures[sSignature]) {
+                        bIsDuplicate = true;
+                    }
+
+                    if (!bIsDuplicate) {
+                        if (item.reqId) oSeenIds[item.reqId] = true;
+                        oSeenSignatures[sSignature] = true;
+                        aUniqueList.push(item);
+                    }
+                });
+                aList = aUniqueList; 
 
                 aList.sort(function(a, b) {
                     return b.rawDataDate - a.rawDataDate;
@@ -237,11 +293,11 @@ sap.ui.define([
                                                     items: [
                                                         new sap.m.Input({ 
                                                             value: "{myreq>value}", 
-                                                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }" 
+                                                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }" 
                                                         }),
                                                         new sap.m.ObjectStatus({ 
                                                             text: "{myreq>value}", 
-                                                            visible: "{= ${myreq>/currentDetail/status} !== 'REJECTED' }", 
+                                                            visible: "{= ${myreq>/currentDetail/status} !== 'REJECTED' || ${myreq>/currentDetail/action} === 'DELETE' }", 
                                                             state: "{= ${myreq>oldData} !== ${myreq>value} && ${myreq>oldData} !== 'N/A' && ${myreq>oldData} !== '-' ? 'Warning' : 'Success' }",
                                                             icon: "{= ${myreq>oldData} !== ${myreq>value} && ${myreq>oldData} !== 'N/A' && ${myreq>oldData} !== '-' ? 'sap-icon://edit' : 'sap-icon://sys-enter-2' }"
                                                         })
@@ -288,7 +344,7 @@ sap.ui.define([
             this._oResubmitDialog.setTitle(bIsRejected ? "Edit Rejected Request" : "Request Details");
             this._oResubmitDialog.open();
 
-            if (oRowData.action === "CREATE" || oRowData.status !== "PENDING") {
+            if (oRowData.action !== "UPDATE") {
                 this._oResubmitDialog.setBusy(false);
                 return;
             }
@@ -382,7 +438,11 @@ sap.ui.define([
 
             var oNewPayload = {};
             oCurrentReq.fields.forEach(function(item) {
-                oNewPayload[item.field] = item.value; 
+                if (oCurrentReq.action === "DELETE") {
+                    oNewPayload[item.field] = item.oldData; 
+                } else {
+                    oNewPayload[item.field] = item.value; 
+                }
             });
 
             var sNewBase64 = "";

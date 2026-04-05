@@ -232,16 +232,16 @@ sap.ui.define([
                             sap.m.MessageToast.show("Successfully revoked role for " + sUsername + "!");
 
                             setTimeout(function () {
-                                oContext.refresh();
+                                this.byId("usersTable").getBinding("items").refresh();
                                 sap.ui.core.BusyIndicator.hide();
-                            }, 1500);
+                            }.bind(this), 1500);
 
-                        }).catch(function (oError) {
+                        }.bind(this)).catch(function (oError) {
                             sap.m.MessageBox.error("Error revoking role: " + oError.message);
                             sap.ui.core.BusyIndicator.hide();
                         });
                     }
-                }
+                }.bind(this)
             });
         }
     });
