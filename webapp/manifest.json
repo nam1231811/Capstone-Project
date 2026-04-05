@@ -83,7 +83,8 @@
         "sap.ui.comp": {},
         "sap.ui.table": {},
         "sap.viz": {},
-        "sap.suite.ui.commons": {}
+        "sap.suite.ui.commons": {},
+        "sap.suite.ui.microchart": {}
       }
     },
     "contentDensities": {
