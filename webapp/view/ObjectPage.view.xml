@@ -8,9 +8,53 @@
     xmlns="sap.m">
     <App id="TablePage">
         <uxap:ObjectPageLayout id="TableContent">
-            <uxap:headerTitle>
-                <uxap:ObjectPageHeader objectTitle="Table name: {overall>/tableName}" />
+        <uxap:headerTitle>
+                <uxap:ObjectPageDynamicHeaderTitle>
+                    
+                    <uxap:expandedHeading>
+                        <HBox alignItems="Center" class="sapUiSmallMarginBottom">
+                            <core:Icon src="sap-icon://table-chart" size="3rem" class="sapUiMediumMarginEnd" color="#0a6ed1" />
+                            <Title text="{overall>/tableName}" level="H1" titleStyle="H1" />
+                        </HBox>
+                    </uxap:expandedHeading>
+                    
+                    <uxap:snappedHeading>
+                        <HBox alignItems="Center">
+                            <core:Icon src="sap-icon://table-chart" size="1.5rem" class="sapUiSmallMarginEnd" color="#0a6ed1" />
+                            <Title text="{overall>/tableName}" level="H2" titleStyle="H2" />
+                        </HBox>
+                    </uxap:snappedHeading>
+                    
+                </uxap:ObjectPageDynamicHeaderTitle>
             </uxap:headerTitle>
+            
+            <uxap:headerContent>
+                <HBox wrap="Wrap" alignItems="Center" class="sapUiLargeMarginBegin sapUiSmallMarginBottom">
+                    
+                    <HBox alignItems="Center">
+                        <core:Icon src="sap-icon://hint" color="#e9730c" size="1.2rem" class="sapUiTinyMarginEnd" />
+                        <Title text="{overall>/tableDesc}" level="H5" titleStyle="H5" class="sapThemeCriticalText" />
+                    </HBox>
+
+                    <Title text="|" level="H4" class="sapUiMutedText sapUiMediumMarginBeginEnd" />
+
+                    <HBox alignItems="Center">
+                        <Title text="Total Records:" level="H5" titleStyle="H5" class="sapUiSmallMarginEnd" />
+                        <core:Icon src="sap-icon://table-row" color="#107e3e" size="1.2rem" class="sapUiTinyMarginEnd"/>
+                        <ObjectNumber number="{overall>/count}" unit="Rows" state="Success" />
+                    </HBox>
+                        
+                    <Title text="|" level="H4" class="sapUiMutedText sapUiMediumMarginBeginEnd" />
+
+                    <HBox alignItems="Center">
+                        <Title text="Total Columns:" level="H5" titleStyle="H5" class="sapUiSmallMarginEnd" />
+                        <core:Icon src="sap-icon://add-column" color="#0a6ed1" size="1.2rem" class="sapUiTinyMarginEnd"/>
+                        <ObjectNumber number="{overall>/colCount}" unit="Columns" state="Information" />
+                    </HBox>
+
+                </HBox>
+            </uxap:headerContent>
+
             <uxap:sections>
                 <uxap:ObjectPageSection title="Technical Columns">
                     <uxap:subSections>
