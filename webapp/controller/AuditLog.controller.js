@@ -135,7 +135,8 @@ sap.ui.define([
                         rowId: oLog.RecordKey,
                         lastAction: sAction,
                         lastUser: oLog.ChangedBy,
-                        lastTimestamp: sTime
+                        lastTimestamp: sTime,
+                        rawDate: new Date(oLog.ChangedAt)
                     });
                 });
 
@@ -162,82 +163,90 @@ sap.ui.define([
             var sRowId = oRowData.rowId;
             oLocalModel.setProperty("/selectedRowId", sRowId);
 
+
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
             var aTrailLogs = aAllLogs.filter(function (l) { return l.RecordKey === sRowId; });
 
+            // Sắp xếp theo thời gian
             aTrailLogs.sort(function (a, b) {
                 return new Date(a.ChangedAt) - new Date(b.ChangedAt);
             });
+            var aPhases = [];
+            var aCurrentPhase = [];
 
-            var aProcessNodes = [];
-            var aProcessLanes = [];
-
-            aTrailLogs.forEach(function (oLog, index) {
-                var sAction = oLog.Action === 'C' ? 'CREATE' : (oLog.Action === 'U' ? 'UPDATE' : 'DELETE');
-                var sStatus = oLog.Status === 'A' ? 'Approved' : (oLog.Status === 'R' ? 'Rejected' : 'Pending');
-
-                var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
-
-                var sLaneId = "lane_" + index;
-                aProcessLanes.push({
-                    id: sLaneId,
-                    icon: sAction === 'CREATE' ? 'sap-icon://add' : (sAction === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit'),
-                    label: sAction + " (" + sTime + ")",
-                    position: index
-                });
-
-                var sNodeId = oLog.LogUuid;
-                var aChildren = [];
-                if (index < aTrailLogs.length - 1) {
-                    aChildren.push(aTrailLogs[index + 1].LogUuid);
-                }
-
-                // if(sAction){
-                //     var action = "";
-
-                //     switch (sAction) {
-                //         case 'CREATE':
-                //             action = "Positive";
-                //             text = "Created";
-                //             break;
-
-                //         case 'DELETE':
-                //             action = "Negative";
-                //             text = "Deleted";
-                //             break;
-                //         case 'UPDATE':
-                //             action = "Critical";
-                //             text = "Updated";
-                //             break;
-                //     }
-                // }
-
-                var sState = "";
-                if(sStatus){
-                    switch (sStatus) {
-                        case 'Approved':
-                            sState = "Positive";
-                            break;
-
-                        case 'Rejected':
-                            sState = "Negative";
-                            break;
-
-                        case 'Pending':
-                            sState = "Critical";
-                            break;
+            aTrailLogs.forEach(function (oLog) {
+                if (oLog.Status !== 'P') {
+                        aCurrentPhase.push(oLog);
+                    if (oLog.Status === 'A') {
+                        aPhases.push(aCurrentPhase);
+                        aCurrentPhase = []; 
                     }
                 }
+            });
+            if (aCurrentPhase.length > 0) {
+                aPhases.push(aCurrentPhase);
+            }
+            var aProcessNodes = [];
+            var aProcessLanes = [];
+            console.log(aPhases);
+            aPhases.forEach(function (phaseLogs) {
+                phaseLogs.sort(function(a, b) {
+                    return new Date(b.ChangedAt) - new Date(a.ChangedAt);
+                });
+            });
+            aPhases.forEach(function (phaseLogs, phaseIndex) {
+                var sLaneId = "lane_" + phaseIndex;
                 
-                aProcessNodes.push({
-                    id: sNodeId,
-                    lane: sLaneId,
-                    title: "User: " + oLog.ChangedBy,
-                    titleAbbreviation: oLog.ChangedBy.substring(0, 2).toUpperCase(),
-                    children: aChildren,
-                    state: sState,
-                    sText: sStatus,
-                    texts: ["ok bro"],
+                aProcessLanes.push({
+                    id: sLaneId,
+                    icon: "sap-icon://process",
+                    label: "Phase " + (phaseIndex + 1),
+                    position: phaseIndex
+                });
+                console.log(phaseLogs);
+                
+                phaseLogs.forEach(function (oLog, nodeIndex) {
+                    var sAction = oLog.Action === 'C' ? 'Create' : (oLog.Action === 'U' ? 'Update' : 'Delete');
+                    var sStatus = oLog.Status === 'A' ? 'Approved' : (oLog.Status === 'R' ? 'Rejected' : 'Pending');
+                    var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
+                    var sState = "";
+                    switch (sStatus) {
+                        case 'Approved': 
+                            sState = "Positive"; 
+                            break;
+
+                        case 'Rejected': 
+                            sState = "Negative"; 
+                            break;
+
+                        default: 
+                            sState = "Critical"; 
+                            break;
+                    }
+
+                    var aChildren = [];
+                    if (nodeIndex === 0 && phaseIndex < aPhases.length - 1) {
+                                        
+                        var aNextPhaseLogs = aPhases[phaseIndex + 1];
+                                        
+                        // Vẫn giữ vòng lặp này để mũi tên tỏa ra TẤT CẢ các node của Phase sau (Như bạn muốn)
+                        aNextPhaseLogs.forEach(function (oNextLog) {
+                            aChildren.push(oNextLog.LogUuid);
+                        });
+                    }
+                    aProcessNodes.push({
+                        id: oLog.LogUuid,
+                        lane: sLaneId, 
+                        title: "Request for: " + sAction + "Record",
+                        titleAbbreviation: sAction.substring(0, 2).toUpperCase(),
+                        children: aChildren,
+                        state: sState,
+                        status: sStatus,
+                        texts: ["Approved Time: " + sTime, "Changed By: " + oLog.ChangedBy]
+                    });
+
+                    console.log(aProcessNodes);
+                    
                 });
             });
 
@@ -249,7 +258,7 @@ sap.ui.define([
 
             var oProcessFlow = this.byId("auditProcessFlow");
             if (oProcessFlow) {
-                oProcessFlow.setZoomLevel("Two");
+                oProcessFlow.setZoomLevel("One");
                 oProcessFlow.updateModel();
             }
         },
@@ -393,6 +402,57 @@ sap.ui.define([
                 sap.m.MessageBox.error("Lỗi khi ghi đè Database: " + oError.message);
                 console.error(oError);
             }.bind(this));
+        },
+        // 1. Mở Popover ngay dưới nút Filter
+        onOpenDateFilter: function (oEvent) {
+            var oButton = oEvent.getSource();
+            var oPopover = this.getView().byId("dateFilterPopover");
+            oPopover.openBy(oButton);
+        },
+
+        // 2. Xử lý khi người dùng chọn xong ngày
+       onApplyDateFilter: function (oEvent) {
+    var oDateRange = this.getView().byId("dateRangeFilter");
+    
+    var dStart = oDateRange.getDateValue();
+    var dEnd = oDateRange.getSecondDateValue();
+
+    var aFilters = [];
+
+    if (dStart && dEnd) {
+        // Đặt giờ của ngày bắt đầu là 00:00:00 để bao quát từ đầu ngày
+        dStart.setHours(0, 0, 0, 0);
+        // Đặt giờ của ngày kết thúc thành 23:59:59 
+        dEnd.setHours(23, 59, 59, 999);
+
+        var oFilter = new sap.ui.model.Filter({
+            path: "rawDate", // ĐỔI PATH THÀNH rawDate
+            operator: sap.ui.model.FilterOperator.BT,
+            value1: dStart,
+            value2: dEnd
+        });
+        aFilters.push(oFilter);
+    }
+
+    var oTable = this.getView().byId("auditMasterTable");
+    var oBinding = oTable.getBinding("items");
+    
+    oBinding.filter(aFilters);
+
+},
+
+        // 3. Xóa bộ lọc
+        onClearDateFilter: function () {
+            // Xóa giá trị trong ô input ngày
+            this.getView().byId("dateRangeFilter").setValue("");
+            
+            // Xóa filter của bảng
+            var oTable = this.getView().byId("auditMasterTable");
+            var oBinding = oTable.getBinding("items");
+            oBinding.filter([]); // Truyền mảng rỗng để reset filter
+            
+            // Đóng popover
+            this.getView().byId("dateFilterPopover").close();
         }
     });
 });

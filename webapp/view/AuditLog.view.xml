@@ -14,8 +14,8 @@
         <f:dependents>
             <Dialog id="auditTrailDialog"
                     title="Audit Trail - Record ID: {audit>/selectedRowId}"
-                    contentWidth="1000px"
-                    contentHeight="400px"
+                    contentWidth="1200px"
+                    contentHeight="1000px"
                     resizable="true"
                     draggable="true">
                 <content>
@@ -35,7 +35,7 @@
                                     titleAbbreviation="{audit>titleAbbreviation}"
                                     children="{audit>children}"
                                     state="{audit>state}"
-                                    stateText="{audit>sText}"
+                                    stateText="{audit>status}"
                                     texts="{audit>texts}"
                                     focused="{audit>focused}" />
                             </suite:nodes>
@@ -113,7 +113,7 @@
                 
                 <f:Card>
                     <f:header>
-                        <card:Header title="System Search" subtitle="Select a table to view its audit log" iconSrc="sap-icon://sys-find" />
+                        <card:Header title="Table Search" subtitle="Select a table to view its audit log" iconSrc="sap-icon://sys-find" />
                     </f:header>
                     <f:content>
                         <HBox alignItems="Center" wrap="Wrap" class="sapUiSmallMargin">
@@ -147,22 +147,58 @@
                                 <Column width="20%"><Label text="Data Key" design="Bold"/></Column>
                                 <Column width="20%"><Label text="Latest Action" design="Bold"/></Column>
                                 <Column width="20%"><Label text="Performed by" design="Bold"/></Column>
-                                <Column width="25%"><Label text="Timestamp" design="Bold"/></Column>
+                                <Column width="25%">
+                                    <header>
+                                        <HBox alignItems="Center" width="100%">
+                                            <Label text="Timestamp" design="Bold"/>
+                                            <Button icon="sap-icon://filter" type="Transparent" press=".onOpenDateFilter"/>
+                                        </HBox>
+                                    </header>
+
+                                    <dependents>
+                                        <ResponsivePopover id="dateFilterPopover" title="Filter by Date Range" placement="Bottom">
+                                            <content>
+                                                <VBox class="sapUiSmallMargin">
+                                                    <DateRangeSelection 
+                                                        id="dateRangeFilter" 
+                                                        change=".onApplyDateFilter" 
+                                                        displayFormat="dd/MM/yyyy"
+                                                        placeholder="Start date - End date"/>
+
+                                                    <HBox justifyContent="End" class="sapUiTinyMarginTop">
+                                                        <Button text="Clear" press=".onClearDateFilter" type="Reject"/>
+                                                    </HBox>
+                                                </VBox>
+                                            </content>
+                                        </ResponsivePopover>
+                                    </dependents>
+                                </Column>
                                 <Column width="15%"><Label text="Action" design="Bold"/></Column>
                             </columns>
                             <items>
-                                <ColumnListItem>
+                                <ColumnListItem vAlign="Middle">
                                     <cells>
-                                        <ObjectIdentifier title="{audit>rowId}" text="ID" />
-                                        
-                                        <ObjectStatus text="{audit>lastAction}"
-                                                      state="{= ${audit>lastAction} === 'CREATE' ? 'Success' : (${audit>lastAction} === 'DELETE' ? 'Error' : 'Warning') }"
-                                                      icon="{= ${audit>lastAction} === 'CREATE' ? 'sap-icon://add' : (${audit>lastAction} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }"/>
-                                        
-                                        <Text text="{audit>lastUser}" />
-                                        <Text text="{audit>lastTimestamp}" />
-                                        
-                                        <Button text="Details" icon="sap-icon://history" press=".onViewAuditTrail" type="Transparent"/>
+                                        <VBox height="50px" justifyContent="Center">
+                                            <ObjectIdentifier title="{audit>rowId}"/>
+                                        </VBox>
+                            
+                                        <VBox height="50px" justifyContent="Center">
+                                            <ObjectStatus text="{audit>lastAction}"
+                                                state="{= ${audit>lastAction} === 'CREATE' ? 'Success' : (${audit>lastAction} === 'DELETE' ? 'Error' : 'Warning') }"
+                                                icon="{= ${audit>lastAction} === 'CREATE' ? 'sap-icon://add' : (${audit>lastAction} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }"/>
+                                        </VBox>
+                            
+                                        <VBox height="50px" justifyContent="Center">
+                                            <Text text="{audit>lastUser}" wrapping="true" />
+                                        </VBox>
+                            
+                                        <VBox height="50px" justifyContent="Center">
+                                            <Text text="{audit>lastTimestamp}" wrapping="true" />
+                                        </VBox>
+                            
+                                        <VBox height="50px" justifyContent="Center">
+                                            <Button text="Details" icon="sap-icon://history" press=".onViewAuditTrail" type="Transparent"/>
+                                        </VBox>
                                     </cells>
                                 </ColumnListItem>
                             </items>
