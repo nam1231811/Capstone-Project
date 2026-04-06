@@ -37,7 +37,7 @@
                                     state="{audit>state}"
                                     stateText="{audit>status}"
                                     texts="{audit>texts}"
-                                    focused="{audit>focused}" />
+                                    />
                             </suite:nodes>
                             <suite:lanes>
                                 <suite:ProcessFlowLaneHeader

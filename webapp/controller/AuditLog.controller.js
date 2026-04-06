@@ -129,21 +129,25 @@ sap.ui.define([
                 oLocalModel.setProperty("/allLogs", aAllLogs);
 
                 var aMainLogs = [];
-
+                console.log(aAllLogs);
+                
                 aAllLogs.forEach(function (oLog) {
-                    var sAction = "UPDATE";
-                    if (oLog.Action === 'C') sAction = "CREATE";
-                    if (oLog.Action === 'D') sAction = "DELETE";
-
-                    var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
-
-                    aMainLogs.push({
-                        rowId: oLog.RecordKey,
-                        lastAction: sAction,
-                        lastUser: oLog.ChangedBy,
-                        lastTimestamp: sTime,
-                        rawDate: new Date(oLog.ChangedAt)
-                    });
+                    if (oLog.Status !== 'P') {
+                        var sAction = "UPDATE";
+                        if (oLog.Action === 'C') sAction = "CREATE";
+                        if (oLog.Action === 'D') sAction = "DELETE";
+    
+                        var sTime = DataFormatter.formatDateTime(oLog.ApprovedAt || oLog.ChangedAt);
+    
+                        aMainLogs.push({
+                            rowId: oLog.RecordKey,
+                            lastAction: sAction,
+                            lastUser: oLog.ChangedBy,
+                            lastTimestamp: sTime,
+                            logUuid: oLog.LogUuid,
+                            rawDate: new Date(oLog.ChangedAt)
+                        });
+                    }
                 });
                 oLocalModel.setProperty("/mainLogs", aMainLogs);
 
@@ -194,7 +198,7 @@ sap.ui.define([
 
             var sRowId = oRowData.rowId;
             oLocalModel.setProperty("/selectedRowId", sRowId);
-
+            var sClickedLogUuid = oRowData.logUuid;
 
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
             var aTrailLogs = aAllLogs.filter(function (l) { return l.RecordKey === sRowId; });
@@ -215,20 +219,23 @@ sap.ui.define([
                     }
                 }
             });
+
             if (aCurrentPhase.length > 0) {
                 aPhases.push(aCurrentPhase);
             }
+
             var aProcessNodes = [];
             var aProcessLanes = [];
-            console.log(aPhases);
+
             aPhases.forEach(function (phaseLogs) {
                 phaseLogs.sort(function(a, b) {
                     return new Date(b.ChangedAt) - new Date(a.ChangedAt);
                 });
             });
+
             aPhases.forEach(function (phaseLogs, phaseIndex) {
                 var sLaneId = "lane_" + phaseIndex;
-                
+
                 aProcessLanes.push({
                     id: sLaneId,
                     icon: "sap-icon://process",
@@ -265,6 +272,8 @@ sap.ui.define([
                             aChildren.push(oNextLog.LogUuid);
                         });
                     }
+                    var bIsTargetNode = (oLog.LogUuid === sClickedLogUuid);
+
                     aProcessNodes.push({
                         id: oLog.LogUuid,
                         lane: sLaneId, 
@@ -273,7 +282,9 @@ sap.ui.define([
                         children: aChildren,
                         state: sState,
                         status: sStatus,
-                        texts: ["Approved Time: " + sTime, "Changed By: " + oLog.ChangedBy]
+                        texts: ["Approved Time: " + sTime, "Changed By: " + oLog.ChangedBy],
+                        isHighlighted: bIsTargetNode, 
+                        isFocused: bIsTargetNode
                     });
 
                     console.log(aProcessNodes);
