@@ -24,6 +24,12 @@ sap.ui.define([
                 selectedNodeTime: "",
                 selectedLogUuid: ""
             });
+
+            this._oTableFilters = {
+                date: null,
+                user: null,
+                action: null
+            };
             this.getView().setModel(oModel, "audit");
         },
 
@@ -139,11 +145,37 @@ sap.ui.define([
                         rawDate: new Date(oLog.ChangedAt)
                     });
                 });
-
                 oLocalModel.setProperty("/mainLogs", aMainLogs);
+
+
+                //Filter unique users for User Filter Popover
+                var aUniqueUsers = [];
+                var oUserMap = {};
+
+                aMainLogs.forEach(function (oLog) {
+                    var sUser = oLog.lastUser;
+                    if (sUser && !oUserMap[sUser]) {
+                        oUserMap[sUser] = true;
+                        aUniqueUsers.push({ userName: sUser });
+                    }
+                });
+                oLocalModel.setProperty("/uniqueUsers", aUniqueUsers);
+
+                //Filter unique actions for Action Filter Popover
+                var aUniqueActions = [];
+                var oActionMap = {};
+
+                aMainLogs.forEach(function (oLog) {
+                    var sActionStr = oLog.lastAction;
+                    if (sActionStr && !oActionMap[sActionStr]) {
+                        oActionMap[sActionStr] = true;
+                        aUniqueActions.push({ actionName: sActionStr });
+                    }
+                });
+                oLocalModel.setProperty("/uniqueActions", aUniqueActions);
+                
                 this.byId("auditMasterTable").setBusy(false);
                 sap.m.MessageToast.show("Loaded audit log for table: " + sTableName.toUpperCase());
-
             }.bind(this)).catch(function (oError) {
                 this.byId("auditMasterTable").setBusy(false);
                 sap.m.MessageBox.error("Error occurred while loading audit log data: " + oError.message);
@@ -229,7 +261,6 @@ sap.ui.define([
                                         
                         var aNextPhaseLogs = aPhases[phaseIndex + 1];
                                         
-                        // Vẫn giữ vòng lặp này để mũi tên tỏa ra TẤT CẢ các node của Phase sau (Như bạn muốn)
                         aNextPhaseLogs.forEach(function (oNextLog) {
                             aChildren.push(oNextLog.LogUuid);
                         });
@@ -403,56 +434,158 @@ sap.ui.define([
                 console.error(oError);
             }.bind(this));
         },
-        // 1. Mở Popover ngay dưới nút Filter
+        
         onOpenDateFilter: function (oEvent) {
             var oButton = oEvent.getSource();
             var oPopover = this.getView().byId("dateFilterPopover");
             oPopover.openBy(oButton);
         },
 
-        // 2. Xử lý khi người dùng chọn xong ngày
-       onApplyDateFilter: function (oEvent) {
-    var oDateRange = this.getView().byId("dateRangeFilter");
-    
-    var dStart = oDateRange.getDateValue();
-    var dEnd = oDateRange.getSecondDateValue();
+        onApplyDateFilter: function () {
+            var oDateRange = this.getView().byId("dateRangeFilter");
+            var dStart = oDateRange.getDateValue();
+            var dEnd = oDateRange.getSecondDateValue();
 
-    var aFilters = [];
+            if (dStart && dEnd) {
+                dStart.setHours(0, 0, 0, 0);
+                dEnd.setHours(23, 59, 59, 999);
+                this._oTableFilters.date = new sap.ui.model.Filter({
+                    path: "rawDate", 
+                    operator: sap.ui.model.FilterOperator.BT,
+                    value1: dStart,
+                    value2: dEnd
+                });
+            } else {
+                this._oTableFilters.date = null;
+            }
+        
+            this._applyCombinedFilters();
+        },
 
-    if (dStart && dEnd) {
-        // Đặt giờ của ngày bắt đầu là 00:00:00 để bao quát từ đầu ngày
-        dStart.setHours(0, 0, 0, 0);
-        // Đặt giờ của ngày kết thúc thành 23:59:59 
-        dEnd.setHours(23, 59, 59, 999);
-
-        var oFilter = new sap.ui.model.Filter({
-            path: "rawDate", // ĐỔI PATH THÀNH rawDate
-            operator: sap.ui.model.FilterOperator.BT,
-            value1: dStart,
-            value2: dEnd
-        });
-        aFilters.push(oFilter);
-    }
-
-    var oTable = this.getView().byId("auditMasterTable");
-    var oBinding = oTable.getBinding("items");
-    
-    oBinding.filter(aFilters);
-
-},
-
-        // 3. Xóa bộ lọc
         onClearDateFilter: function () {
-            // Xóa giá trị trong ô input ngày
             this.getView().byId("dateRangeFilter").setValue("");
+            this._oTableFilters.date = null; 
+            this._applyCombinedFilters(); 
+            this.getView().byId("dateFilterPopover").close();
+        },
+
+        onOpenUserFilter: function (oEvent) {
+            var oButton = oEvent.getSource();
+            var oPopover = this.getView().byId("userFilterPopover");
+            oPopover.openBy(oButton);
+        },
+
+        onApplyUserFilter: function () {
+            var oList = this.getView().byId("userFilterList");
+            var aSelectedItems = oList.getSelectedItems();
+
+            if (aSelectedItems.length > 0) {
+                var aUserFilters = [];
+                aSelectedItems.forEach(function (oItem) {
+                    var sUserName = oItem.getBindingContext("audit").getProperty("userName");
+                    aUserFilters.push(new sap.ui.model.Filter("lastUser", sap.ui.model.FilterOperator.EQ, sUserName));
+                });
             
-            // Xóa filter của bảng
+                this._oTableFilters.user = new sap.ui.model.Filter({
+                    filters: aUserFilters,
+                    and: false 
+                });
+            } else {
+                this._oTableFilters.user = null;
+            }
+        
+            this._applyCombinedFilters();
+        
+            this.getView().byId("userFilterPopover").close();
+        },
+
+        onClearUserFilter: function () {
+            this.getView().byId("userFilterList").removeSelections(true);
+            this._oTableFilters.user = null;              
+            this._applyCombinedFilters();               
+            this.getView().byId("userFilterPopover").close();
+        },
+
+        onOpenActionFilter: function (oEvent) {
+            var oButton = oEvent.getSource();
+            var oPopover = this.getView().byId("actionFilterPopover");
+            oPopover.openBy(oButton);
+        },
+
+        onApplyActionFilter: function () {
+            var oList = this.getView().byId("actionFilterList");
+            var aSelectedItems = oList.getSelectedItems();
+        
+            if (aSelectedItems.length > 0) {
+                var aActionFilters = [];
+                aSelectedItems.forEach(function (oItem) {
+                    var sActionName = oItem.getBindingContext("audit").getProperty("actionName");
+                    aActionFilters.push(new sap.ui.model.Filter("lastAction", sap.ui.model.FilterOperator.EQ, sActionName));
+                });
+            
+                this._oTableFilters.action = new sap.ui.model.Filter({
+                    filters: aActionFilters,
+                    and: false 
+                });
+            } else {
+                this._oTableFilters.action = null;
+            }
+    
+            this._applyCombinedFilters();
+            this.getView().byId("actionFilterPopover").close();
+        },
+
+        onClearActionFilter: function () {
+            this.getView().byId("actionFilterList").removeSelections(true);
+            this._oTableFilters.action = null; 
+            this._applyCombinedFilters(); 
+            this.getView().byId("actionFilterPopover").close();
+        },
+
+        _applyCombinedFilters: function () {
+            var aFinalFilters = [];
+            if (this._oTableFilters.date) {
+                aFinalFilters.push(this._oTableFilters.date);
+            }
+        
+            if (this._oTableFilters.user) {
+                aFinalFilters.push(this._oTableFilters.user);
+            }
+
+            if (this._oTableFilters.action) {
+                aFinalFilters.push(this._oTableFilters.action);
+            }
+
             var oTable = this.getView().byId("auditMasterTable");
             var oBinding = oTable.getBinding("items");
-            oBinding.filter([]); // Truyền mảng rỗng để reset filter
-            
-            // Đóng popover
-            this.getView().byId("dateFilterPopover").close();
-        }
+            oBinding.filter(aFinalFilters);
+        },
+
+        onClearAllFilters: function () {
+            this._oTableFilters = {
+                date: null,
+                user: null,
+                action: null
+            };
+
+            var oDateRange = this.getView().byId("dateRangeFilter");
+            if (oDateRange) {
+                oDateRange.setValue("");
+            }
+
+            var oUserList = this.getView().byId("userFilterList");
+            if (oUserList) {
+                oUserList.removeSelections(true);
+            }
+
+            var oActionList = this.getView().byId("actionFilterList");
+            if (oActionList) {
+                oActionList.removeSelections(true);
+            }
+
+            this._applyCombinedFilters();
+
+            sap.m.MessageToast.show("All filters have been cleared.");
+        },
     });
 });
