@@ -75,6 +75,12 @@ sap.ui.define([
                 
                 aAllContexts.forEach(function(oWrapper) {
                     var oData = oWrapper.ctx.getObject();
+                    
+                    var sCheckStatus = oData.status || oData.Status || "";
+                    if (!oWrapper.isPending && (sCheckStatus === "P" || sCheckStatus === "R")) {
+                        return; 
+                    }
+
                     var sRecordOwner = oData.created_by || oData.CreatedBy || oData.changed_by || oData.ChangedBy || "";
                     if (sRecordOwner.toUpperCase() !== sCurrentUser.toUpperCase()) {
                         return; 

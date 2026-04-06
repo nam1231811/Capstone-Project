@@ -22,7 +22,9 @@ sap.ui.define([
                     { status: "Valid Data in Table", count: 1 },
                     { status: "Missing Data in Table", count: 1 }
                 ],
-                recentLogs: []
+                recentLogs: [],
+                qualityPercentage: 0,    
+                qualityColor: "Neutral"     
             };
 
             var oModel = new JSONModel(oData);
@@ -39,7 +41,14 @@ sap.ui.define([
         },
 
         _onRouteMatched: function () {
-            this._loadDashboardData();
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            
+            if (!oAuthModel.getProperty("/isAdmin")) {
+                this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true); 
+                return;
+            }
+
+            this._loadDashboardData(); 
         },
 
         _loadDashboardData: function() {
@@ -420,6 +429,21 @@ sap.ui.define([
                             { status: "Missing Data", count: iEmptyCount }
                         ]);
                         this._togglePieDataLabel(true);
+
+                        var iTotal = iValidCount + iEmptyCount;
+                        var iPercentage = iTotal > 0 ? Math.round((iValidCount / iTotal) * 100) : 0;
+                        var sColor = "Neutral";
+                        
+                        if (iPercentage >= 90) {
+                            sColor = "Good";
+                        } else if (iPercentage >= 70) {
+                            sColor = "Critical";
+                        } else {
+                            sColor = "Error";
+                        }
+
+                        oModel.setProperty("/qualityPercentage", iPercentage);
+                        oModel.setProperty("/qualityColor", sColor);
                     }
                 }.bind(this))
                 .catch(function(oError) {
@@ -455,6 +479,9 @@ sap.ui.define([
                 { status: "Missing Data in Table", count: 1 }
             ]);
             this._togglePieDataLabel(false);
+            
+            oModel.setProperty("/qualityPercentage", 0);
+            oModel.setProperty("/qualityColor", "Neutral");
         },
 
         onExit: function () {

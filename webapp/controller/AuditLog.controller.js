@@ -31,6 +31,20 @@ sap.ui.define([
                 action: null
             };
             this.getView().setModel(oModel, "audit");
+
+            var oRouter = this.getOwnerComponent().getRouter();
+            if (oRouter.getRoute("RouteAuditLog")) {
+                oRouter.getRoute("RouteAuditLog").attachPatternMatched(this._onRouteMatched, this);
+            }
+        },
+
+        _onRouteMatched: function () {
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            
+            if (!oAuthModel.getProperty("/isAdmin")) {
+                this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true); 
+                return;
+            }
         },
 
         onValueHelpRequest: function (oEvent) {
@@ -389,7 +403,6 @@ sap.ui.define([
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
             var oOriginalLog = aAllLogs.find(function (l) { return l.LogUuid === sLogId; });
 
-            // Kiểm tra xem có OldData không (Không thể revert lệnh Create ban đầu vì lúc đó OldData rỗng)
             if (!oOriginalLog || !oOriginalLog.OldData || oOriginalLog.OldData === "") {
                 sap.m.MessageBox.error("Không có dữ liệu gốc để khôi phục!");
                 return;
@@ -397,9 +410,6 @@ sap.ui.define([
 
             oView.setBusy(true);
 
-            // ===================================================================
-            // CHUẨN BỊ PAYLOAD TRỰC TIẾP
-            // ===================================================================
             var oOldDataObj = {};
             try {
                 oOldDataObj = JSON.parse(oOriginalLog.OldData);
@@ -409,16 +419,11 @@ sap.ui.define([
                 return;
             }
 
-            // ABAP Backend (fs_itab) yêu cầu đầu vào là một MẢNG (Array) các Object
             var aDataToSave = [oOldDataObj];
             var sJsonString = JSON.stringify(aDataToSave);
 
-            // Mã hóa chuẩn UTF-8 sang Base64
             var sBase64Data = btoa(unescape(encodeURIComponent(sJsonString)));
 
-            // ===================================================================
-            // GỌI API ACTION LƯU THẲNG DATABASE MASTER BỎ QUA APPROVAL
-            // ===================================================================
             var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
             var oActionContext = oMainModel.bindContext(sActionPath);
 
@@ -429,14 +434,12 @@ sap.ui.define([
                 oView.setBusy(false);
                 sap.m.MessageToast.show("Khôi phục thành công! Dữ liệu đã được cập nhật thẳng vào Database.");
 
-                // Đóng các cửa sổ
                 var oDetailDialog = this.byId("detailNodeDialog");
                 if (oDetailDialog) oDetailDialog.close();
 
                 var oAuditDialog = this.byId("auditTrailDialog");
                 if (oAuditDialog) oAuditDialog.close();
 
-                // Cập nhật lại màn hình Audit Log mới nhất
                 this.onSearchAuditLog(sTableName);
 
             }.bind(this)).catch(function (oError) {
