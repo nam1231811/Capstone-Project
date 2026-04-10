@@ -25,7 +25,7 @@ return Controller.extend("zapp.controller.Metadata", {
                     layout: fioriLibrary.LayoutType.OneColumn,
                     tableName: tableName,
                     newTable: true
-                });
+                }, true);
             return
         }       
         if (aData[this._record] != "undefined") {
@@ -43,7 +43,7 @@ return Controller.extend("zapp.controller.Metadata", {
                     layout: fioriLibrary.LayoutType.OneColumn,
                     tableName: tableName,
                     newTable: false
-                });
+                }, true);
             } else {
                 console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
             }

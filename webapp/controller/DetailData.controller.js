@@ -39,7 +39,7 @@ sap.ui.define([
                     layout: fioriLibrary.LayoutType.OneColumn,
                     tableName: tableName,
                     newTable: true
-                });
+                }, true);
                 return;
             }
             if (aData[this._record] != undefined) {
@@ -238,7 +238,7 @@ sap.ui.define([
                     layout: fioriLibrary.LayoutType.OneColumn,
                     tableName: tableName,
                     newTable: false
-                });
+                }, true);
             } else {
                 console.error("unknown fcl id");
             }

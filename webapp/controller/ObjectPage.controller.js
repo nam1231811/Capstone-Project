@@ -29,37 +29,37 @@ sap.ui.define([
             var oDisplayModel = this.getView().getModel("displayModel");
             var sNewTableName = oEvent.getParameter("arguments").tableName || "";
             var sCurrentTableName = oDisplayModel.getProperty("/CurrentTable");
+            var oModel = this.getOwnerComponent().getModel();
+            var oSettingsModel = this.getView().getModel("settingsModel");
+            var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
+            var oTable = this.byId("TablePage") || this.byId("dataTable");
+            var state = oEvent.getParameter("arguments").newTable || false;
 
             if (sCurrentTableName === sNewTableName && oDisplayModel.getProperty("/Meta")?.length > 0) {
                 return;
             }
 
-            var state = oEvent.getParameter("arguments").newTable || false;
             if (!state) {
                 return;
             }
 
+            if (oTable){
+                oTable.setBusy(true)
+            };
+            
             oDisplayModel.setProperty("/CurrentTable", sNewTableName);
             oDisplayModel.setProperty("/searchQuery", "");
-
-            var oTable = this.byId("TablePage") || this.byId("dataTable");
-            if (oTable) oTable.setBusy(true);
-            var oModel = this.getOwnerComponent().getModel();
-
-            var oSettingsModel = this.getView().getModel("settingsModel");
-            var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
 
             GetData.loadMeta(oModel, sNewTableName, "", sLang).then(function (oPayload) {
                 this._processPayload(oPayload);
                 this._displayData();
-            }.bind(this))
-                .catch(function (err) {
-                    console.error("Load Meta/Data Error:", err);
-                    sap.m.MessageBox.error("Lỗi khi tải dữ liệu bảng.");
-                })
-                .finally(function () {
-                    if (oTable) oTable.setBusy(false);
-                });
+            }.bind(this)).catch(function (err) {
+                console.error("Load Meta/Data Error:", err);
+                sap.m.MessageBox.error("Lỗi khi tải dữ liệu bảng.");
+            })
+            .finally(function () {
+                if (oTable) oTable.setBusy(false);
+            });
         },
 
         _processPayload: function (oPayload) {
@@ -508,7 +508,7 @@ sap.ui.define([
                     layout: fioriLibrary.LayoutType.TwoColumnsMidExpanded,
                     rowId: row_id,
                     tableName: tableName
-                });
+                }, true);
             } else {
                 console.error("FCL object with ID not found 'fcl'");
             }
@@ -531,7 +531,7 @@ sap.ui.define([
                     layout: fioriLibrary.LayoutType.TwoColumnsMidExpanded,
                     rowId: row_id,
                     tableName: tableName
-                });
+                ,}, true);
             } else {
                 console.error("FCL object not found");
             }
