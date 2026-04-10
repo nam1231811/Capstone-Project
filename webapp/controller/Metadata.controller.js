@@ -29,7 +29,26 @@ return Controller.extend("zapp.controller.Metadata", {
             return
         }       
         if (aData[this._record] != "undefined") {
-            this.getView().getModel("metadata").setProperty("/FieldName", aData[this._record]);
+            console.log(aData[this._record]);
+            var detailMeta = aData[this._record];
+            var keyFlag = "No";
+            var valueHelp = "No";
+            
+            if(detailMeta){
+                if(detailMeta.keyflag === "X"){
+                    keyFlag = "Yes";
+                }
+
+                if(detailMeta.valuehelp === "X"){
+                    valueHelp = "Yes";
+                }
+
+                detailMeta["keyFlag"] = keyFlag;
+                detailMeta["valueHelp"] = valueHelp;
+            }
+
+            
+            this.getView().getModel("metadata").setProperty("/FieldName", detailMeta);
         }
     },
 

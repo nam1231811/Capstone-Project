@@ -53,7 +53,7 @@
 					<l:content >
                     	<m:Label text="Mandatory Field"/>
                     	<m:ObjectStatus
-                    	    text="{metadata>/FieldName/keyflag}"
+                    	    text="{metadata>/FieldName/keyFlag}"
                     	    state="None"/>
 					</l:content>
                 </l:VerticalLayout>
@@ -142,7 +142,7 @@
                                                     design="Bold" 
                                                     class="sapUiTinyMarginBottom" />
 
-                                                <m:Text  text="{metadata>hasValueHelp}"/>
+                                                <m:Text  text="{metadata>valueHelp}"/>
                                             </m:VBox>
                                         </l:content>
                                     </l:Grid>
