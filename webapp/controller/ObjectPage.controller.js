@@ -392,6 +392,9 @@ sap.ui.define([
             }
 
             aNewRows.forEach(oRow => {
+                var sStartDate = "", sEndDate = "";
+                var sStartFieldName = "", sEndFieldName = "";
+
                 Object.keys(oRow).forEach(key => {
                     if (!isNaN(key)) {
                         var oCell = oRow[key];
@@ -410,9 +413,31 @@ sap.ui.define([
                             } else {
                                 aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                             }
+
+                            if (oCell.value) {
+                                var sFN = oCell.fieldname.toUpperCase();
+                                if (sFN === "START_DATE" || sFN === "STRAT_DATE" || sFN === "BEGDA") {
+                                    sStartDate = String(oCell.value).trim();
+                                    sStartFieldName = oCell.fieldname;
+                                } else if (sFN === "END_DATE" || sFN === "ENDDA") {
+                                    sEndDate = String(oCell.value).trim();
+                                    sEndFieldName = oCell.fieldname;
+                                }
+                            }
                         }
                     }
                 });
+
+                if (sStartDate !== "" && sEndDate !== "") {
+                    var dStart = new Date(sStartDate);
+                    var dEnd = new Date(sEndDate);
+                    if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
+                        if (dEnd < dStart) {
+                            bHasError = true;
+                            sErrorMessage += "Row Error: [" + sEndFieldName + "] must be later than [" + sStartFieldName + "].\n";
+                        }
+                    }
+                }
             });
 
             if (bHasError) {
