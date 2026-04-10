@@ -133,19 +133,23 @@
                 <subSections>
                     <ObjectPageSubSection>
                         <blocks>
-                            <suite:Graph id="impactGraph" width="100%" height="450px"
-                                         nodes="{graph>/nodes}" 
-                                         lines="{graph>/lines}">
-                                
+                            <suite:Graph 
+                                id="impactGraph" width="100%" height="450px"
+                                nodes="{graph>/nodes}" 
+                                lines="{graph>/lines}">
                                 <suite:nodes>
                                     <suite:Node 
                                         key="{graph>key}" 
                                         title="{graph>title}" 
                                         icon="{graph>icon}" 
-                                        status="{graph>status}">
-                                        <suite:attributes>
-                                            <suite:ElementAttribute label="{graph>attrLabel}" value="{graph>attrValue}"/>
-                                        </suite:attributes>
+                                        status="{graph>status}"
+                                        showDetailButton="false">
+                                        <suite:actionButtons>
+                                            <suite:ActionButton
+                                                icon="sap-icon://table-view"
+                                                title="{graph>title}" 
+                                                press=".onShowChild"/>
+                                        </suite:actionButtons>
                                     </suite:Node>
                                 </suite:nodes>
                                 
@@ -153,9 +157,6 @@
                                     <suite:Line from="{graph>from}" to="{graph>to}" status="{graph>status}"/>
                                 </suite:lines>
                                 
-                                <suite:layoutAlgorithm>
-                                    <layout:LayeredLayout />
-                                </suite:layoutAlgorithm>
                             </suite:Graph>
                         </blocks>
                     </ObjectPageSubSection>

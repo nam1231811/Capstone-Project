@@ -45,15 +45,15 @@
                 <l:VerticalLayout class="sapUiMediumMarginEnd" >
                     <m:Label text="Table Name"/>
                     <m:ObjectStatus
-                        text="{metadata>/FieldName/table_name}"
+                        text="{metadata>/FieldName/tableName}"
                         state="Success"/>
                 </l:VerticalLayout>
 
                 <l:VerticalLayout class="sapUiMediumMarginEnd" >
 					<l:content >
-                    	<m:Label text="User Name"/>
+                    	<m:Label text="Mandatory Field"/>
                     	<m:ObjectStatus
-                    	    text="DEV-094"
+                    	    text="{metadata>/FieldName/keyflag}"
                     	    state="None"/>
 					</l:content>
                 </l:VerticalLayout>
@@ -129,20 +129,20 @@
 											
                                             <m:VBox class="sapUiSmallMarginBottom">
                                                 <m:Label 
-                                                    text="Technical Name: " 
+                                                    text="Display Label: " 
                                                     design="Bold" 
                                                     class="sapUiTinyMarginBottom" />
 
-                                                <m:Text  text="{metadata>rollname}"/>
+                                                <m:Text  text="{metadata>scrtextM}"/>
                                             </m:VBox>
 											
                                             <m:VBox class="sapUiSmallMarginBottom">
                                                 <m:Label 
-                                                    text="Mandatory: " 
+                                                    text="Value Help: " 
                                                     design="Bold" 
                                                     class="sapUiTinyMarginBottom" />
 
-                                                <m:Text  text="{metadata>mandatory}"/>
+                                                <m:Text  text="{metadata>hasValueHelp}"/>
                                             </m:VBox>
                                         </l:content>
                                     </l:Grid>
@@ -152,49 +152,6 @@
 					</ObjectPageSubSection>
 				</subSections>
 			</ObjectPageSection>
-
-			<ObjectPageSection title="Display Label">
-				<subSections>
-					<ObjectPageSubSection>
-						<blocks>
-                        	<form:SimpleForm 
-                                editable="false" 
-                                layout="ResponsiveGridLayout"
-                                labelSpanXL="2" 
-                                labelSpanL="2" 
-                                labelSpanM="3" 
-                                labelSpanS="12"
-                                adjustLabelSpan="false"
-                                emptySpanXL="6"
-                                emptySpanL="6" 
-                                emptySpanM="4" 
-                                columnsL="1"
-                                class="sapUiNoContentPadding"> 
-                                <form:content>
-                                    <!-- <m:Label text="Short Label" 
-                                             design="Bold" 
-                                             class="sapUiMediumText sapUiSmallMarginTop" />
-                                    <m:Text text="{metadata>/FieldName/scrtext_s}" 
-                                            class="sapUiMediumText sapUiSmallMarginTop" /> -->
-
-                                    <m:Label text="Medium Label" 
-                                             design="Bold" 
-                                             class="sapUiMediumText sapUiSmallMarginTop" />
-                                    <m:Text text="{metadata>/FieldName/scrtextM}" 
-                                            class="sapUiMediumText sapUiSmallMarginTop" />
-
-                                    <!-- <m:Label text="Long Label" 
-                                             design="Bold" 
-                                             class="sapUiMediumText sapUiSmallMarginTop" />
-                                    <m:Text text="{metadata>/FieldName/scrtext_l}" 
-                                            class="sapUiMediumText sapUiSmallMarginTop" /> -->
-                                </form:content>
-                            </form:SimpleForm>
-						</blocks>
-					</ObjectPageSubSection>
-				</subSections>
-			</ObjectPageSection>
-
 		</sections>
     </ObjectPageLayout>
 

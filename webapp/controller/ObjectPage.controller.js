@@ -79,7 +79,7 @@ sap.ui.define([
             this._oMetaRaw = Array.from(oUniqueMap.values());
             console.log(this._oMetaRaw);
 
-            this._oMetaRaw.sort((a, b) => parseInt(b.fieldPos) - parseInt(a.fieldPos));
+            this._oMetaRaw.sort((a, b) => parseInt(a.fieldPos) - parseInt(b.fieldPos));
             this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname || prop.fieldName);
 
             var sActualTableName = this._oMetaRaw[0]?.tableName || this._oMetaRaw[0]?.table_name || "Unknown";
@@ -111,10 +111,14 @@ sap.ui.define([
                 }
 
                 var sRowUuid = rowObj.uuid || "";
-
+                console.log(this._oMetaRaw);
+                
                 this._oMetaRaw.forEach(function (colMeta, iIndex) {
                     var sFieldName = colMeta.fieldname || colMeta.fieldName;
-
+                    var key = false;
+                    if(colMeta.keyflag ==='X'){
+                        key = true;
+                    }
                     var sValue = "";
                     if (oActualData[sFieldName] !== undefined) {
                         sValue = oActualData[sFieldName];
@@ -135,7 +139,8 @@ sap.ui.define([
                         field_pos: colMeta.fieldPos || colMeta.field_pos,
                         datatype: colMeta.datatype || colMeta.dataType,
                         row_id: rowObj.rowId || rowObj.row_id || (rowIndex + 1).toString(),
-                        uuid: sRowUuid
+                        uuid: sRowUuid,
+                        keyFlag: key
                     };
                 });
 

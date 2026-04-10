@@ -17,7 +17,7 @@ sap.ui.define([
             this.oRouter = oOwnerComponent.getRouter();
             this.oRouter.getRoute("DetailData").attachPatternMatched(this._onObjectMatched, this);
 
-            var oDetailRecord = new JSONModel({ Data: [] });
+            var oDetailRecord = new JSONModel({ Data: [] , records: []});
             this.getView().setModel(oDetailRecord, "detailRecord");
 
             var oViewModel = new JSONModel({ isEditMode: false });
@@ -301,76 +301,17 @@ sap.ui.define([
                 sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
             }else {
                 sap.m.MessageToast.show("Deleted successfully from database!");
-            }
-            this.getView().getModel("overall").setProperty("/count", aNewData.length);
-            oDisplayModel.setProperty("/Data", aNewData);
-            oDisplayModel.refresh(true);
-            sap.m.MessageBox.success("Delete record " + sRowId + " successfully", {
+                oDisplayModel.setProperty("/Data", aNewData);
+                sap.m.MessageBox.success("Delete record " + sRowId + " successfully", {
                 title: "Successfull",
                 onClose: function () {
                     this.onRollback();
                 }.bind(this)
             });
-        },
-
-_loadImpactAnalysisData: function () {
-            var oView = this.getView();
-            var oModel = this.getOwnerComponent().getModel();
-
-            // Set biểu đồ về trạng thái trống ban đầu
-            var oEmptyGraphModel = new sap.ui.model.json.JSONModel({ nodes: [], lines: [] });
-            oView.setModel(oEmptyGraphModel, "graph");
-
-            var sTableName = this._tableName;
-
-            // 1. LẤY DỮ LIỆU ĐỂ TÌM KEY VALUE VÀ UUID CỦA BẢN GHI ĐANG XEM
-            var oDetailData = oView.getModel("detailRecord").getProperty("/Data");
-            var aCells = Object.values(oDetailData).filter(i => typeof i === 'object');
-            
-            var sKeyValue = ""; 
-            var sUuid = "";
-
-            if (aCells.length > 0) {
-                sKeyValue = aCells[0].value; // Lấy giá trị của ô đầu tiên làm Key
-                
-                // Lấy UUID của bản ghi
-                var oCellWithUuid = aCells.find(cell => cell.uuid);
-                if (oCellWithUuid) {
-                    sUuid = oCellWithUuid.uuid;
-                }
             }
-
-            if (!sTableName || !sKeyValue || !sUuid) {
-                console.warn("Impact Analysis: Missing Table Name, Key Value, or UUID");
-                return;
-            }
-
-            // 2. ĐIỂM SỬA LỖI Ở ĐÂY: Chèn UUID vào đường dẫn OData V4 cho Bound Function
-            var sActionPath = "/Data(uuid=" + sUuid + ")/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.getimpactanalysis(...)"; 
+            this.getView().getModel("overall").setProperty("/count", aNewData.length);
+            oDisplayModel.refresh(true);
             
-            var oActionContext = oModel.bindContext(sActionPath);
-            
-            // 3. Truyền tham số
-            oActionContext.setParameter("table_name", sTableName);
-            oActionContext.setParameter("key_value", sKeyValue);
-
-            // 4. Gọi Backend
-            oActionContext.execute().then(function () {
-                var oResult = oActionContext.getBoundContext().getObject();
-                
-                if (oResult && oResult.json_string) {
-                    try {
-                        var oParsedGraphData = JSON.parse(oResult.json_string);
-                        var oGraphModel = new sap.ui.model.json.JSONModel(oParsedGraphData);
-                        oView.setModel(oGraphModel, "graph");
-                    } catch (e) {
-                        console.error("Lỗi parse JSON Impact Analysis: ", e);
-                    }
-                }
-            }.bind(this)).catch(function (oError) {
-                console.error("Lỗi gọi Impact Analysis: ", oError);
-                // Nếu backend trả về lỗi, bạn có thể hiện MessageToast ở đây
-            });
         },
 
         onDynamicValueHelp: function (oEvent) {
@@ -422,6 +363,117 @@ _loadImpactAnalysisData: function () {
 
                 oInput.fireChange({ value: sSelectedKey });
             }
+        },
+
+        _loadImpactAnalysisData: function () {
+            var oView = this.getView();
+            var oModel = this.getOwnerComponent().getModel();
+
+            var oEmptyGraphModel = new sap.ui.model.json.JSONModel({ nodes: [], lines: [] });
+            oView.setModel(oEmptyGraphModel, "graph");
+
+            var sTableName = this._tableName;
+
+            var oDetailData = oView.getModel("detailRecord").getProperty("/Data");
+            var aCells = Object.values(oDetailData).filter(i => typeof i === 'object');
+            
+            var sKeyValue = ""; 
+            var sUuid = "";
+
+            if (aCells.length > 0) {
+                console.log(aCells);
+                aCells.forEach(cell => {
+                    if(cell.keyFlag === true) {
+                        sKeyValue = cell.value;
+                    }
+                });
+                
+                var oCellWithUuid = aCells.find(cell => cell.uuid);
+                if (oCellWithUuid) {
+                    sUuid = oCellWithUuid.uuid;
+                }
+            }
+
+            if (!sTableName || !sKeyValue || !sUuid) {
+                console.warn("Impact Analysis: Missing Table Name, Key Value, or UUID");
+                return;
+            }
+
+            var sActionPath = "/Data(uuid=" + sUuid + ")/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.getimpactanalysis(...)"; 
+            var oActionContext = oModel.bindContext(sActionPath);
+            
+            oActionContext.setParameter("table_name", sTableName);
+            oActionContext.setParameter("key_value", sKeyValue);
+
+            oActionContext.execute().then(function () {
+                var oResult = oActionContext.getBoundContext().getObject();
+                console.log(oResult);
+                if (oResult && oResult.json_string) {
+                    try {
+                        var oParsedGraphData = JSON.parse(oResult.json_string);
+                        var oGraphModel = new sap.ui.model.json.JSONModel(oParsedGraphData);
+                        oView.setModel(oGraphModel, "graph");
+                    } catch (e) {
+                        console.error("Lỗi parse JSON Impact Analysis: ", e);
+                    }
+                }
+            }.bind(this)).catch(function (oError) {
+                console.error("Lỗi gọi Impact Analysis: ", oError);
+            });
+        },
+
+        onShowChild: function(oEvent) {
+            var oNode = oEvent.getSource();
+            var oContext = oNode.getBindingContext("graph");
+            var oRowData = oContext.getObject();
+
+            var aEmployeeList = JSON.parse(oRowData.detaildata || "[]");
+            console.log(oRowData);
+            
+            if (aEmployeeList.length === 0) return;
+
+            var fieldNames = Object.keys(aEmployeeList[0]);
+
+            var oTable = new sap.m.Table({
+                width: "650px",
+                columns: fieldNames.filter(function(sName) {
+                    return sName && sName.toUpperCase() !== "MANDT";
+                }).map(function (sName) {
+                    return new sap.m.Column({
+                        header: new sap.m.Label({ text: sName })
+                    });
+                })
+            });
+        
+            oTable.bindItems({
+                path: "graph>" + oContext.getPath() + "/detailDataParsed", 
+                template: new sap.m.ColumnListItem({
+                    cells: fieldNames.filter(function(sName) {
+                        return sName && sName.toUpperCase() !== "MANDT";
+                    }).map(function (sName) {
+                        return new sap.m.Text({
+                            text: "{graph>" + sName + "}"
+                        });
+                    })
+                })
+            });
+        
+            this.getView().getModel("graph").setProperty(oContext.getPath() + "/detailDataParsed", aEmployeeList);
+        
+            if (!this._oPopover) {
+                console.log(aEmployeeList[0]);
+                
+                this._oPopover = new sap.m.ResponsivePopover({
+                    title: "Detail Table: " + oRowData.title,
+                    contentWidth: "650px",
+                    placement: "Auto"
+                });
+                this.getView().addDependent(this._oPopover);
+            }
+        
+            this._oPopover.removeAllContent();
+            this._oPopover.addContent(oTable);
+            this._oPopover.openBy(oNode);
         }
     });
 });
