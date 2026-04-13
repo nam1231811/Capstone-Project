@@ -18,6 +18,7 @@ sap.ui.define([
     return Controller.extend("zapp.controller.ObjectPage", {
         _oFieldName: [],
         _oDataRaw: [],
+        _sRecentlySavedKey: null, 
 
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
@@ -76,10 +77,37 @@ sap.ui.define([
                 }
             });
 
-            this._oMetaRaw = Array.from(oUniqueMap.values());
-            console.log(this._oMetaRaw);
+            var aBaseMeta = Array.from(oUniqueMap.values());
 
-            this._oMetaRaw.sort((a, b) => parseInt(b.fieldPos) - parseInt(a.fieldPos));
+            var aUiMeta = JSON.parse(JSON.stringify(aBaseMeta)); 
+            aUiMeta.sort(function(a, b) {
+                var posA = parseInt(a.fieldPos || a.field_pos, 10) || 0;
+                var posB = parseInt(b.fieldPos || b.field_pos, 10) || 0;
+                return posA - posB;
+            });
+
+            var aTableMeta = JSON.parse(JSON.stringify(aBaseMeta));
+            aTableMeta.sort(function (a, b) {
+                var checkIsKey = function(col) {
+                    var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
+                    return (col.keyflag === "X" || col.keyFlag === "X" || 
+                            col.isKey === true || col.is_key === true || col.IsKey === true || 
+                            sColName === "ID" || sColName === "CODE" || 
+                            sColName.indexOf("_ID") !== -1 || sColName.indexOf("_CODE") !== -1);
+                };
+
+                var aIsKey = checkIsKey(a);
+                var bIsKey = checkIsKey(b);
+
+                if (aIsKey && !bIsKey) return -1;
+                if (!aIsKey && bIsKey) return 1;
+
+                var posA = parseInt(a.fieldPos || a.field_pos, 10) || 0;
+                var posB = parseInt(b.fieldPos || b.field_pos, 10) || 0;
+                return posA - posB;
+            });
+
+            this._oMetaRaw = aTableMeta;
             this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname || prop.fieldName);
 
             var sActualTableName = this._oMetaRaw[0]?.tableName || this._oMetaRaw[0]?.table_name || "Unknown";
@@ -91,9 +119,9 @@ sap.ui.define([
             this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);
             this.getView().getModel("overall")?.setProperty("/colCount", iColCount);
 
-            this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
+            this.getView().getModel("displayModel").setProperty("/Meta", aTableMeta); 
+            this.getView().getModel("displayModel").setProperty("/UiMeta", aUiMeta);   
             this.getView().getModel("displayModel").setProperty("/Data", oPayload.dataRows);
-            this.getView().getModel("displayModel").setProperty("/UiMeta", this._oMetaRaw);
 
             var aRawData = oPayload.dataRows || this.getView().getModel("displayModel").getProperty("/Data") || [];
             var aFormattedData = [];
@@ -141,6 +169,27 @@ sap.ui.define([
 
                 aFormattedData.push(oNewRow);
             }.bind(this));
+
+            var sRecentKey = this._sRecentlySavedKey; 
+
+            aFormattedData.sort(function (a, b) {
+                var valA = a[0] ? String(a[0].value).trim() : "";
+                var valB = b[0] ? String(b[0].value).trim() : "";
+
+                if (sRecentKey) {
+                    if (valA === sRecentKey) return -1;
+                    if (valB === sRecentKey) return 1;
+                }
+
+                var numA = parseFloat(valA);
+                var numB = parseFloat(valB);
+
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return numB - numA; 
+                } else {
+                    return String(valB).localeCompare(String(valA));
+                }
+            });
 
             this._oDataRaw = aFormattedData;
 
@@ -423,6 +472,13 @@ sap.ui.define([
 
             var codeData = GetData.encodeFunction(aPromises);
             if (codeData) {
+                if (aNewRows.length > 0 && aKeyIndexes.length > 0) {
+                    var iFirstKeyIndex = aKeyIndexes[0];
+                    if (aNewRows[0][iFirstKeyIndex]) {
+                        this._sRecentlySavedKey = String(aNewRows[0][iFirstKeyIndex].value).trim();
+                    }
+                }
+
                 this._sendToBackend(tableName, codeData);
             } else {
                 oTable.setBusy(false);
@@ -436,21 +492,20 @@ sap.ui.define([
         _sendToBackend: function (table, data) {
             var oView = this.getView();
             var oModel = oView.getModel();
-
             var oAuthModel = this.getOwnerComponent().getModel("auth");
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
             var bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
 
-            console.log("Quyền hiện tại: Manager?", bIsManager, "| Admin?", bIsAdmin);
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
-                SaveToDatabase.onSaveDB(table, oView).then(function () {
+
+                SaveToDatabase.onSaveDB(table, oView, data).then(function () {
                     sap.ui.core.BusyIndicator.hide();
                     sap.m.MessageToast.show("Updated to database successfully!");
 
                     this._refreshData(table);
                     this._onEditToggleButtonPress();
-                }.bind(this)).catch(function () {
+                }.bind(this)).catch(function (oError) {
                     sap.ui.core.BusyIndicator.hide();
                 });
                 return;
@@ -472,7 +527,23 @@ sap.ui.define([
                 if (oContext.isTransient()) {
                     oContext.delete();
                 }
-                sap.m.MessageBox.error("Error updating temporary table: " + oError.message);
+                
+                var sBackendError = "Unknown backend error occurred.";
+                if (oError) {
+                    sBackendError = oError.message || sBackendError;
+                    if (oError.error && oError.error.message) {
+                        sBackendError = oError.error.message.value || oError.error.message;
+                    }
+                }
+                var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
+                if (aMessages && aMessages.length > 0) {
+                    var aErrors = aMessages.filter(function(m) { return m.type === "Error"; });
+                    if (aErrors.length > 0) {
+                        sBackendError = aErrors[aErrors.length - 1].message;
+                    }
+                }
+
+                sap.m.MessageBox.error("Failed to send request:\n\n" + sBackendError);
             }.bind(this));
         },
 

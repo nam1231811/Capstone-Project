@@ -163,7 +163,7 @@ sap.ui.define([
                 var aFullData = JSON.parse(JSON.stringify(oView.getModel("displayModel").getProperty("/Data")));
                 aFullData[this._record] = oDetailModel;
 
-                SaveToDatabase.onSaveDB(tableName, oView, aFullData).then(function () {
+                SaveToDatabase.onSaveDB(tableName, oView, [oDetailModel]).then(function () {
                     sap.ui.core.BusyIndicator.hide();
                     sap.m.MessageToast.show("Updated to database successfully!");
 
