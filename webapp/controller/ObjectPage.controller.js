@@ -10,8 +10,10 @@ sap.ui.define([
     "zapp/utils/UploadExcelData",
     "zapp/utils/DownloadExcelData",
     "zapp/api/SaveToDatabase",
+    "zapp/utils/GridValidator"
 ], function (
-    Controller, fioriLibrary, SearchData, FilterData, SortData, PersonalizationData, DataFormatter, GetData, UploadExcelData, DownloadExcelData, SaveToDatabase
+    Controller, fioriLibrary, SearchData, FilterData, SortData, PersonalizationData,
+    DataFormatter, GetData, UploadExcelData, DownloadExcelData, SaveToDatabase, GridValidator
 ) {
     "use strict";
 
@@ -283,6 +285,8 @@ sap.ui.define([
 
                         new sap.m.Input({
                             value: "{displayModel>" + iIndex + "/value}",
+                            valueState: "{displayModel>" + iIndex + "/_state}",
+                            valueStateText: "{displayModel>" + iIndex + "/_msg}",
                             visible: "{= ${displayModel>" + iIndex + "/isEditable} === true }",
                             showValueHelp: "{= ${displayModel>" + iIndex + "/has_value_help} === true }",
                             valueHelpRequest: this.onDynamicValueHelp.bind(this),
@@ -292,6 +296,8 @@ sap.ui.define([
                                 var sPath = oEvent.getSource().getBindingContext("displayModel").getPath();
                                 oModel.setProperty(sPath + "/uuid", sColUUID);
                                 oModel.setProperty(sPath + "/fieldname", oMeta.fieldname);
+
+                                this._validateLiveGrid();
                             }.bind(this)
                         }).data("tableName", oMeta.table_name || oMeta.tableName || "")
                             .data("fieldName", oMeta.fieldname || "")
@@ -441,13 +447,16 @@ sap.ui.define([
             }
 
             aNewRows.forEach(oRow => {
+                var sStartDate = "", sEndDate = "";
+                var sStartFieldName = "", sEndFieldName = "";
+
                 Object.keys(oRow).forEach(key => {
                     if (!isNaN(key)) {
                         var oCell = oRow[key];
                         if (oCell && oCell.fieldname) {
                             tableName = oCell.table_name;
 
-                            var oValidation = UploadExcelData._validateCellFormat(
+                            var oValidation = GridValidator.checkCellFormat(
                                 oCell.value,
                                 oCell.datatype,
                                 { fieldname: oCell.fieldname }
@@ -459,9 +468,31 @@ sap.ui.define([
                             } else {
                                 aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                             }
+
+                            if (oCell.value) {
+                                var sFN = oCell.fieldname.toUpperCase();
+                                if (sFN === "START_DATE" || sFN === "STRAT_DATE" || sFN === "BEGDA") {
+                                    sStartDate = String(oCell.value).trim();
+                                    sStartFieldName = oCell.fieldname;
+                                } else if (sFN === "END_DATE" || sFN === "ENDDA") {
+                                    sEndDate = String(oCell.value).trim();
+                                    sEndFieldName = oCell.fieldname;
+                                }
+                            }
                         }
                     }
                 });
+
+                if (sStartDate !== "" && sEndDate !== "") {
+                    var dStart = new Date(sStartDate);
+                    var dEnd = new Date(sEndDate);
+                    if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
+                        if (dEnd < dStart) {
+                            bHasError = true;
+                            sErrorMessage += "Row Error: [" + sEndFieldName + "] must be later than [" + sStartFieldName + "].\n";
+                        }
+                    }
+                }
             });
 
             if (bHasError) {
@@ -684,6 +715,12 @@ sap.ui.define([
                         oTable.setBusy(false);
                     }
                 });
+        },
+
+        _validateLiveGrid: function () {
+            var oModel = this.getView().getModel("displayModel");
+            var aCleanedData = GridValidator.performLiveValidation(oModel.getProperty("/Data"), oModel.getProperty("/Meta"));
+            oModel.setProperty("/Data", aCleanedData);
         },
     });
 });

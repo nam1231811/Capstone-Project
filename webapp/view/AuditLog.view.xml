@@ -235,7 +235,9 @@
                                 <ColumnListItem vAlign="Middle">
                                     <cells>
                                         <VBox height="50px" justifyContent="Center">
-                                            <ObjectIdentifier title="{audit>rowId}"/>
+                                            <ObjectIdentifier 
+                                                title="{audit>displayKey}" 
+                                                text="{= ${audit>rowId}.substring(0, 8) + '...' }"/>
                                         </VBox>
                             
                                         <VBox height="50px" justifyContent="Center">

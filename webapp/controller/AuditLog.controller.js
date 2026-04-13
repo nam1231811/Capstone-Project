@@ -40,9 +40,9 @@ sap.ui.define([
 
         _onRouteMatched: function () {
             var oAuthModel = this.getOwnerComponent().getModel("auth");
-            
+
             if (!oAuthModel.getProperty("/isAdmin")) {
-                this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true); 
+                this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true);
                 return;
             }
         },
@@ -98,12 +98,12 @@ sap.ui.define([
             }
 
             var oBinding = this._pValueHelpDialog.getBinding("items");
-            if (oBinding) { 
-                oBinding.filter([]); 
+            if (oBinding) {
+                oBinding.filter([]);
             }
-            
-            if (this._pValueHelpDialog._oSearchField) { 
-                this._pValueHelpDialog._oSearchField.setValue(""); 
+
+            if (this._pValueHelpDialog._oSearchField) {
+                this._pValueHelpDialog._oSearchField.setValue("");
             }
 
             this._pValueHelpDialog.open();
@@ -144,17 +144,48 @@ sap.ui.define([
 
                 var aMainLogs = [];
                 console.log(aAllLogs);
-                
+
                 aAllLogs.forEach(function (oLog) {
                     if (oLog.Status !== 'P') {
                         var sAction = "UPDATE";
                         if (oLog.Action === 'C') sAction = "CREATE";
                         if (oLog.Action === 'D') sAction = "DELETE";
-    
+
                         var sTime = DataFormatter.formatDateTime(oLog.ApprovedAt || oLog.ChangedAt);
-    
+
+                        var sDisplayKey = oLog.RecordKey; // Mặc định nếu lỗi thì vẫn hiện mã Hash
+                        try {
+                            // Ưu tiên lấy NewData, nếu xóa (Delete) không có NewData thì lấy OldData
+                            var sJsonToParse = oLog.NewData ? oLog.NewData : oLog.OldData;
+                            if (sJsonToParse) {
+                                var oDataObj = JSON.parse(sJsonToParse);
+
+                                // Lọc bỏ trường hệ thống MANDT
+                                var aKeys = Object.keys(oDataObj).filter(k => k.toUpperCase() !== 'MANDT');
+
+                                // Thuật toán dò tìm thông minh: Ưu tiên tìm cột có chữ 'ID' hoặc 'CODE'
+                                // Nếu không có, mặc định lấy cột đầu tiên trong bảng
+                                var sMainField = aKeys.find(k => {
+                                    var sUpperK = k.toUpperCase();
+                                    return sUpperK === 'ID' ||
+                                        sUpperK === 'CODE' ||
+                                        sUpperK.indexOf('_ID') !== -1 ||
+                                        sUpperK.indexOf('_CODE') !== -1 ||
+                                        sUpperK.indexOf('ID_') !== -1;
+                                }) || aKeys[0];
+
+                                if (sMainField && oDataObj[sMainField]) {
+                                    // Sẽ tạo ra chuỗi đẹp mắt, VD: "ID: 47" hoặc "COMPANY_NAME: FPT"
+                                    sDisplayKey = sMainField + ": " + oDataObj[sMainField];
+                                }
+                            }
+                        } catch (e) {
+                            // Bỏ qua lỗi parse JSON nếu có
+                        }
+
                         aMainLogs.push({
                             rowId: oLog.RecordKey,
+                            displayKey: sDisplayKey,
                             lastAction: sAction,
                             lastUser: oLog.ChangedBy,
                             lastTimestamp: sTime,
@@ -191,7 +222,7 @@ sap.ui.define([
                     }
                 });
                 oLocalModel.setProperty("/uniqueActions", aUniqueActions);
-                
+
                 this.byId("auditMasterTable").setBusy(false);
                 sap.m.MessageToast.show("Loaded audit log for table: " + sTableName.toUpperCase());
             }.bind(this)).catch(function (oError) {
@@ -226,10 +257,10 @@ sap.ui.define([
 
             aTrailLogs.forEach(function (oLog) {
                 if (oLog.Status !== 'P') {
-                        aCurrentPhase.push(oLog);
+                    aCurrentPhase.push(oLog);
                     if (oLog.Status === 'A') {
                         aPhases.push(aCurrentPhase);
-                        aCurrentPhase = []; 
+                        aCurrentPhase = [];
                     }
                 }
             });
@@ -242,7 +273,7 @@ sap.ui.define([
             var aProcessLanes = [];
 
             aPhases.forEach(function (phaseLogs) {
-                phaseLogs.sort(function(a, b) {
+                phaseLogs.sort(function (a, b) {
                     return new Date(b.ChangedAt) - new Date(a.ChangedAt);
                 });
             });
@@ -257,31 +288,31 @@ sap.ui.define([
                     position: phaseIndex
                 });
                 console.log(phaseLogs);
-                
+
                 phaseLogs.forEach(function (oLog, nodeIndex) {
                     var sAction = oLog.Action === 'C' ? 'Create' : (oLog.Action === 'U' ? 'Update' : 'Delete');
                     var sStatus = oLog.Status === 'A' ? 'Approved' : (oLog.Status === 'R' ? 'Rejected' : 'Pending');
                     var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
                     var sState = "";
                     switch (sStatus) {
-                        case 'Approved': 
-                            sState = "Positive"; 
+                        case 'Approved':
+                            sState = "Positive";
                             break;
 
-                        case 'Rejected': 
-                            sState = "Negative"; 
+                        case 'Rejected':
+                            sState = "Negative";
                             break;
 
-                        default: 
-                            sState = "Critical"; 
+                        default:
+                            sState = "Critical";
                             break;
                     }
 
                     var aChildren = [];
                     if (nodeIndex === 0 && phaseIndex < aPhases.length - 1) {
-                                        
+
                         var aNextPhaseLogs = aPhases[phaseIndex + 1];
-                                        
+
                         aNextPhaseLogs.forEach(function (oNextLog) {
                             aChildren.push(oNextLog.LogUuid);
                         });
@@ -290,19 +321,19 @@ sap.ui.define([
 
                     aProcessNodes.push({
                         id: oLog.LogUuid,
-                        lane: sLaneId, 
+                        lane: sLaneId,
                         title: "Request for: " + sAction + "Record",
                         titleAbbreviation: sAction.substring(0, 2).toUpperCase(),
                         children: aChildren,
                         state: sState,
                         status: sStatus,
                         texts: ["Approved Time: " + sTime, "Changed By: " + oLog.ChangedBy],
-                        isHighlighted: bIsTargetNode, 
+                        isHighlighted: bIsTargetNode,
                         isFocused: bIsTargetNode
                     });
 
                     console.log(aProcessNodes);
-                    
+
                 });
             });
 
@@ -448,7 +479,7 @@ sap.ui.define([
                 console.error(oError);
             }.bind(this));
         },
-        
+
         onOpenDateFilter: function (oEvent) {
             var oButton = oEvent.getSource();
             var oPopover = this.getView().byId("dateFilterPopover");
@@ -464,7 +495,7 @@ sap.ui.define([
                 dStart.setHours(0, 0, 0, 0);
                 dEnd.setHours(23, 59, 59, 999);
                 this._oTableFilters.date = new sap.ui.model.Filter({
-                    path: "rawDate", 
+                    path: "rawDate",
                     operator: sap.ui.model.FilterOperator.BT,
                     value1: dStart,
                     value2: dEnd
@@ -472,14 +503,14 @@ sap.ui.define([
             } else {
                 this._oTableFilters.date = null;
             }
-        
+
             this._applyCombinedFilters();
         },
 
         onClearDateFilter: function () {
             this.getView().byId("dateRangeFilter").setValue("");
-            this._oTableFilters.date = null; 
-            this._applyCombinedFilters(); 
+            this._oTableFilters.date = null;
+            this._applyCombinedFilters();
             this.getView().byId("dateFilterPopover").close();
         },
 
@@ -499,24 +530,24 @@ sap.ui.define([
                     var sUserName = oItem.getBindingContext("audit").getProperty("userName");
                     aUserFilters.push(new sap.ui.model.Filter("lastUser", sap.ui.model.FilterOperator.EQ, sUserName));
                 });
-            
+
                 this._oTableFilters.user = new sap.ui.model.Filter({
                     filters: aUserFilters,
-                    and: false 
+                    and: false
                 });
             } else {
                 this._oTableFilters.user = null;
             }
-        
+
             this._applyCombinedFilters();
-        
+
             this.getView().byId("userFilterPopover").close();
         },
 
         onClearUserFilter: function () {
             this.getView().byId("userFilterList").removeSelections(true);
-            this._oTableFilters.user = null;              
-            this._applyCombinedFilters();               
+            this._oTableFilters.user = null;
+            this._applyCombinedFilters();
             this.getView().byId("userFilterPopover").close();
         },
 
@@ -529,30 +560,30 @@ sap.ui.define([
         onApplyActionFilter: function () {
             var oList = this.getView().byId("actionFilterList");
             var aSelectedItems = oList.getSelectedItems();
-        
+
             if (aSelectedItems.length > 0) {
                 var aActionFilters = [];
                 aSelectedItems.forEach(function (oItem) {
                     var sActionName = oItem.getBindingContext("audit").getProperty("actionName");
                     aActionFilters.push(new sap.ui.model.Filter("lastAction", sap.ui.model.FilterOperator.EQ, sActionName));
                 });
-            
+
                 this._oTableFilters.action = new sap.ui.model.Filter({
                     filters: aActionFilters,
-                    and: false 
+                    and: false
                 });
             } else {
                 this._oTableFilters.action = null;
             }
-    
+
             this._applyCombinedFilters();
             this.getView().byId("actionFilterPopover").close();
         },
 
         onClearActionFilter: function () {
             this.getView().byId("actionFilterList").removeSelections(true);
-            this._oTableFilters.action = null; 
-            this._applyCombinedFilters(); 
+            this._oTableFilters.action = null;
+            this._applyCombinedFilters();
             this.getView().byId("actionFilterPopover").close();
         },
 
@@ -561,7 +592,7 @@ sap.ui.define([
             if (this._oTableFilters.date) {
                 aFinalFilters.push(this._oTableFilters.date);
             }
-        
+
             if (this._oTableFilters.user) {
                 aFinalFilters.push(this._oTableFilters.user);
             }
