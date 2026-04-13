@@ -1,42 +1,47 @@
 sap.ui.define([
-    "zapp/models/DataFormatter" ,
+    "zapp/models/DataFormatter",
     "zapp/models/GetData"
 ], function (DataFormatter, GetData) {
     "use strict";
 
     return {
-        onSaveDB: function (sTableName, oView, aCustomData) {
+        onSaveDB: function (sTableName, oView, vCustomData) {
             var oModel = oView.getModel();
-            
-            var aData = aCustomData || oView.getModel("displayModel").getProperty("/Data") || [];
-            var dataUpdate = [];
+            var sBase64Data = "";
             
             if (!sTableName) {
                 sap.m.MessageBox.error("Table is unknown");
                 return Promise.reject(new Error("Table is unknown"));
             }
-        
-            if (!aData || aData.length === 0) {
-                sap.m.MessageToast.show("No data to update");
-                return Promise.reject(new Error("No data to update"));
-            }
 
-            aData.forEach(oRow => {
-                var aPromises = {};
-                Object.keys(oRow).forEach(key => {
-                    if (!isNaN(key)) {
-                        var oCell = oRow[key];
-                        if (oCell && oCell.fieldname) {
-                            aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
-                        } else {
-                            console.warn("On Save " + key + " error");
+            if (typeof vCustomData === "string") {
+                sBase64Data = vCustomData;
+            } else {
+                var aData = vCustomData || oView.getModel("displayModel").getProperty("/Data") || [];
+                var dataUpdate = [];
+                
+                if (!aData || aData.length === 0) {
+                    sap.m.MessageToast.show("No data to update");
+                    return Promise.reject(new Error("No data to update"));
+                }
+
+                aData.forEach(oRow => {
+                    var aPromises = {};
+                    Object.keys(oRow).forEach(key => {
+                        if (!isNaN(key)) {
+                            var oCell = oRow[key];
+                            if (oCell && oCell.fieldname) {
+                                aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
+                            } else {
+                                console.warn("On Save " + key + " error");
+                            }
                         }
-                    }
+                    });
+                    dataUpdate.push(aPromises)
                 });
-                dataUpdate.push(aPromises)
-            });
-            
-            var sBase64Data = GetData.encodeFunction(dataUpdate);
+                
+                sBase64Data = GetData.encodeFunction(dataUpdate);
+            }
 
             var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
             var oActionContext = oModel.bindContext(sActionPath);
@@ -44,12 +49,43 @@ sap.ui.define([
             oActionContext.setParameter("table_name", sTableName);
             oActionContext.setParameter("json_data", sBase64Data);
 
+            sap.ui.getCore().getMessageManager().removeAllMessages();
+
             return oActionContext.execute().then(function () {
+                var bHasError = false;
+                var sBackendErrMsg = "System error while saving data"; 
+
+                var oResult = oActionContext.getBoundContext().getObject();
+                if (oResult && oResult.json_string) {
+                    try {
+                        var oResData = JSON.parse(oResult.json_string);
+                        if (oResData.status === "error") {
+                            bHasError = true;
+                            if (oResData.message) sBackendErrMsg = oResData.message; 
+                        }
+                    } catch (e) {}
+                }
+
+                var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
+                var aErrors = aMessages.filter(function(m) { return m.type === "Error"; });
+                if (aErrors.length > 0) {
+                    bHasError = true;
+                    sBackendErrMsg = aErrors[aErrors.length - 1].message; 
+                }
+
+                if (bHasError) {
+                    sap.ui.getCore().getMessageManager().removeAllMessages(); 
+                    throw new Error(sBackendErrMsg);
+                }
+
             }).catch(function (oError) {
                 sap.ui.core.BusyIndicator.hide();
-                sap.m.MessageBox.error("Database error: " + oError.message);
-                console.error(oError);
-                throw oError; 
+                var sFinalError = oError.message || "Unknown Database Error";
+                if (oError && oError.error && oError.error.message) {
+                    sFinalError = oError.error.message.value || oError.error.message;
+                }
+                sap.m.MessageBox.error(sFinalError, { title: "Cannot save data" });
+                throw new Error(sFinalError); 
             });
         }
     }

@@ -211,7 +211,7 @@ sap.ui.define([
                 var aFullData = JSON.parse(JSON.stringify(oView.getModel("displayModel").getProperty("/Data")));
                 aFullData[this._record] = oDetailModel;
 
-                SaveToDatabase.onSaveDB(tableName, oView, aFullData).then(function () {
+                SaveToDatabase.onSaveDB(tableName, oView, [oDetailModel]).then(function () {
                     sap.ui.core.BusyIndicator.hide();
                     sap.m.MessageToast.show("Updated to database successfully!");
 
@@ -361,27 +361,64 @@ sap.ui.define([
             });
         },
 
-        _loadImpactAnalysisData: function () {
-            var oGraphData = {
-                nodes: [
-                    { key: "N1", title: "Record đang xem", icon: "sap-icon://database", group: "Dữ liệu Gốc", status: "Warning", attrLabel: "Trạng thái", attrValue: "Có rủi ro nếu sửa" },
+_loadImpactAnalysisData: function () {
+            var oView = this.getView();
+            var oModel = this.getOwnerComponent().getModel();
 
-                    { key: "N2", title: "Bảng Master Data A", icon: "sap-icon://table-view", group: "Ảnh hưởng Cấp 1", status: "Information", attrLabel: "Số dòng liên quan", attrValue: "15" },
-                    { key: "N3", title: "Bảng Master Data B", icon: "sap-icon://table-view", group: "Ảnh hưởng Cấp 1", status: "Information", attrLabel: "Số dòng liên quan", attrValue: "120" },
+            // Set biểu đồ về trạng thái trống ban đầu
+            var oEmptyGraphModel = new sap.ui.model.json.JSONModel({ nodes: [], lines: [] });
+            oView.setModel(oEmptyGraphModel, "graph");
 
-                    { key: "N4", title: "Báo cáo Doanh thu", icon: "sap-icon://business-objects-experience", group: "Báo cáo (Cấp 2)", status: "Error", attrLabel: "Cảnh báo", attrValue: "Lệch số liệu hệ thống" },
-                    { key: "N5", title: "Giao dịch kho", icon: "sap-icon://shipping-status", group: "Nghiệp vụ (Cấp 2)", status: "Error", attrLabel: "Cảnh báo", attrValue: "Treo chứng từ" }
-                ],
-                lines: [
-                    { from: "N1", to: "N2", status: "Warning" },
-                    { from: "N1", to: "N3", status: "Warning" },
-                    { from: "N2", to: "N4", status: "Error" },
-                    { from: "N3", to: "N5", status: "Error" }
-                ]
-            };
+            var sTableName = this._tableName;
 
-            var oGraphModel = new sap.ui.model.json.JSONModel(oGraphData);
-            this.getView().setModel(oGraphModel, "graph");
+            // 1. LẤY DỮ LIỆU ĐỂ TÌM KEY VALUE VÀ UUID CỦA BẢN GHI ĐANG XEM
+            var oDetailData = oView.getModel("detailRecord").getProperty("/Data");
+            var aCells = Object.values(oDetailData).filter(i => typeof i === 'object');
+            
+            var sKeyValue = ""; 
+            var sUuid = "";
+
+            if (aCells.length > 0) {
+                sKeyValue = aCells[0].value; // Lấy giá trị của ô đầu tiên làm Key
+                
+                // Lấy UUID của bản ghi
+                var oCellWithUuid = aCells.find(cell => cell.uuid);
+                if (oCellWithUuid) {
+                    sUuid = oCellWithUuid.uuid;
+                }
+            }
+
+            if (!sTableName || !sKeyValue || !sUuid) {
+                console.warn("Impact Analysis: Missing Table Name, Key Value, or UUID");
+                return;
+            }
+
+            // 2. ĐIỂM SỬA LỖI Ở ĐÂY: Chèn UUID vào đường dẫn OData V4 cho Bound Function
+            var sActionPath = "/Data(uuid=" + sUuid + ")/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.getimpactanalysis(...)"; 
+            
+            var oActionContext = oModel.bindContext(sActionPath);
+            
+            // 3. Truyền tham số
+            oActionContext.setParameter("table_name", sTableName);
+            oActionContext.setParameter("key_value", sKeyValue);
+
+            // 4. Gọi Backend
+            oActionContext.execute().then(function () {
+                var oResult = oActionContext.getBoundContext().getObject();
+                
+                if (oResult && oResult.json_string) {
+                    try {
+                        var oParsedGraphData = JSON.parse(oResult.json_string);
+                        var oGraphModel = new sap.ui.model.json.JSONModel(oParsedGraphData);
+                        oView.setModel(oGraphModel, "graph");
+                    } catch (e) {
+                        console.error("Lỗi parse JSON Impact Analysis: ", e);
+                    }
+                }
+            }.bind(this)).catch(function (oError) {
+                console.error("Lỗi gọi Impact Analysis: ", oError);
+                // Nếu backend trả về lỗi, bạn có thể hiện MessageToast ở đây
+            });
         },
 
         onDynamicValueHelp: function (oEvent) {

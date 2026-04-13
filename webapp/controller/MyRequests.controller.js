@@ -51,13 +51,7 @@ sap.ui.define([
             var sCurrentUser = oAuthModel.getProperty("/currentUser");
             
             var oPendingBinding = oODataModel.bindList("/Data", null, null, [
-                new Filter({
-                    filters: [
-                        new Filter("status", FilterOperator.EQ, "P"),
-                        new Filter("status", FilterOperator.EQ, "R")
-                    ],
-                    and: false
-                })
+                new Filter("status", FilterOperator.EQ, "P") 
             ]);
              
             var oAuditModel = this.getOwnerComponent().getModel("auditOData");
@@ -70,20 +64,35 @@ sap.ui.define([
                 var aList = []; 
                 var aAllContexts = [];
                 
-                aResults[0].forEach(ctx => aAllContexts.push({ ctx: ctx, isPending: true }));
-                aResults[1].forEach(ctx => aAllContexts.push({ ctx: ctx, isPending: false }));
+                aResults[0].forEach(ctx => aAllContexts.push({ ctx: ctx, source: "TEMP" }));
+                aResults[1].forEach(ctx => aAllContexts.push({ ctx: ctx, source: "AUDIT" }));
                 
                 aAllContexts.forEach(function(oWrapper) {
                     var oData = oWrapper.ctx.getObject();
-                    
-                    var sCheckStatus = oData.status || oData.Status || "";
-                    if (!oWrapper.isPending && (sCheckStatus === "P" || sCheckStatus === "R")) {
-                        return; 
+                    var sCheckStatus = String(oData.status || oData.Status || "").toUpperCase();
+
+                    var sStatusText = "";
+                    if (oWrapper.source === "TEMP") {
+                        sStatusText = "PENDING";
+                    } else {
+                        if (sCheckStatus === "P") return; 
+                        if (sCheckStatus === "R") {
+                            sStatusText = "REJECTED";
+                        } else {
+                            sStatusText = "APPROVED"; 
+                        }
                     }
 
                     var sRecordOwner = oData.created_by || oData.CreatedBy || oData.changed_by || oData.ChangedBy || "";
                     if (sRecordOwner.toUpperCase() !== sCurrentUser.toUpperCase()) {
                         return; 
+                    }
+
+                    var sReqId = "";
+                    if (oWrapper.source === "TEMP") {
+                        sReqId = oData.uuid || oData.Uuid || oData.UUID || "";
+                    } else {
+                        sReqId = oData.log_uuid || oData.LogUuid || oData.LOG_UUID || oData.uuid || ""; 
                     }
 
                     var sActionCode = String(oData.action_type || oData.ActionType || oData.action || oData.Action || "").toUpperCase();
@@ -100,21 +109,10 @@ sap.ui.define([
                         else sActionText = "UPDATE";
                     }
 
-                    var sStatusCode = oData.status || oData.Status || "";
-                    var sStatusText = "";
-
-                    if (sStatusCode === "R") {
-                        sStatusText = "REJECTED";
-                    } else if (sStatusCode === "P") {
-                        sStatusText = "PENDING";
-                    } else {
-                        sStatusText = oWrapper.isPending ? "PENDING" : "APPROVED";
-                    };
-
                     var sOldDataStr = oData.old_data || oData.OldData || "";
                     var sNewDataStr = oData.new_data || oData.NewData || "";
-
                     var sTempData = oData.data || oData.Data || "";
+
                     if (sTempData) {
                         if (sActionText === "DELETE") sOldDataStr = sTempData;
                         else if (sActionText === "CREATE") sNewDataStr = sTempData; 
@@ -173,7 +171,8 @@ sap.ui.define([
 
                     aList.push({
                         _odataContext: oWrapper.ctx,
-                        reqId: oData.uuid || oData.Uuid || oData.UUID || oData.log_uuid || oData.LogUuid || oData.LOG_UUID || "",
+                        source: oWrapper.source, 
+                        reqId: sReqId,           
                         tableName: oData.table_name || oData.TableName || "",
                         action: sActionText,
                         status: sStatusText,
@@ -184,39 +183,32 @@ sap.ui.define([
                     });
                 });
 
+                aList.sort(function(a, b) {
+                    return b.rawDataDate - a.rawDataDate;
+                });
+
                 var aUniqueList = [];
-                var oSeenIds = {};
                 var oSeenSignatures = {};
 
                 aList.forEach(function(item) {
-                    var bIsDuplicate = false;
-
-                    if (item.reqId && oSeenIds[item.reqId]) {
-                        bIsDuplicate = true;
-                    }
-
                     var sRecordId = "";
-                    var oIdField = item.fields.find(f => f.field === "ID" || f.field === "UUID" || f.field === "CODE");
+                    
+                    var oIdField = item.fields.find(f => f.field.indexOf("ID") !== -1 || f.field.indexOf("CODE") !== -1 || f.field === "UUID");
                     if (oIdField) {
-                        sRecordId = oIdField.oldData !== "-" ? oIdField.oldData : oIdField.value;
-                    }
-                    var sSignature = item.tableName + "_" + item.action + "_" + item.status + "_" + sRecordId + "_" + item.changedAt;
-
-                    if (oSeenSignatures[sSignature]) {
-                        bIsDuplicate = true;
+                        sRecordId = (oIdField.oldData !== "-" && oIdField.oldData !== "N/A") ? oIdField.oldData : oIdField.value;
+                    } else if (item.fields.length > 0) {
+                        sRecordId = item.fields[0].value; 
                     }
 
-                    if (!bIsDuplicate) {
-                        if (item.reqId) oSeenIds[item.reqId] = true;
+                    var sSignature = item.tableName + "_" + item.action + "_" + sRecordId;
+
+                    if (!oSeenSignatures[sSignature]) {
                         oSeenSignatures[sSignature] = true;
                         aUniqueList.push(item);
                     }
                 });
+                
                 aList = aUniqueList; 
-
-                aList.sort(function(a, b) {
-                    return b.rawDataDate - a.rawDataDate;
-                });
 
                 aList.forEach(function(item, index) {
                     item.indexNo = index + 1;
@@ -292,7 +284,7 @@ sap.ui.define([
                                         path: "myreq>/currentDetail/fields",
                                         template: new sap.m.ColumnListItem({
                                             cells: [
-                                                new sap.m.Text({ text: "{myreq>field}", design: "Bold" }),
+                                                new sap.m.Text({ text: "{myreq>field}" }), 
                                                 new sap.m.Text({ text: "{myreq>oldData}" }),
                                                 
                                                 new sap.m.HBox({
@@ -435,12 +427,7 @@ sap.ui.define([
             var oModel = oView.getModel("myreq");
             var oCurrentReq = oModel.getProperty("/currentDetail");
             var oODataModel = this.getOwnerComponent().getModel();
-
-            var oODataContext = oCurrentReq._odataContext;
-            if (!oODataContext) {
-                MessageBox.error("Connection to original data lost. Please refresh!");
-                return;
-            }
+            var that = this;
 
             var oNewPayload = {};
             oCurrentReq.fields.forEach(function(item) {
@@ -455,28 +442,70 @@ sap.ui.define([
             try {
                 sNewBase64 = GetData.encodeFunction(oNewPayload);
             } catch(e) {
-                MessageBox.error("Data encoding error!"); return;
+                sap.m.MessageBox.error("Data encoding error!"); return;
             }
-
-            var sActionPath = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.resubmit(...)";
-            var oActionContext = oODataModel.bindContext(sActionPath, oODataContext);
-            
-            oActionContext.setParameter("table_name", oCurrentReq.tableName);
-            oActionContext.setParameter("json_data", sNewBase64);
 
             sap.ui.core.BusyIndicator.show(0);
 
-            oActionContext.execute().then(function () {
-                sap.ui.core.BusyIndicator.hide();
-                MessageToast.show("Resubmitted successfully! Status changed to Pending.");
-                
-                this._oResubmitDialog.close();
-                this._loadMyRequests(); 
+            var sServiceUrl = oODataModel.getServiceUrl();
+            if (!sServiceUrl.endsWith("/")) {
+                sServiceUrl += "/";
+            }
+            
+            var sActionUrl = sServiceUrl + "Data(uuid=" + oCurrentReq.reqId + ")/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.resubmit";
 
-            }.bind(this)).catch(function (oError) {
+            fetch(sServiceUrl, {
+                method: "HEAD",
+                headers: {
+                    "X-CSRF-Token": "Fetch"
+                }
+            })
+            .then(function (headResponse) {
+                if (!headResponse.ok) {
+                    throw new Error("Cannot fetch CSRF token" + headResponse.status);
+                }
+                
+                var sToken = headResponse.headers.get("X-CSRF-Token");
+                var oPayload = {
+                    "table_name": oCurrentReq.tableName,
+                    "json_data": sNewBase64
+                };
+
+                return fetch(sActionUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": sToken,
+                        "If-Match": "*"
+                    },
+                    body: JSON.stringify(oPayload)
+                });
+            })
+            .then(function (postResponse) {
+                if (!postResponse.ok) {
+                    return postResponse.json().then(function (errData) {
+                        throw errData;
+                    });
+                }
+
                 sap.ui.core.BusyIndicator.hide();
-                MessageBox.error("Error during resubmit: " + (oError.message || "Check Console"));
-                console.error(oError);
+                sap.m.MessageToast.show("Resubmitted successfully!");
+                that._oResubmitDialog.close();
+                that._loadMyRequests(); 
+            })
+            .catch(function (err) {
+                sap.ui.core.BusyIndicator.hide();
+                var sMsg = "Error during resubmit!";
+
+                try {
+                    if (err.error && err.error.message) {
+                        sMsg = err.error.message.value || err.error.message;
+                    } else if (err.message) {
+                        sMsg = err.message;
+                    }
+                } catch(e) {}
+                
+                sap.m.MessageBox.error(sMsg);
             });
         }
     });
