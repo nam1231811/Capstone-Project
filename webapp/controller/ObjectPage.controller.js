@@ -10,8 +10,10 @@ sap.ui.define([
     "zapp/utils/UploadExcelData",
     "zapp/utils/DownloadExcelData",
     "zapp/api/SaveToDatabase",
+    "zapp/utils/GridValidator"
 ], function (
-    Controller, fioriLibrary, SearchData, FilterData, SortData, PersonalizationData, DataFormatter, GetData, UploadExcelData, DownloadExcelData, SaveToDatabase
+    Controller, fioriLibrary, SearchData, FilterData, SortData, PersonalizationData,
+    DataFormatter, GetData, UploadExcelData, DownloadExcelData, SaveToDatabase, GridValidator
 ) {
     "use strict";
 
@@ -234,6 +236,8 @@ sap.ui.define([
 
                         new sap.m.Input({
                             value: "{displayModel>" + iIndex + "/value}",
+                            valueState: "{displayModel>" + iIndex + "/_state}",
+                            valueStateText: "{displayModel>" + iIndex + "/_msg}",
                             visible: "{= ${displayModel>" + iIndex + "/isEditable} === true }",
                             showValueHelp: "{= ${displayModel>" + iIndex + "/has_value_help} === true }",
                             valueHelpRequest: this.onDynamicValueHelp.bind(this),
@@ -243,6 +247,8 @@ sap.ui.define([
                                 var sPath = oEvent.getSource().getBindingContext("displayModel").getPath();
                                 oModel.setProperty(sPath + "/uuid", sColUUID);
                                 oModel.setProperty(sPath + "/fieldname", oMeta.fieldname);
+
+                                this._validateLiveGrid();
                             }.bind(this)
                         }).data("tableName", oMeta.table_name || oMeta.tableName || "")
                             .data("fieldName", oMeta.fieldname || "")
@@ -401,7 +407,7 @@ sap.ui.define([
                         if (oCell && oCell.fieldname) {
                             tableName = oCell.table_name;
 
-                            var oValidation = UploadExcelData._validateCellFormat(
+                            var oValidation = GridValidator.checkCellFormat(
                                 oCell.value,
                                 oCell.datatype,
                                 { fieldname: oCell.fieldname }
@@ -638,6 +644,12 @@ sap.ui.define([
                         oTable.setBusy(false);
                     }
                 });
+        },
+
+        _validateLiveGrid: function () {
+            var oModel = this.getView().getModel("displayModel");
+            var aCleanedData = GridValidator.performLiveValidation(oModel.getProperty("/Data"), oModel.getProperty("/Meta"));
+            oModel.setProperty("/Data", aCleanedData);
         },
     });
 });
