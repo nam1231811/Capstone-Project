@@ -45,7 +45,16 @@ sap.ui.define([
             if (aData[this._record] != undefined) {
                 var oDataClone = JSON.parse(JSON.stringify(aData[this._record]));
                 this.getView().getModel("detailRecord").setProperty("/Data", oDataClone);
-                console.log(oDataClone);
+
+                var formatData = Object.values(oDataClone);
+
+                var primaryKeys = formatData.filter(function(cell) {
+                    if (cell && cell.keyFlag) {
+                        return cell;                    }
+                });
+
+                this.getView().getModel("detailRecord").setProperty("/title", primaryKeys[0]);
+                console.log(this.getView().getModel("detailRecord").getProperty("/title"));
                 
                 this._loadImpactAnalysisData();
             }
@@ -54,13 +63,14 @@ sap.ui.define([
         onEditAction: function () {
             var oView = this.getView();
             var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
-
+            console.log(oView.getModel("viewModel").getProperty("/isEditMode"));
+            
             var aCells = Object.values(oDetailModel).filter(i => typeof i === 'object' && i.uuid);
             if (aCells.length === 0) {
                 sap.m.MessageBox.warning("No valid data found for editing!");
                 return;
             }
-
+            
             oView.getModel("viewModel").setProperty("/isEditMode", true);
         },
 
@@ -283,7 +293,7 @@ sap.ui.define([
                         this._cleanUpAfterDelete(aCells[0].row_id, bIsClerk);
                     }.bind(this)).catch(function (oError) {
                         sap.ui.core.BusyIndicator.hide();
-                        sap.m.MessageBox.error("Something is wrong, try another time: ");
+                        sap.m.MessageBox.error("Something is wrong, try another time");
                          oView.setBusy(false);
                         console.error(oError);
                     });
@@ -407,10 +417,11 @@ sap.ui.define([
 
             oActionContext.execute().then(function () {
                 var oResult = oActionContext.getBoundContext().getObject();
-                console.log(oResult);
+                
                 if (oResult && oResult.json_string) {
                     try {
                         var oParsedGraphData = JSON.parse(oResult.json_string);
+                        console.log(oParsedGraphData);
                         var oGraphModel = new sap.ui.model.json.JSONModel(oParsedGraphData);
                         oView.setModel(oGraphModel, "graph");
                     } catch (e) {
@@ -430,7 +441,14 @@ sap.ui.define([
             var aEmployeeList = JSON.parse(oRowData.detaildata || "[]");
             console.log(oRowData);
             
-            if (aEmployeeList.length === 0) return;
+            if (aEmployeeList.length === 0) {
+                return sap.m.MessageBox.warning("This table has no related data.",{
+                    onClose: function (sAction) {
+                    if (sAction !== sap.m.MessageBox.Action.OK) {
+                        return;
+                    }}
+                });
+            }
 
             var fieldNames = Object.keys(aEmployeeList[0]);
 

@@ -56,21 +56,28 @@
                 <l:VerticalLayout class="sapUiMediumMarginEnd">
                     <m:Label text="Category"/>
                     <m:ObjectStatus
-                        text="User Table"
+                        text="Custom Table"
                         state="Information"/>
                 </l:VerticalLayout>
 
                 <l:VerticalLayout class="sapUiMediumMarginEnd">
-                    <m:Label text="Employee ID"/>
+                    <m:Label text="Table Name"/>
                     <m:ObjectStatus
-                        text="10001"
+                        text="{detailRecord>/title/table_name}"
                         state="Success"/>
                 </l:VerticalLayout>
 
-                <l:VerticalLayout>
-                    <m:Label text="City"/>
+                <l:VerticalLayout class="sapUiMediumMarginEnd">
+                    <m:Label text="Row"/>
                     <m:ObjectStatus
-                        text="Hanoi"
+                        text="{detailRecord>/title/row_id}"
+                        state="None"/>
+                </l:VerticalLayout>
+
+                <l:VerticalLayout>
+                    <m:Label text="Primary Key"/>
+                    <m:ObjectStatus
+                        text="{detailRecord>/title/fieldname}"
                         state="None"/>
                 </l:VerticalLayout>
 
@@ -102,11 +109,12 @@
                                                 <m:Label 
                                                     text="{detailRecord>fieldname}" 
                                                     design="Bold" 
-                                                    class="sapUiTinyMarginBottom" />
+                                                    class="sapUiTinyMarginBottom" 
+                                                    required="{= ${detailRecord>keyFlag} === true }"/>
 
                                                 <m:Input 
                                                     value="{detailRecord>value}" 
-                                                    visible="{viewModel>/isEditMode}"
+                                                    visible="{= ${viewModel>/isEditMode} &amp;&amp; !${detailRecord>keyFlag} }"
                                                     width="100%"
                                                     showValueHelp="{= ${detailRecord>has_value_help} === true || ${detailRecord>hasValueHelp} === true }" 
                                                     valueHelpRequest=".onDynamicValueHelp">
@@ -117,7 +125,7 @@
                                                 </m:Input>
                                                 <m:Text 
                                                     text="{detailRecord>value}" 
-                                                    visible="{= !${viewModel>/isEditMode} }"
+                                                    visible="{= ${viewModel>/isEditMode} !== true || ${detailRecord>keyFlag} === true }"
                                                     width="100%" />
                                             </m:VBox>
                                         </l:content>
@@ -137,6 +145,13 @@
                                 id="impactGraph" width="100%" height="450px"
                                 nodes="{graph>/nodes}" 
                                 lines="{graph>/lines}">
+                                    <suite:statuses>
+                                        <suite:Status key="Success" title="Parent Table" />
+                                        <suite:Status key="Information" title="Current Table" />
+                                        <suite:Status key="Error" title="Affected Table" />
+                                        <suite:Status key="Standard" title="Unaffected " />
+                                        <suite:Status key="Warning" title="Affected" />
+                                    </suite:statuses>
                                 <suite:nodes>
                                     <suite:Node 
                                         key="{graph>key}" 
