@@ -53,7 +53,14 @@ sap.ui.define([
             oDisplayModel.setProperty("/CurrentTable", sNewTableName);
             oDisplayModel.setProperty("/searchQuery", "");
 
-            GetData.loadMeta(oModel, sNewTableName, "", sLang).then(function (oPayload) {
+            var oTable = this.byId("TablePage") || this.byId("dataTable");
+            if (oTable) oTable.setBusy(true);
+            var oModel = this.getOwnerComponent().getModel();
+
+            var oSettingsModel = this.getView().getModel("settingsModel");
+            var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
+
+            GetData.loadTableData(oModel, sNewTableName, "", sLang).then(function (oPayload) {
                 this._processPayload(oPayload);
                 this._displayData();
             }.bind(this)).catch(function (err) {
@@ -708,7 +715,7 @@ sap.ui.define([
                 oTable.setBusy(true);
             }
 
-            GetData.loadMeta(oModel, sTableName, "", sLang)
+            GetData.loadTableData(oModel, sTableName, "", sLang)
                 .then(function (oPayload) {
                     this._processPayload(oPayload);
                     this._displayData();

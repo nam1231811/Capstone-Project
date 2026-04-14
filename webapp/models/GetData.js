@@ -1,31 +1,65 @@
 sap.ui.define([
-    "sap/ui/model/FilterOperator",
-    "sap/ui/model/Filter"
-], function (FilterOperator, Filter) {
+], function () {
     "use strict";
 
     return {
-        loadMeta: function (oModel, sName, sDesc, sLang) {
-            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.settable(...)";
-            var oAction = oModel.bindContext(sActionPath);
-             
-            oAction.setParameter("table_name", sName || "");
-            oAction.setParameter("table_description", sDesc || "");
-            oAction.setParameter("language", sLang || "E");
-            console.log(oAction);
-            
-            return oAction.execute().then(function () {
-                var oContext = oAction.getBoundContext();
-                var oResult = oContext.getObject();
+        searchTables: function (oModel, sSearchName, sSearchDesc) {
+            return new Promise(function (resolve, reject) {
+                var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.SearchTables(...)";
+                var oActionContext = oModel.bindContext(sActionPath);
+                
+                oActionContext.setParameter("table_name", sSearchName || "");
+                oActionContext.setParameter("table_description", sSearchDesc || "");
 
-                if (oResult && oResult.json_string) {
-                    console.log("GetData [loadMeta]");
+                oActionContext.execute().then(function () {
+                    var oResult = oActionContext.getBoundContext().getObject();
+                    if (oResult && oResult.json_string) {
+                        try {
+                            var oPayload = this.decodeFunction(oResult);
+                            resolve(oPayload);
+                        } catch (e) {
+                            reject(new Error("Error decoding JSON from Backend: " + e.message));
+                        }
+                    } else {
+                        reject(new Error("Error: Backend did not return any data"));
+                    }
+                }.bind(this)).catch(function (oError) {
+                    var sErrorMsg = oError.message;
+                    if (oError.error && oError.error.message) {
+                        sErrorMsg = oError.error.message.value || oError.error.message;
+                    }
+                    reject(new Error(sErrorMsg));
+                });
+            }.bind(this));
+        },
 
-                    var oPayload = this.decodeFunction(oResult);
-                    return oPayload;
-                }else {
-                    throw new Error("Không nhận được dữ liệu từ be")
-                }
+        loadTableData: function (oModel, sTableName) {
+            return new Promise(function (resolve, reject) {
+                var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.LoadTable(...)";
+                var oActionContext = oModel.bindContext(sActionPath);
+                
+                oActionContext.setParameter("table_name", sTableName);
+                oActionContext.setParameter("table_description", "");
+
+                oActionContext.execute().then(function () {
+                    var oResult = oActionContext.getBoundContext().getObject();
+                    if (oResult && oResult.json_string) {
+                        try {
+                            var oPayload = this.decodeFunction(oResult);
+                            resolve(oPayload);
+                        } catch (e) {
+                            reject(new Error("Error decoding JSON from Backend: " + e.message));
+                        }
+                    } else {
+                        reject(new Error("Error: Backend did not return any data"));
+                    }
+                }.bind(this)).catch(function (oError) {
+                    var sErrorMsg = oError.message;
+                    if (oError.error && oError.error.message) {
+                        sErrorMsg = oError.error.message.value || oError.error.message;
+                    }
+                    reject(new Error(sErrorMsg));
+                });
             }.bind(this));
         },
 

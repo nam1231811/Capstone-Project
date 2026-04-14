@@ -188,22 +188,6 @@
 
                                             </m:VBox>
 											
-                                            <m:VBox class="sapUiSmallMarginBottom">
-                                                <m:Label 
-                                                    text="Display Label: " 
-                                                    design="Bold" 
-                                                    class="sapUiTinyMarginBottom" />
-
-                                            </m:VBox>
-											
-                                            <m:VBox class="sapUiSmallMarginBottom">
-                                                <m:Label 
-                                                    text="Value Help: " 
-                                                    design="Bold" 
-                                                    class="sapUiTinyMarginBottom" />
-
-
-                                            </m:VBox>
                                         </l:content>
                                     </l:Grid>
                                 </form:content>
