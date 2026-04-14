@@ -59,7 +59,7 @@
                 <uxap:ObjectPageSection title="Technical Columns">
                     <uxap:subSections>
                         <uxap:ObjectPageSubSection>
-                            <Table items="{displayModel>/Meta}" id="metadata">
+                            <Table items="{displayModel>/UiMeta}" id="metadata">
                                 <columns>
                                     <Column><Text text="Position"/></Column>
                                     <Column><Text text="Field Name"/></Column>

@@ -33,7 +33,7 @@ sap.ui.define([
             var that = this;
 
             return new Promise(function (resolve, reject) {
-                
+
                 var oAuthModel = new JSONModel({
                     isClerk: false,
                     isManager: false,
@@ -50,7 +50,7 @@ sap.ui.define([
                     // 94 manager, 097 admin, 092 clerk
                     sCurrentUserId = "DEV-092";
                 }
-                
+
                 sCurrentUserId = sCurrentUserId.toUpperCase();
                 oAuthModel.setProperty("/currentUser", sCurrentUserId);
                 console.log("Current User ID: ", sCurrentUserId);
@@ -58,7 +58,7 @@ sap.ui.define([
                 var oODataModel = that.getModel();
                 if (oODataModel) {
                     var oContextBinding = oODataModel.bindContext("/UserRoleList('" + sCurrentUserId + "')");
-                    
+
                     oContextBinding.requestObject().then(function (oData) {
                         console.log("User roles: ", oData);
 
@@ -70,7 +70,7 @@ sap.ui.define([
 
                     }).catch(function (e) {
                         console.error("Error fetching user roles: ", e);
-                        resolve(); 
+                        resolve();
                     });
                 } else {
                     console.error("OData Model not found!");

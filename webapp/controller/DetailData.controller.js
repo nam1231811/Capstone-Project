@@ -31,8 +31,8 @@ sap.ui.define([
 
             this._tableName = oEvent.getParameter("arguments").tableName || this.getView().getModel("overall").getProperty("/tableName");
 
-            var aData = this.getView().getModel("displayModel").getProperty("/Data");  
-            
+            var aData = this.getView().getModel("displayModel").getProperty("/Data");
+
             if (aData.length === 0) {
                 var tableName = oEvent.getParameter("arguments").tableName || this._record || "";
                 this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
@@ -89,19 +89,19 @@ sap.ui.define([
             var aMeta = oView.getModel("displayModel").getProperty("/Meta") || [];
 
             var aKeyIndexes = [];
-            
-            aMeta.forEach(function(col, idx) {
+
+            aMeta.forEach(function (col, idx) {
                 var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
-                if (col.keyflag === "X" || col.keyFlag === "X" || 
-                    col.isKey === true || col.is_key === true || col.IsKey === true || 
-                    sColName === "ID" || sColName === "CODE" || 
+                if (col.keyflag === "X" || col.keyFlag === "X" ||
+                    col.isKey === true || col.is_key === true || col.IsKey === true ||
+                    sColName === "ID" || sColName === "CODE" ||
                     sColName.indexOf("_ID") !== -1 || sColName.indexOf("_CODE") !== -1) {
                     aKeyIndexes.push(idx);
                 }
             });
 
             if (aKeyIndexes.length === 0 && aMeta.length > 0) {
-                aKeyIndexes.push(0); 
+                aKeyIndexes.push(0);
             }
 
             var sCurrentRecordIdx = parseInt(this._record, 10);
@@ -110,10 +110,10 @@ sap.ui.define([
             var bIsKeyModified = false;
             var aModifiedKeys = [];
 
-            aKeyIndexes.forEach(function(iKey) {
+            aKeyIndexes.forEach(function (iKey) {
                 var sNewVal = oDetailModel[iKey] ? String(oDetailModel[iKey].value).trim() : "";
                 var sOldVal = oOriginalRow[iKey] ? String(oOriginalRow[iKey].value).trim() : "";
-                
+
                 if (sNewVal !== sOldVal) {
                     bIsKeyModified = true;
                     aModifiedKeys.push(aMeta[iKey].fieldname || aMeta[iKey].fieldName);
@@ -125,20 +125,20 @@ sap.ui.define([
                 return;
             }
 
-            var bIsDuplicate = aAllData.some(function(oOldRow, idx) {
-                if (idx === sCurrentRecordIdx) return false; 
+            var bIsDuplicate = aAllData.some(function (oOldRow, idx) {
+                if (idx === sCurrentRecordIdx) return false;
 
-                return aKeyIndexes.every(function(iKey) {
+                return aKeyIndexes.every(function (iKey) {
                     var sNewVal = oDetailModel[iKey] ? String(oDetailModel[iKey].value).trim().toUpperCase() : "";
                     var sOldVal = oOldRow[iKey] ? String(oOldRow[iKey].value).trim().toUpperCase() : "";
-                    return sNewVal === sOldVal && sNewVal !== ""; 
+                    return sNewVal === sOldVal && sNewVal !== "";
                 });
             });
 
             if (bIsDuplicate) {
                 var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
                 sap.m.MessageBox.error("Duplicate Key Error: The value for [" + sKeyNames + "] already exists in another record!");
-                return; 
+                return;
             }
 
             var bHasError = false;
@@ -149,8 +149,8 @@ sap.ui.define([
             arrayData.forEach(oCell => {
                 if (oCell && oCell.fieldname) {
                     var oValidation = UploadExcelData._validateCellFormat(
-                        oCell.value, 
-                        oCell.datatype, 
+                        oCell.value,
+                        oCell.datatype,
                         { fieldname: oCell.fieldname }
                     );
 
@@ -163,9 +163,57 @@ sap.ui.define([
                 }
             });
 
+            var rStart = /(START|STRAT|BEG|FROM|DATAB)/i;
+            var rEnd = /(END|TO|UNTIL|DATBI)/i;
+            var aDateFields = [];
+
+            // 1. Quét tìm và phân loại cột
+            arrayData.forEach(oCell => {
+                if (oCell && oCell.fieldname && oCell.value) {
+                    var sFN = oCell.fieldname.toUpperCase();
+                    // Nhận diện loại cột
+                    var sType = rStart.test(sFN) ? "START" : (rEnd.test(sFN) ? "END" : "UNKNOWN");
+
+                    if (sType !== "UNKNOWN") {
+                        // Cắt bỏ từ khóa để lấy phần thân chung (Base Name)
+                        var sBaseName = sFN.replace(rStart, "").replace(rEnd, "").replace(/_$/, "");
+
+                        aDateFields.push({
+                            baseName: sBaseName,
+                            type: sType,
+                            name: oCell.fieldname,
+                            value: String(oCell.value).trim()
+                        });
+                    }
+                }
+            });
+
+            // 2. Gom nhóm theo phần thân chung
+            var oDateGroups = {};
+            aDateFields.forEach(f => {
+                if (!oDateGroups[f.baseName]) oDateGroups[f.baseName] = {};
+                oDateGroups[f.baseName][f.type] = f;
+            });
+
+            // 3. Tiến hành so sánh từng cặp
+            Object.keys(oDateGroups).forEach(key => {
+                var group = oDateGroups[key];
+                if (group.START && group.END && group.START.value !== "" && group.END.value !== "") {
+                    var dStart = new Date(group.START.value);
+                    var dEnd = new Date(group.END.value);
+
+                    if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
+                        if (dEnd < dStart) {
+                            bHasError = true;
+                            sErrorMessage += "Logic Error: [" + group.END.name + "] must be later than [" + group.START.name + "].\n";
+                        }
+                    }
+                }
+            });
+
             if (bHasError) {
                 sap.m.MessageBox.error("Invalid data format detected. Please fix the errors below before saving:\n\n" + sErrorMessage);
-                return; 
+                return;
             }
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
@@ -173,7 +221,7 @@ sap.ui.define([
                 var aFullData = JSON.parse(JSON.stringify(oView.getModel("displayModel").getProperty("/Data")));
                 aFullData[this._record] = oDetailModel;
 
-                SaveToDatabase.onSaveDB(tableName, oView, aFullData).then(function () {
+                SaveToDatabase.onSaveDB(tableName, oView, [oDetailModel]).then(function () {
                     sap.ui.core.BusyIndicator.hide();
                     sap.m.MessageToast.show("Updated to database successfully!");
 
@@ -193,24 +241,24 @@ sap.ui.define([
             oContext.setProperty("data", codeData);
 
             sap.ui.core.BusyIndicator.show(0);
-            oModel.submitBatch("updateGroup").then(function(){
+            oModel.submitBatch("updateGroup").then(function () {
                 sap.ui.core.BusyIndicator.hide();
 
                 if (oModel.hasPendingChanges()) {
                     var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
                     var sErrorMsg = "System validation failed! Request was not sent.";
                     if (aMessages && aMessages.length > 0) {
-                        var aErrors = aMessages.filter(function(m) { return m.type === "Error"; });
+                        var aErrors = aMessages.filter(function (m) { return m.type === "Error"; });
                         if (aErrors.length > 0) { sErrorMsg = aErrors[aErrors.length - 1].message; }
                     }
                     sap.m.MessageBox.error(sErrorMsg);
-                    return; 
+                    return;
                 }
 
                 sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
                 this.onCancelEdit();
 
-            }.bind(this)).catch(function(oError){
+            }.bind(this)).catch(function (oError) {
                 sap.ui.core.BusyIndicator.hide();
                 sap.m.MessageBox.error("Error updating temporary table: " + (oError.message || "Unknown error"));
             });
@@ -288,7 +336,7 @@ sap.ui.define([
                     oActionContext.setParameter("table_name", tableName);
                     oActionContext.setParameter("data", sBase64Data);
 
-                    return oActionContext.execute().then(function () { 
+                    return oActionContext.execute().then(function () {
                         oView.setBusy(false);
                         this._cleanUpAfterDelete(aCells[0].row_id, bIsClerk);
                     }.bind(this)).catch(function (oError) {
@@ -309,7 +357,7 @@ sap.ui.define([
             });
             if (bIsClerk) {
                 sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
-            }else {
+            } else {
                 sap.m.MessageToast.show("Deleted successfully from database!");
                 oDisplayModel.setProperty("/Data", aNewData);
                 sap.m.MessageBox.success("Delete record " + sRowId + " successfully", {
