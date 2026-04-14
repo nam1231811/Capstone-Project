@@ -137,6 +137,84 @@
                 </subSections>
             </ObjectPageSection>
 
+            <ObjectPageSection title="General Information">
+				<subSections>
+					<ObjectPageSubSection>
+						<blocks>
+							<form:SimpleForm
+								maxContainerCols="2"
+								editable="false"
+								layout="ResponsiveGridLayout"
+								labelSpanL="12"
+								labelSpanM="12"
+								emptySpanL="0"
+								emptySpanM="0"
+								columnsL="1"
+								columnsM="1">
+								<form:content >
+                                    <l:Grid 
+                                        defaultSpan="XL4 L4 M4 S12" 
+                                        vSpacing="1" 
+                                        class="sapUiSmallMargin">
+                                        <l:content>
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Field Name: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                            </m:VBox>
+
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Data Type: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+                                            </m:VBox>
+
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Length: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                            </m:VBox>
+
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Decimals: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                            </m:VBox>
+											
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Display Label: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                            </m:VBox>
+											
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Value Help: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+
+                                            </m:VBox>
+                                        </l:content>
+                                    </l:Grid>
+                                </form:content>
+							</form:SimpleForm>
+						</blocks>
+					</ObjectPageSubSection>
+				</subSections>
+			</ObjectPageSection>
+            
+            
+            
             <ObjectPageSection title="Impact Analysis">
                 <subSections>
                     <ObjectPageSubSection>

@@ -64,11 +64,10 @@ sap.ui.define([
 
         _processPayload: function (oPayload) {
             var aRawMeta = oPayload.metadata || [];
-            console.log(aRawMeta);
-
             var oUniqueMap = new Map();
+
             aRawMeta.forEach(item => {
-                var sFieldName = item.fieldname || item.fieldName;
+                var sFieldName = item.fieldname;
                 if (sFieldName && !oUniqueMap.has(sFieldName)) {
                     item.field_pos = item.fieldPos;
                     item.scrtext_m = item.scrTextM;
@@ -77,18 +76,17 @@ sap.ui.define([
             });
 
             this._oMetaRaw = Array.from(oUniqueMap.values());
-            console.log(this._oMetaRaw);
 
             this._oMetaRaw.sort((a, b) => parseInt(a.fieldPos) - parseInt(b.fieldPos));
-            this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname || prop.fieldName);
+            this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname);
 
-            var sActualTableName = this._oMetaRaw[0]?.tableName || this._oMetaRaw[0]?.table_name || "Unknown";
-            var sActualTableDesc = this._oMetaRaw[0]?.tableDescription || this._oMetaRaw[0]?.table_description || this._oMetaRaw[0]?.Description || "No description available";
+            var sActualTableName = this._oMetaRaw[0]?.tableName|| "Unknown";
+            var sActualTableDesc = this._oMetaRaw[0]?.tableDescription || "No description available";
             var iColCount = this._oMetaRaw.length;
 
             this.getView().getModel("view")?.setProperty("/tableName", sActualTableName);
             this.getView().getModel("overall")?.setProperty("/tableName", sActualTableName);
-            this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);
+            this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);    
             this.getView().getModel("overall")?.setProperty("/colCount", iColCount);
 
             this.getView().getModel("displayModel").setProperty("/Meta", this._oMetaRaw);
@@ -111,10 +109,9 @@ sap.ui.define([
                 }
 
                 var sRowUuid = rowObj.uuid || "";
-                console.log(this._oMetaRaw);
                 
                 this._oMetaRaw.forEach(function (colMeta, iIndex) {
-                    var sFieldName = colMeta.fieldname || colMeta.fieldName;
+                    var sFieldName = colMeta.fieldname;
                     var key = false;
                     if(colMeta.keyflag ==='X'){
                         key = true;
@@ -134,13 +131,18 @@ sap.ui.define([
                         isEditable: false,
                         isNew: false,
                         fieldname: sFieldName,
-                        table_name: colMeta.tableName || colMeta.table_name,
-                        has_value_help: !!(colMeta.has_value_help || colMeta.hasValueHelp),
-                        field_pos: colMeta.fieldPos || colMeta.field_pos,
-                        datatype: colMeta.datatype || colMeta.dataType,
+                        table_name: colMeta.tableName,
+                        has_value_help: !!(colMeta.hasValueHelp),
+                        field_pos: colMeta.field_pos,
+                        datatype: colMeta.datatype,
                         row_id: rowObj.rowId || rowObj.row_id || (rowIndex + 1).toString(),
                         uuid: sRowUuid,
-                        keyFlag: key
+                        length: colMeta.leng,
+                        keyFlag: key,
+                        createdBy: rowObj.createdBy,
+                        createdAt: rowObj.createdAt,
+                        changedBy: rowObj.changedBy,
+                        changedAt: rowObj.changedAt
                     };
                 });
 
@@ -161,9 +163,8 @@ sap.ui.define([
 
         _displayData: function () {
             var oTable = this.byId("dataTable") || this.byId("TablePage");
-            var result = this._oDataRaw;
-            console.log(result);
-
+            console.log(this._oDataRaw);
+            
             oTable.destroyColumns();
             oTable.bindAggregation("columns", {
                 path: "displayModel>/Meta",
