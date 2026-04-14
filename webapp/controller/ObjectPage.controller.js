@@ -52,7 +52,7 @@ sap.ui.define([
             var oSettingsModel = this.getView().getModel("settingsModel");
             var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
 
-            GetData.loadMeta(oModel, sNewTableName, "", sLang).then(function (oPayload) {
+            GetData.loadTableData(oModel, sNewTableName, "", sLang).then(function (oPayload) {
                 this._processPayload(oPayload);
                 this._displayData();
             }.bind(this))
@@ -701,7 +701,7 @@ sap.ui.define([
                 oTable.setBusy(true);
             }
 
-            GetData.loadMeta(oModel, sTableName, "", sLang)
+            GetData.loadTableData(oModel, sTableName, "", sLang)
                 .then(function (oPayload) {
                     this._processPayload(oPayload);
                     this._displayData();
