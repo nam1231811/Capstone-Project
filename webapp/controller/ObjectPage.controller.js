@@ -361,25 +361,23 @@ sap.ui.define([
 
             var aMeta = oModel.getProperty("/Meta");
             var oNewRow = {};
-
+            console.log(aMeta );
+            
             aMeta.forEach(function (colMeta, iIndex) {
-                var bHasVH = (colMeta.has_value_help === true || colMeta.hasValueHelp === true ||
-                    colMeta.hasValueHelp === "X" || colMeta.has_value_help === "X" ||
-                    colMeta.hasValueHelp === "true" || colMeta.has_value_help === "true");
-
-                console.log("Cột: " + (colMeta.fieldname || colMeta.fieldName) + " | Có kính lúp: " + bHasVH);
+                var bHasVH = (colMeta.hasValueHelp === true);
 
                 oNewRow[iIndex] = {
                     value: "",
                     isEditable: true,
                     isNew: true,
-                    fieldname: colMeta.fieldname || colMeta.fieldName,
-                    table_name: colMeta.table_name || colMeta.tableName,
-                    field_pos: colMeta.field_pos || colMeta.fieldPos,
+                    fieldname: colMeta.fieldname,
+                    table_name: colMeta.tableName,
+                    field_pos: colMeta.field_pos,
                     has_value_help: bHasVH,
-                    datatype: colMeta.datatype || colMeta.dataType
+                    datatype: colMeta.datatype,
+                    length: colMeta.leng
                 };
-            }.bind(this));
+            }.bind(this));  
 
             aData.unshift(oNewRow);
             oModel.setProperty("/Data", aData);
@@ -404,10 +402,13 @@ sap.ui.define([
             var oModel = this.getView().getModel("displayModel");
             var aData = oModel.getProperty("/Data");
             var aMeta = oModel.getProperty("/Meta");
-
             var aNewRows = aData.filter(row => row[0] && row[0].isNew);
-
             var aOldRows = aData.filter(row => !(row[0] && row[0].isNew));
+            var aPromises = {};
+            var tableName = "";
+            var bHasError = false;
+            var sErrorMessage = "";
+            var aKeyIndexes = [];
 
             oTable.setBusy(true);
 
@@ -415,13 +416,6 @@ sap.ui.define([
                 oTable.setBusy(false);
                 return;
             }
-
-            var aPromises = {};
-            var tableName = "";
-            var bHasError = false;
-            var sErrorMessage = "";
-
-            var aKeyIndexes = [];
 
             aMeta.forEach(function (col, idx) {
                 var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
@@ -438,6 +432,15 @@ sap.ui.define([
                 aKeyIndexes.push(0);
             }
 
+            aNewRows.forEach(row => {
+                Object.keys(row).forEach(key => {
+                    if (!isNaN(key) && row[key]) {
+                        row[key]._state = "None";
+                        row[key]._msg = "";
+                    }
+                });
+            });
+
             aNewRows.forEach(function (oNewRow) {
                 var bIsDuplicate = aOldRows.some(function (oOldRow) {
                     return aKeyIndexes.every(function (iKey) {
@@ -451,40 +454,47 @@ sap.ui.define([
                     bHasError = true;
                     var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
                     sErrorMessage += "Duplicate Error: The value for [" + sKeyNames + "] already exists!\n";
+
+                    aKeyIndexes.forEach(function (iKey) {
+                        if (oNewRow[iKey]) {
+                            oNewRow[iKey]._state = "Error";
+                            oNewRow[iKey]._msg = sErrorMessage;
+                        }
+                    });
                 }
             });
 
-            if (bHasError) {
-                oTable.setBusy(false);
-                sap.m.MessageBox.error(sErrorMessage);
-                return;
-            }
-
             aNewRows.forEach(oRow => {
-                var sStartDate = "", sEndDate = "";
-                var sStartFieldName = "", sEndFieldName = "";
+                var sStartDate = "", 
+                    sEndDate = "",
+                    sStartFieldName = "", 
+                    sEndFieldName = "";
 
                 Object.keys(oRow).forEach(key => {
                     if (!isNaN(key)) {
                         var oCell = oRow[key];
                         if (oCell && oCell.fieldname) {
                             tableName = oCell.table_name;
-
-                            var oValidation = GridValidator.checkCellFormat(
-                                oCell.value,
-                                oCell.datatype,
-                                { fieldname: oCell.fieldname }
-                            );
-
+                            
+                            var iLength = aMeta[key].length;
+                            console.log(oCell.length);
+                            
+                            var oValidation = GridValidator.checkCellFormat(oCell.value, oCell.datatype,iLength);
+                            
                             if (!oValidation.valid) {
                                 bHasError = true;
                                 sErrorMessage += "Field [" + oCell.fieldname + "]: " + oValidation.msg + "\n";
+                                oCell._state = "Error";
+                                oCell._msg = oValidation.msg;
                             } else {
+                                oCell._state = "None";
+                                oCell._msg = "";
                                 aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                             }
 
                             if (oCell.value) {
                                 var sFN = oCell.fieldname.toUpperCase();
+
                                 if (sFN === "START_DATE" || sFN === "STRAT_DATE" || sFN === "BEGDA") {
                                     sStartDate = String(oCell.value).trim();
                                     sStartFieldName = oCell.fieldname;
@@ -497,17 +507,22 @@ sap.ui.define([
                     }
                 });
 
-                if (sStartDate !== "" && sEndDate !== "") {
+                if (sStartDate !== "" && sEndDate !== "" && oStartCell && oEndCell) {
                     var dStart = new Date(sStartDate);
                     var dEnd = new Date(sEndDate);
                     if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
                         if (dEnd < dStart) {
                             bHasError = true;
                             sErrorMessage += "Row Error: [" + sEndFieldName + "] must be later than [" + sStartFieldName + "].\n";
+                            oStartCell._state = "Error"; 
+                            oEndCell._state = "Error"; 
+                            oStartCell._msg = "Must be earlier than end date";
+                            oEndCell._msg = "Must be later than start date";
                         }
                     }
                 }
             });
+            oModel.refresh(true);
 
             if (bHasError) {
                 oTable.setBusy(false);
@@ -734,7 +749,8 @@ sap.ui.define([
         _validateLiveGrid: function () {
             var oModel = this.getView().getModel("displayModel");
             var aCleanedData = GridValidator.performLiveValidation(oModel.getProperty("/Data"), oModel.getProperty("/Meta"));
-            oModel.setProperty("/Data", aCleanedData);
+            // oModel.setProperty("/Data", aCleanedData);
+            oModel.refresh(true);
         },
     });
 });

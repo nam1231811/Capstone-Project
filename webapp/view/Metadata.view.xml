@@ -19,7 +19,7 @@
 			<ObjectPageDynamicHeaderTitle>
 				<actions>
 					<m:Button
-						text="Cancel"
+						text="Close"
 						type="Transparent"
 						press=".onRollback"/>
 				</actions>
