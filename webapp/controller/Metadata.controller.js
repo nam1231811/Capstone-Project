@@ -29,7 +29,6 @@ return Controller.extend("zapp.controller.Metadata", {
             return
         }       
         if (aData[this._record] != "undefined") {
-            console.log(aData[this._record]);
             var detailMeta = aData[this._record];
             var keyFlag = "No";
             var valueHelp = "No";
@@ -55,7 +54,6 @@ return Controller.extend("zapp.controller.Metadata", {
     onRollback: function () {
         var oFCL = this.oView.getParent().getParent();
         var tableName = this.getView().getModel("overall").getProperty("/tableName")
-        console.log(tableName);
         if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.OneColumn)
                 this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {

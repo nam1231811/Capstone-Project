@@ -54,7 +54,6 @@ sap.ui.define([
                 });
 
                 this.getView().getModel("detailRecord").setProperty("/title", primaryKeys[0]);
-                console.log(this.getView().getModel("detailRecord").getProperty("/title"));
                 
                 this._loadImpactAnalysisData();
             }
@@ -63,7 +62,6 @@ sap.ui.define([
         onEditAction: function () {
             var oView = this.getView();
             var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
-            console.log(oView.getModel("viewModel").getProperty("/isEditMode"));
             
             var aCells = Object.values(oDetailModel).filter(i => typeof i === 'object' && i.uuid);
             if (aCells.length === 0) {
@@ -377,8 +375,6 @@ sap.ui.define([
             var sTableName = oInput.data("tableName") || oInput.data("table_name");
             var sFieldName = oInput.data("fieldName") || oInput.data("fieldname");
 
-            console.log("Edit Value Help - Table:", sTableName, "Field:", sFieldName);
-
             if (!sTableName || !sFieldName) {
                 sap.m.MessageToast.show("Cannot find metadata for this field");
                 return;
@@ -439,7 +435,6 @@ sap.ui.define([
             var sUuid = "";
 
             if (aCells.length > 0) {
-                console.log(aCells);
                 aCells.forEach(cell => {
                     if(cell.keyFlag === true) {
                         sKeyValue = cell.value;
@@ -469,7 +464,6 @@ sap.ui.define([
                 if (oResult && oResult.json_string) {
                     try {
                         var oParsedGraphData = JSON.parse(oResult.json_string);
-                        console.log(oParsedGraphData);
                         var oGraphModel = new sap.ui.model.json.JSONModel(oParsedGraphData);
                         oView.setModel(oGraphModel, "graph");
                     } catch (e) {
@@ -487,7 +481,6 @@ sap.ui.define([
             var oRowData = oContext.getObject();
 
             var aEmployeeList = JSON.parse(oRowData.detaildata || "[]");
-            console.log(oRowData);
             
             if (aEmployeeList.length === 0) {
                 return sap.m.MessageBox.warning("This table has no related data.",{
@@ -527,7 +520,6 @@ sap.ui.define([
             this.getView().getModel("graph").setProperty(oContext.getPath() + "/detailDataParsed", aEmployeeList);
         
             if (!this._oPopover) {
-                console.log(aEmployeeList[0]);
                 
                 this._oPopover = new sap.m.ResponsivePopover({
                     title: "Detail Table: " + oRowData.title,

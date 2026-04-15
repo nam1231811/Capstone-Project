@@ -15,8 +15,6 @@ sap.ui.define([], function () {
                     throw new Error("Cannot fetch CSRF Token");
                 }
                 var sToken = oResponse.headers.get("X-CSRF-Token");
-                console.log("CSRF Token:", sToken);
-
                 var pKpi = fetch(sBaseUrl + "/AuditLog/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getKpi", {
                     method: "POST",
                     headers: { "X-CSRF-Token": sToken, "Content-Type": "application/json" }
@@ -44,15 +42,10 @@ sap.ui.define([], function () {
             .then(function(aResults) {
                 var oKpiResult = aResults[0];
                 var oChartResult = aResults[1];
-
-                console.log("getKpi Result:", oKpiResult);
-                console.log("getChartData Result:", oChartResult);
-
                 var aTopUsers = [];
                 if (oKpiResult.top_users) {
                     try { 
                         var aParsedUsers = JSON.parse(oKpiResult.top_users);
-                        console.log("Parsed Top Users:", aParsedUsers);
                         aTopUsers = aParsedUsers.map(function(i) {
                             return { user: i.USER, actions: i.ACTIONS };
                         }); 
@@ -67,7 +60,6 @@ sap.ui.define([], function () {
                 if (oKpiResult.recent_logs) {
                     try {
                         var aParsedLogs = JSON.parse(oKpiResult.recent_logs);
-                        console.log("Parsed Recent Logs:", aParsedLogs);
                         aRecentLogs = aParsedLogs.map(function(item) {
                             var sAction = item.action || "";
                             if (sAction === "C") sAction = "CREATE";
@@ -98,7 +90,6 @@ sap.ui.define([], function () {
                 if (oChartResult.json_string) {
                     try {
                         var aParsedChart = JSON.parse(oChartResult.json_string);
-                        console.log("Parsed Chart Data:", aParsedChart);
                         aLineData = aParsedChart.map(function(i) {
                             return { date: i.date, create: i.create || 0, update: i.update || 0, delete: i.delete || 0 };
                         });

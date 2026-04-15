@@ -222,7 +222,6 @@ sap.ui.define([
 
         _displayData: function () {
             var oTable = this.byId("dataTable") || this.byId("TablePage");
-            console.log(this._oDataRaw);
             
             oTable.destroyColumns();
             oTable.bindAggregation("columns", {
@@ -361,7 +360,6 @@ sap.ui.define([
 
             var aMeta = oModel.getProperty("/Meta");
             var oNewRow = {};
-            console.log(aMeta );
             
             aMeta.forEach(function (colMeta, iIndex) {
                 var bHasVH = (colMeta.hasValueHelp === true);
@@ -477,7 +475,6 @@ sap.ui.define([
                             tableName = oCell.table_name;
                             
                             var iLength = aMeta[key].length;
-                            console.log(oCell.length);
                             
                             var oValidation = GridValidator.checkCellFormat(oCell.value, oCell.datatype,iLength);
                             

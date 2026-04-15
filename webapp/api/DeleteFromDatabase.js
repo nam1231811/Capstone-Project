@@ -21,7 +21,6 @@ sap.ui.define([], function () {
                     })
                 }).then(function(oResponse) {
                     if (oResponse.ok) {
-                        console.log("Delete successful!");
                         return true;
                     }
                     
@@ -48,7 +47,6 @@ sap.ui.define([], function () {
             var oModel = oView.getModel();
             var aData = oView.getModel("displayModel").getProperty("/Data") || [];
             var dataUpdate = []
-            console.log(aData);
             
             if (!sTableName) {
                 sap.m.MessageBox.error("Table is unknow");
@@ -76,7 +74,6 @@ sap.ui.define([], function () {
                 });
                 dataUpdate.push(aPromises)
             });
-            console.log(dataUpdate);
             
             var sBase64Data = GetData.encodeFunction(dataUpdate)
 
