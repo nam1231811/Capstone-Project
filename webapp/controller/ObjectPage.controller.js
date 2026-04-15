@@ -5,7 +5,7 @@ sap.ui.define([
     "zapp/utils/FilterData",
     "zapp/utils/SortData",
     "zapp/utils/PersonalizationData",
-    "zapp/models/DataFormatter",
+    "zapp/utils/DataFormatter",
     "zapp/models/GetData",
     "zapp/utils/UploadExcelData",
     "zapp/utils/DownloadExcelData",
@@ -65,7 +65,7 @@ sap.ui.define([
                 this._displayData();
             }.bind(this)).catch(function (err) {
                 console.error("Load Meta/Data Error:", err);
-                sap.m.MessageBox.error("Lỗi khi tải dữ liệu bảng.");
+                sap.m.MessageBox.error("No data found for the selected table.");
             })
             .finally(function () {
                 if (oTable) oTable.setBusy(false);
@@ -136,7 +136,8 @@ sap.ui.define([
 
             aRawData.forEach(function (rowObj, rowIndex) {
                 var oNewRow = {};
-
+                console.log(rowObj);
+                
                 var oActualData = {};
                 if (rowObj.data) {
                     try {
@@ -178,9 +179,9 @@ sap.ui.define([
                         length: colMeta.leng,
                         keyFlag: key,
                         createdBy: rowObj.createdBy,
-                        createdAt: rowObj.createdAt,
+                        createdAt: DataFormatter.formatDateTime(rowObj.createdAt),
                         changedBy: rowObj.changedBy,
-                        changedAt: rowObj.changedAt
+                        changedAt: DataFormatter.formatDateTime(rowObj.changedAt)
                     };
                 });
 
