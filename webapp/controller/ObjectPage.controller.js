@@ -32,16 +32,24 @@ sap.ui.define([
             var oDisplayModel = this.getView().getModel("displayModel");
             var sNewTableName = oEvent.getParameter("arguments").tableName || "";
             var sCurrentTableName = oDisplayModel.getProperty("/CurrentTable");
+            var oModel = this.getOwnerComponent().getModel();
+            var oSettingsModel = this.getView().getModel("settingsModel");
+            var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
+            var oTable = this.byId("TablePage") || this.byId("dataTable");
+            var state = oEvent.getParameter("arguments").newTable || false;
 
             if (sCurrentTableName === sNewTableName && oDisplayModel.getProperty("/Meta")?.length > 0) {
                 return;
             }
 
-            var state = oEvent.getParameter("arguments").newTable || false;
             if (!state) {
                 return;
             }
 
+            if (oTable){
+                oTable.setBusy(true)
+            };
+            
             oDisplayModel.setProperty("/CurrentTable", sNewTableName);
             oDisplayModel.setProperty("/searchQuery", "");
 
@@ -55,23 +63,21 @@ sap.ui.define([
             GetData.loadTableData(oModel, sNewTableName, "", sLang).then(function (oPayload) {
                 this._processPayload(oPayload);
                 this._displayData();
-            }.bind(this))
-                .catch(function (err) {
-                    console.error("Load Meta/Data Error:", err);
-                    sap.m.MessageBox.error("Lỗi khi tải dữ liệu bảng.");
-                })
-                .finally(function () {
-                    if (oTable) oTable.setBusy(false);
-                });
+            }.bind(this)).catch(function (err) {
+                console.error("Load Meta/Data Error:", err);
+                sap.m.MessageBox.error("Lỗi khi tải dữ liệu bảng.");
+            })
+            .finally(function () {
+                if (oTable) oTable.setBusy(false);
+            });
         },
 
         _processPayload: function (oPayload) {
             var aRawMeta = oPayload.metadata || [];
-            console.log(aRawMeta);
-
             var oUniqueMap = new Map();
+
             aRawMeta.forEach(item => {
-                var sFieldName = item.fieldname || item.fieldName;
+                var sFieldName = item.fieldname;
                 if (sFieldName && !oUniqueMap.has(sFieldName)) {
                     item.field_pos = item.fieldPos;
                     item.scrtext_m = item.scrTextM;
@@ -112,13 +118,13 @@ sap.ui.define([
             this._oMetaRaw = aTableMeta;
             this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname || prop.fieldName);
 
-            var sActualTableName = this._oMetaRaw[0]?.tableName || this._oMetaRaw[0]?.table_name || "Unknown";
-            var sActualTableDesc = this._oMetaRaw[0]?.tableDescription || this._oMetaRaw[0]?.table_description || this._oMetaRaw[0]?.Description || "No description available";
+            var sActualTableName = this._oMetaRaw[0]?.tableName|| "Unknown";
+            var sActualTableDesc = this._oMetaRaw[0]?.tableDescription || "No description available";
             var iColCount = this._oMetaRaw.length;
 
             this.getView().getModel("view")?.setProperty("/tableName", sActualTableName);
             this.getView().getModel("overall")?.setProperty("/tableName", sActualTableName);
-            this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);
+            this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);    
             this.getView().getModel("overall")?.setProperty("/colCount", iColCount);
 
             this.getView().getModel("displayModel").setProperty("/Meta", aTableMeta); 
@@ -141,10 +147,13 @@ sap.ui.define([
                 }
 
                 var sRowUuid = rowObj.uuid || "";
-
+                
                 this._oMetaRaw.forEach(function (colMeta, iIndex) {
-                    var sFieldName = colMeta.fieldname || colMeta.fieldName;
-
+                    var sFieldName = colMeta.fieldname;
+                    var key = false;
+                    if(colMeta.keyflag ==='X'){
+                        key = true;
+                    }
                     var sValue = "";
                     if (oActualData[sFieldName] !== undefined) {
                         sValue = oActualData[sFieldName];
@@ -160,12 +169,18 @@ sap.ui.define([
                         isEditable: false,
                         isNew: false,
                         fieldname: sFieldName,
-                        table_name: colMeta.tableName || colMeta.table_name,
-                        has_value_help: !!(colMeta.has_value_help || colMeta.hasValueHelp),
-                        field_pos: colMeta.fieldPos || colMeta.field_pos,
-                        datatype: colMeta.datatype || colMeta.dataType,
+                        table_name: colMeta.tableName,
+                        has_value_help: !!(colMeta.hasValueHelp),
+                        field_pos: colMeta.field_pos,
+                        datatype: colMeta.datatype,
                         row_id: rowObj.rowId || rowObj.row_id || (rowIndex + 1).toString(),
-                        uuid: sRowUuid
+                        uuid: sRowUuid,
+                        length: colMeta.leng,
+                        keyFlag: key,
+                        createdBy: rowObj.createdBy,
+                        createdAt: rowObj.createdAt,
+                        changedBy: rowObj.changedBy,
+                        changedAt: rowObj.changedAt
                     };
                 });
 
@@ -207,9 +222,7 @@ sap.ui.define([
 
         _displayData: function () {
             var oTable = this.byId("dataTable") || this.byId("TablePage");
-            var result = this._oDataRaw;
-            console.log(result);
-
+            
             oTable.destroyColumns();
             oTable.bindAggregation("columns", {
                 path: "displayModel>/Meta",
@@ -347,25 +360,22 @@ sap.ui.define([
 
             var aMeta = oModel.getProperty("/Meta");
             var oNewRow = {};
-
+            
             aMeta.forEach(function (colMeta, iIndex) {
-                var bHasVH = (colMeta.has_value_help === true || colMeta.hasValueHelp === true ||
-                    colMeta.hasValueHelp === "X" || colMeta.has_value_help === "X" ||
-                    colMeta.hasValueHelp === "true" || colMeta.has_value_help === "true");
-
-                console.log("Cột: " + (colMeta.fieldname || colMeta.fieldName) + " | Có kính lúp: " + bHasVH);
+                var bHasVH = (colMeta.hasValueHelp === true);
 
                 oNewRow[iIndex] = {
                     value: "",
                     isEditable: true,
                     isNew: true,
-                    fieldname: colMeta.fieldname || colMeta.fieldName,
-                    table_name: colMeta.table_name || colMeta.tableName,
-                    field_pos: colMeta.field_pos || colMeta.fieldPos,
+                    fieldname: colMeta.fieldname,
+                    table_name: colMeta.tableName,
+                    field_pos: colMeta.field_pos,
                     has_value_help: bHasVH,
-                    datatype: colMeta.datatype || colMeta.dataType
+                    datatype: colMeta.datatype,
+                    length: colMeta.leng
                 };
-            }.bind(this));
+            }.bind(this));  
 
             aData.unshift(oNewRow);
             oModel.setProperty("/Data", aData);
@@ -390,10 +400,13 @@ sap.ui.define([
             var oModel = this.getView().getModel("displayModel");
             var aData = oModel.getProperty("/Data");
             var aMeta = oModel.getProperty("/Meta");
-
             var aNewRows = aData.filter(row => row[0] && row[0].isNew);
-
             var aOldRows = aData.filter(row => !(row[0] && row[0].isNew));
+            var aPromises = {};
+            var tableName = "";
+            var bHasError = false;
+            var sErrorMessage = "";
+            var aKeyIndexes = [];
 
             oTable.setBusy(true);
 
@@ -401,13 +414,6 @@ sap.ui.define([
                 oTable.setBusy(false);
                 return;
             }
-
-            var aPromises = {};
-            var tableName = "";
-            var bHasError = false;
-            var sErrorMessage = "";
-
-            var aKeyIndexes = [];
 
             aMeta.forEach(function (col, idx) {
                 var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
@@ -424,6 +430,15 @@ sap.ui.define([
                 aKeyIndexes.push(0);
             }
 
+            aNewRows.forEach(row => {
+                Object.keys(row).forEach(key => {
+                    if (!isNaN(key) && row[key]) {
+                        row[key]._state = "None";
+                        row[key]._msg = "";
+                    }
+                });
+            });
+
             aNewRows.forEach(function (oNewRow) {
                 var bIsDuplicate = aOldRows.some(function (oOldRow) {
                     return aKeyIndexes.every(function (iKey) {
@@ -437,40 +452,46 @@ sap.ui.define([
                     bHasError = true;
                     var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
                     sErrorMessage += "Duplicate Error: The value for [" + sKeyNames + "] already exists!\n";
+
+                    aKeyIndexes.forEach(function (iKey) {
+                        if (oNewRow[iKey]) {
+                            oNewRow[iKey]._state = "Error";
+                            oNewRow[iKey]._msg = sErrorMessage;
+                        }
+                    });
                 }
             });
 
-            if (bHasError) {
-                oTable.setBusy(false);
-                sap.m.MessageBox.error(sErrorMessage);
-                return;
-            }
-
             aNewRows.forEach(oRow => {
-                var sStartDate = "", sEndDate = "";
-                var sStartFieldName = "", sEndFieldName = "";
+                var sStartDate = "", 
+                    sEndDate = "",
+                    sStartFieldName = "", 
+                    sEndFieldName = "";
 
                 Object.keys(oRow).forEach(key => {
                     if (!isNaN(key)) {
                         var oCell = oRow[key];
                         if (oCell && oCell.fieldname) {
                             tableName = oCell.table_name;
-
-                            var oValidation = GridValidator.checkCellFormat(
-                                oCell.value,
-                                oCell.datatype,
-                                { fieldname: oCell.fieldname }
-                            );
-
+                            
+                            var iLength = aMeta[key].length;
+                            
+                            var oValidation = GridValidator.checkCellFormat(oCell.value, oCell.datatype,iLength);
+                            
                             if (!oValidation.valid) {
                                 bHasError = true;
                                 sErrorMessage += "Field [" + oCell.fieldname + "]: " + oValidation.msg + "\n";
+                                oCell._state = "Error";
+                                oCell._msg = oValidation.msg;
                             } else {
+                                oCell._state = "None";
+                                oCell._msg = "";
                                 aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                             }
 
                             if (oCell.value) {
                                 var sFN = oCell.fieldname.toUpperCase();
+
                                 if (sFN === "START_DATE" || sFN === "STRAT_DATE" || sFN === "BEGDA") {
                                     sStartDate = String(oCell.value).trim();
                                     sStartFieldName = oCell.fieldname;
@@ -483,17 +504,22 @@ sap.ui.define([
                     }
                 });
 
-                if (sStartDate !== "" && sEndDate !== "") {
+                if (sStartDate !== "" && sEndDate !== "" && oStartCell && oEndCell) {
                     var dStart = new Date(sStartDate);
                     var dEnd = new Date(sEndDate);
                     if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
                         if (dEnd < dStart) {
                             bHasError = true;
                             sErrorMessage += "Row Error: [" + sEndFieldName + "] must be later than [" + sStartFieldName + "].\n";
+                            oStartCell._state = "Error"; 
+                            oEndCell._state = "Error"; 
+                            oStartCell._msg = "Must be earlier than end date";
+                            oEndCell._msg = "Must be later than start date";
                         }
                     }
                 }
             });
+            oModel.refresh(true);
 
             if (bHasError) {
                 oTable.setBusy(false);
@@ -605,7 +631,7 @@ sap.ui.define([
                     layout: fioriLibrary.LayoutType.TwoColumnsMidExpanded,
                     rowId: row_id,
                     tableName: tableName
-                });
+                }, true);
             } else {
                 console.error("FCL object with ID not found 'fcl'");
             }
@@ -628,7 +654,7 @@ sap.ui.define([
                     layout: fioriLibrary.LayoutType.TwoColumnsMidExpanded,
                     rowId: row_id,
                     tableName: tableName
-                });
+                ,}, true);
             } else {
                 console.error("FCL object not found");
             }
@@ -720,7 +746,8 @@ sap.ui.define([
         _validateLiveGrid: function () {
             var oModel = this.getView().getModel("displayModel");
             var aCleanedData = GridValidator.performLiveValidation(oModel.getProperty("/Data"), oModel.getProperty("/Meta"));
-            oModel.setProperty("/Data", aCleanedData);
+            // oModel.setProperty("/Data", aCleanedData);
+            oModel.refresh(true);
         },
     });
 });
