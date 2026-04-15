@@ -25,25 +25,42 @@ return Controller.extend("zapp.controller.Metadata", {
                     layout: fioriLibrary.LayoutType.OneColumn,
                     tableName: tableName,
                     newTable: true
-                });
+                }, true);
             return
         }       
         if (aData[this._record] != "undefined") {
-            this.getView().getModel("metadata").setProperty("/FieldName", aData[this._record]);
+            var detailMeta = aData[this._record];
+            var keyFlag = "No";
+            var valueHelp = "No";
+            
+            if(detailMeta){
+                if(detailMeta.keyflag === "X"){
+                    keyFlag = "Yes";
+                }
+
+                if(detailMeta.valuehelp === "X"){
+                    valueHelp = "Yes";
+                }
+
+                detailMeta["keyFlag"] = keyFlag;
+                detailMeta["valueHelp"] = valueHelp;
+            }
+
+            
+            this.getView().getModel("metadata").setProperty("/FieldName", detailMeta);
         }
     },
 
     onRollback: function () {
         var oFCL = this.oView.getParent().getParent();
         var tableName = this.getView().getModel("overall").getProperty("/tableName")
-        console.log(tableName);
         if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.OneColumn)
                 this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
                     layout: fioriLibrary.LayoutType.OneColumn,
                     tableName: tableName,
                     newTable: false
-                });
+                }, true);
             } else {
                 console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
             }

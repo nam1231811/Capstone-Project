@@ -56,21 +56,28 @@
                 <l:VerticalLayout class="sapUiMediumMarginEnd">
                     <m:Label text="Category"/>
                     <m:ObjectStatus
-                        text="User Table"
+                        text="Custom Table"
                         state="Information"/>
                 </l:VerticalLayout>
 
                 <l:VerticalLayout class="sapUiMediumMarginEnd">
-                    <m:Label text="Employee ID"/>
+                    <m:Label text="Table Name"/>
                     <m:ObjectStatus
-                        text="10001"
+                        text="{detailRecord>/title/table_name}"
                         state="Success"/>
                 </l:VerticalLayout>
 
-                <l:VerticalLayout>
-                    <m:Label text="City"/>
+                <l:VerticalLayout class="sapUiMediumMarginEnd">
+                    <m:Label text="Row"/>
                     <m:ObjectStatus
-                        text="Hanoi"
+                        text="{detailRecord>/title/row_id}"
+                        state="None"/>
+                </l:VerticalLayout>
+
+                <l:VerticalLayout>
+                    <m:Label text="Primary Key"/>
+                    <m:ObjectStatus
+                        text="{detailRecord>/title/fieldname}"
                         state="None"/>
                 </l:VerticalLayout>
 
@@ -102,11 +109,12 @@
                                                 <m:Label 
                                                     text="{detailRecord>fieldname}" 
                                                     design="Bold" 
-                                                    class="sapUiTinyMarginBottom" />
+                                                    class="sapUiTinyMarginBottom" 
+                                                    required="{= ${detailRecord>keyFlag} === true }"/>
 
                                                 <m:Input 
                                                     value="{detailRecord>value}" 
-                                                    visible="{viewModel>/isEditMode}"
+                                                    visible="{= ${viewModel>/isEditMode} &amp;&amp; !${detailRecord>keyFlag} }"
                                                     width="100%"
                                                     showValueHelp="{= ${detailRecord>has_value_help} === true || ${detailRecord>hasValueHelp} === true }" 
                                                     valueHelpRequest=".onDynamicValueHelp">
@@ -117,7 +125,7 @@
                                                 </m:Input>
                                                 <m:Text 
                                                     text="{detailRecord>value}" 
-                                                    visible="{= !${viewModel>/isEditMode} }"
+                                                    visible="{= ${viewModel>/isEditMode} !== true || ${detailRecord>keyFlag} === true }"
                                                     width="100%" />
                                             </m:VBox>
                                         </l:content>
@@ -129,23 +137,107 @@
                 </subSections>
             </ObjectPageSection>
 
+            <ObjectPageSection title="Technical Information">
+				<subSections>
+					<ObjectPageSubSection>
+						<blocks>
+							<form:SimpleForm
+								maxContainerCols="2"
+								editable="false"
+								layout="ResponsiveGridLayout"
+								labelSpanL="12"
+								labelSpanM="12"
+								emptySpanL="0"
+								emptySpanM="0"
+								columnsL="1"
+								columnsM="1">
+								<form:content >
+                                    <l:Grid 
+                                        defaultSpan="XL6 L6 M6 S12" 
+                                        vSpacing="1" 
+                                        class="sapUiSmallMargin">
+                                        <l:content>
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Created By: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                                <m:Text 
+                                                    text="{detailRecord>/Data/0/createdBy}"
+                                                    width="100%" />
+                                            </m:VBox>
+
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Created At: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+                                                
+                                                <m:Text 
+                                                    text="{detailRecord>/Data/0/createdAt}"
+                                                    width="100%" />
+                                            </m:VBox>
+
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Lasted Changed By: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                                <m:Text 
+                                                    text="{detailRecord>/Data/0/changedBy}"
+                                                    width="100%" />
+                                            </m:VBox>
+
+                                            <m:VBox class="sapUiSmallMarginBottom">
+                                                <m:Label 
+                                                    text="Lasted Changed At: " 
+                                                    design="Bold" 
+                                                    class="sapUiTinyMarginBottom" />
+
+                                                <m:Text 
+                                                    text="{detailRecord>/Data/0/changedAt}"
+                                                    width="100%" />
+                                            </m:VBox>
+											
+                                        </l:content>
+                                    </l:Grid>
+                                </form:content>
+							</form:SimpleForm>
+						</blocks>
+					</ObjectPageSubSection>
+				</subSections>
+			</ObjectPageSection>
+            
             <ObjectPageSection title="Impact Analysis">
                 <subSections>
                     <ObjectPageSubSection>
                         <blocks>
-                            <suite:Graph id="impactGraph" width="100%" height="450px"
-                                         nodes="{graph>/nodes}" 
-                                         lines="{graph>/lines}">
-                                
+                            <suite:Graph 
+                                id="impactGraph" width="100%" height="450px"
+                                nodes="{graph>/nodes}" 
+                                lines="{graph>/lines}">
+                                    <suite:statuses>
+                                        <suite:Status key="Success" title="Parent Table" />
+                                        <suite:Status key="Information" title="Current Table" />
+                                        <suite:Status key="Error" title="Affected Table" />
+                                        <suite:Status key="Standard" title="Unaffected " />
+                                        <suite:Status key="Warning" title="Affected" />
+                                    </suite:statuses>
                                 <suite:nodes>
                                     <suite:Node 
                                         key="{graph>key}" 
                                         title="{graph>title}" 
                                         icon="{graph>icon}" 
-                                        status="{graph>status}">
-                                        <suite:attributes>
-                                            <suite:ElementAttribute label="{graph>attrLabel}" value="{graph>attrValue}"/>
-                                        </suite:attributes>
+                                        status="{graph>status}"
+                                        showDetailButton="false">
+                                        <suite:actionButtons>
+                                            <suite:ActionButton
+                                                icon="sap-icon://table-view"
+                                                title="{graph>title}" 
+                                                press=".onShowChild"/>
+                                        </suite:actionButtons>
                                     </suite:Node>
                                 </suite:nodes>
                                 
@@ -153,9 +245,6 @@
                                     <suite:Line from="{graph>from}" to="{graph>to}" status="{graph>status}"/>
                                 </suite:lines>
                                 
-                                <suite:layoutAlgorithm>
-                                    <layout:LayeredLayout />
-                                </suite:layoutAlgorithm>
                             </suite:Graph>
                         </blocks>
                     </ObjectPageSubSection>

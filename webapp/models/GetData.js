@@ -64,7 +64,6 @@ sap.ui.define([
         },
 
         decodeFunction: function (object) {
-            console.log(object);
             
             try{
                 if (object && object.json_string) {
@@ -73,7 +72,6 @@ sap.ui.define([
                     var sDecodedJson = decodeURIComponent(sDecodedString);
 
                     var oPayload = JSON.parse(sDecodedJson);
-                    console.log(oPayload);
                     return oPayload;
                 }
             }catch (e) {
@@ -86,7 +84,6 @@ sap.ui.define([
             try {
                 if (oPayload) {
                     var sJsonString = JSON.stringify(oPayload);
-                    console.log(sJsonString);
                     var sBase64 = btoa(encodeURIComponent(sJsonString).replace(/%([0-9A-F]{2})/g,
                         function toSolidBytes(match, p1) {
                             return String.fromCharCode('0x' + p1);

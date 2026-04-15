@@ -143,7 +143,6 @@ sap.ui.define([
                 oLocalModel.setProperty("/allLogs", aAllLogs);
 
                 var aMainLogs = [];
-                console.log(aAllLogs);
 
                 aAllLogs.forEach(function (oLog) {
                     if (oLog.Status !== 'P') {
@@ -287,7 +286,6 @@ sap.ui.define([
                     label: "Phase " + (phaseIndex + 1),
                     position: phaseIndex
                 });
-                console.log(phaseLogs);
 
                 phaseLogs.forEach(function (oLog, nodeIndex) {
                     var sAction = oLog.Action === 'C' ? 'Create' : (oLog.Action === 'U' ? 'Update' : 'Delete');
@@ -332,7 +330,6 @@ sap.ui.define([
                         isFocused: bIsTargetNode
                     });
 
-                    console.log(aProcessNodes);
 
                 });
             });

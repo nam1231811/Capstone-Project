@@ -63,15 +63,15 @@
                                 <columns>
                                     <Column><Text text="Position"/></Column>
                                     <Column><Text text="Field Name"/></Column>
-                                    <Column><Text text="Technical Name"/></Column>
-                                    <Column><Text text="Roll Name"/></Column>
+                                    <Column><Text text="Display Label"/></Column>
+                                    <Column><Text text="Data Type"/></Column>
                                 </columns>
                                 <items>
                                     <ColumnListItem type="Navigation" press=".onMedataPress">
                                         <cells>
                                             <Text text="{displayModel>field_pos}"/>
-                                            <Text text="{displayModel>scrtextM}"/>
                                             <Text text="{displayModel>fieldname}"/>
+                                            <Text text="{displayModel>scrtextM}"/>
                                             <Text text="{displayModel>datatype}"/>
                                         </cells>
                                     </ColumnListItem>
@@ -90,7 +90,7 @@
                                 width="100%"
                                 horizontal="true"
                                 vertical="false">
-                                <OverflowToolbar width="93vw" class="sapFDynamicPageAlignContent">
+                                <OverflowToolbar width="92vw" class="sapFDynamicPageAlignContent">
                                     <SearchField search=".onSearch" width="17.5rem"/>
                                     <ToolbarSpacer/>
 
@@ -119,7 +119,7 @@
 
                                 <ui:Table
                                     id="dataTable"
-                                    width="93vw"
+                                    width="92vw"
                                     rows="{displayModel>/Data}" 
                                     visibleRowCount="{displayModel>/visibleRowCount}"
                                     columns="{path: 'displayModel>/Meta', factory: '.createDynamicColumn'}"
