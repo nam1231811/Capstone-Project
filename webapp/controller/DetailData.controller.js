@@ -4,10 +4,10 @@ sap.ui.define([
     "sap/f/library",
     "zapp/api/DeleteFromDatabase",
     "zapp/api/SaveToDatabase",
-    "zapp/models/DataFormatter",
+    "zapp/utils/DataFormatter",
     "zapp/models/GetData",
-    "zapp/utils/UploadExcelData"
-], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase, DataFormatter, GetData, UploadExcelData) {
+    "zapp/utils/GridValidator"
+], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase, DataFormatter, GetData, GridValidator) {
     "use strict";
 
     return Controller.extend("zapp.controller.DetailData", {
@@ -54,6 +54,7 @@ sap.ui.define([
                 });
 
                 this.getView().getModel("detailRecord").setProperty("/title", primaryKeys[0]);
+                console.log(oDataClone);
                 
                 this._loadImpactAnalysisData();
             }
@@ -146,10 +147,10 @@ sap.ui.define([
             var arrayData = Object.values(oDetailModel);
             arrayData.forEach(oCell => {
                 if (oCell && oCell.fieldname) {
-                    var oValidation = UploadExcelData._validateCellFormat(
+                    var oValidation = GridValidator.checkCellFormat(
                         oCell.value,
                         oCell.datatype,
-                        { fieldname: oCell.fieldname }
+                        oCell.length
                     );
 
                     if (!oValidation.valid) {

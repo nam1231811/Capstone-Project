@@ -14,10 +14,6 @@ sap.ui.define([
                 tableName:""
             });
             this.getView().setModel(oViewModel, "view");
-
-            // var oOwnerComponent = this.getOwnerComponent();
-	    	// this.oRouter = oOwnerComponent.getRouter();            
-            // this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
         },
   
     });

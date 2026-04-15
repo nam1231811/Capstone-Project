@@ -137,7 +137,7 @@
                 </subSections>
             </ObjectPageSection>
 
-            <ObjectPageSection title="General Information">
+            <ObjectPageSection title="Technical Information">
 				<subSections>
 					<ObjectPageSubSection>
 						<blocks>
@@ -153,39 +153,52 @@
 								columnsM="1">
 								<form:content >
                                     <l:Grid 
-                                        defaultSpan="XL4 L4 M4 S12" 
+                                        defaultSpan="XL6 L6 M6 S12" 
                                         vSpacing="1" 
                                         class="sapUiSmallMargin">
                                         <l:content>
                                             <m:VBox class="sapUiSmallMarginBottom">
                                                 <m:Label 
-                                                    text="Field Name: " 
+                                                    text="Created By: " 
                                                     design="Bold" 
                                                     class="sapUiTinyMarginBottom" />
 
+                                                <m:Text 
+                                                    text="{detailRecord>/Data/0/createdBy}"
+                                                    width="100%" />
                                             </m:VBox>
 
                                             <m:VBox class="sapUiSmallMarginBottom">
                                                 <m:Label 
-                                                    text="Data Type: " 
+                                                    text="Created At: " 
                                                     design="Bold" 
                                                     class="sapUiTinyMarginBottom" />
+                                                
+                                                <m:Text 
+                                                    text="{detailRecord>/Data/0/createdAt}"
+                                                    width="100%" />
                                             </m:VBox>
 
                                             <m:VBox class="sapUiSmallMarginBottom">
                                                 <m:Label 
-                                                    text="Length: " 
+                                                    text="Lasted Changed By: " 
                                                     design="Bold" 
                                                     class="sapUiTinyMarginBottom" />
 
+                                                <m:Text 
+                                                    text="{detailRecord>/Data/0/changedBy}"
+                                                    width="100%" />
                                             </m:VBox>
 
                                             <m:VBox class="sapUiSmallMarginBottom">
                                                 <m:Label 
-                                                    text="Decimals: " 
+                                                    text="Lasted Changed At: " 
                                                     design="Bold" 
                                                     class="sapUiTinyMarginBottom" />
 
+                                                <m:Text 
+                                                    text="{detailRecord>/Data/0/changedAt}"
+                                                    width="100%" />
                                             </m:VBox>
 											
                                         </l:content>
@@ -196,8 +209,6 @@
 					</ObjectPageSubSection>
 				</subSections>
 			</ObjectPageSection>
-            
-            
             
             <ObjectPageSection title="Impact Analysis">
                 <subSections>
