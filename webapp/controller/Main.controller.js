@@ -18,6 +18,18 @@ sap.ui.define([
             this.getView().setModel(oSettingsModel, "settingsModel");
 
             this._loadColumnState(); 
+
+            var oTableInput = this.byId("searchInput");
+            if (oTableInput) {
+                oTableInput.setShowSuggestion(false);
+                if (oTableInput.setAutocomplete) oTableInput.setAutocomplete(false);
+            }
+
+            var oDescInput = this.byId("searchDescInput");
+            if (oDescInput) {
+                oDescInput.setShowSuggestion(false);
+                if (oDescInput.setAutocomplete) oDescInput.setAutocomplete(false);
+            }
         },
 
         onValueHelpRequest: function (oEvent) {
@@ -101,12 +113,6 @@ sap.ui.define([
         onSearch: function () {
             var sTableName = this.byId("searchInput").getValue().trim().toUpperCase();
             var sTableDesc = this.byId("searchDescInput").getValue().trim();
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
-
-            if (!sTableName && !sTableDesc) {
-                sap.m.MessageToast.show(oBundle.getText("msgEnterKeyword"));
-                return;
-            }
 
             this._fetchTableList(sTableName, sTableDesc);
         },
@@ -124,8 +130,9 @@ sap.ui.define([
             var sSearchDesc = sDesc;
 
             if (sSearchName && sSearchName.indexOf("*") === -1) {
-                sSearchName = "*" + sSearchName + "*";
+                sSearchName = sSearchName + "*";
             }
+            
             if (sSearchDesc && sSearchDesc.indexOf("*") === -1) {
                 sSearchDesc = "*" + sSearchDesc + "*";
             }
@@ -175,7 +182,13 @@ sap.ui.define([
                 }
             }.bind(this)).catch(function (oError) {
                 oTable.setBusy(false);
-                sap.m.MessageBox.error(oError.message);
+                
+                var sErrMsg = oError.message ? oError.message.toLowerCase() : "";
+                if (sErrMsg.includes("not found") || sErrMsg.includes("không tìm thấy") || sErrMsg.includes("không tồn tại") || sErrMsg.includes("does not exist") || sErrMsg.includes("009") || sErrMsg.includes("007")) {
+                    sap.m.MessageBox.warning(oBundle.getText("msgTableNotFound", [sName || sDesc]));
+                } else {
+                    sap.m.MessageBox.error(oError.message);
+                }
             });
         },
 
@@ -211,7 +224,13 @@ sap.ui.define([
 
             }.bind(this)).catch(function (oError) {
                 oTable.setBusy(false);
-                sap.m.MessageBox.error(oError.message);
+                
+                var sErrMsg = oError.message ? oError.message.toLowerCase() : "";
+                if (sErrMsg.includes("not found") || sErrMsg.includes("không tìm thấy") || sErrMsg.includes("không tồn tại") || sErrMsg.includes("does not exist") || sErrMsg.includes("invalid") || sErrMsg.includes("009")) {
+                    sap.m.MessageBox.error(oBundle.getText("msgTableNotFound", [sName]));
+                } else {
+                    sap.m.MessageBox.error(oError.message);
+                }
             });
         },
 
