@@ -236,7 +236,7 @@ sap.ui.define([
                     var oMainODataModel = this.getOwnerComponent().getModel(); 
 
                     var aPromises = aUniqueTableNames.map(function(sTableName) {
-                        return GetData.loadMeta(oMainODataModel, sTableName, "", "E")
+                        return GetData.loadTableData(oMainODataModel, sTableName, "", "E")
                             .then(function(oPayload) {
                                 var oMeta = (oPayload.metadata && oPayload.metadata.length > 0) ? oPayload.metadata[0] : {};
                                 return {
@@ -376,7 +376,7 @@ sap.ui.define([
 
             if (oCard) { oCard.setBusy(true); }
 
-            GetData.loadMeta(oODataModel, sQuery.toUpperCase(), "", "E")
+            GetData.loadTableData(oODataModel, sQuery.toUpperCase(), "", "E")
                 .then(function(oPayload) {
                     var aDataRows = oPayload.dataRows;
                     if (!aDataRows || aDataRows.length === 0) {

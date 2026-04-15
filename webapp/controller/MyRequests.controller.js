@@ -350,7 +350,7 @@ sap.ui.define([
             this._oResubmitDialog.setBusy(true);
 
             var oODataModel = this.getOwnerComponent().getModel();
-            GetData.loadMeta(oODataModel, oRowData.tableName, "", "E").then(function(oPayload) {
+            GetData.loadTableData(oODataModel, oRowData.tableName, "", "E").then(function(oPayload) {
                 var aMasterData = oPayload.dataRows || oPayload.Data || [];
                 
                 var oNewDataMapped = {};
