@@ -1,5 +1,5 @@
 sap.ui.define([
-    "zapp/models/DataFormatter",
+    "zapp/utils/DataFormatter",
     "zapp/models/GetData"
 ], function (DataFormatter, GetData) {
     "use strict";
