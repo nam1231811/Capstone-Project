@@ -337,27 +337,48 @@ sap.ui.define([
             this._oDiffDialog.setBusy(true);
 
             var oODataModel = this.getOwnerComponent().getModel();
-            GetData.loadMeta(oODataModel, oRowData.tableName, "", "E").then(function(oPayload) {
+            GetData.loadTableData(oODataModel, oRowData.tableName).then(function(oPayload) {
                 var aMasterData = oPayload.dataRows || oPayload.Data || [];
-                
+                var aMeta = oPayload.metadata || oPayload.Meta || [];
+
                 var oNewDataMapped = {};
                 oRowData.diff.forEach(function(d) { 
                     oNewDataMapped[d.field] = (oRowData.action === "DELETE") ? d.oldData : d.newData; 
                 });
 
+                var aKeyFields = [];
+                aMeta.forEach(function(col) {
+                    if (col.keyflag === "X" || col.keyFlag === "X" || col.isKey === true) {
+                        aKeyFields.push(col.fieldname || col.fieldName);
+                    }
+                });
+
+                if (aKeyFields.length === 0) {
+                    var oIdCol = aMeta.find(c => (c.fieldname || c.fieldName || "").toUpperCase().includes("ID"));
+                    if (oIdCol) aKeyFields.push(oIdCol.fieldname || oIdCol.fieldName);
+                }
+
                 var oOldRow = aMasterData.find(function(row) {
-                    var oJson = JSON.parse(row.data || "{}");
-                    if (oNewDataMapped.ID && String(oJson.ID) === String(oNewDataMapped.ID)) return true;
-                    if (oNewDataMapped.UUID && String(oJson.UUID) === String(oNewDataMapped.UUID)) return true;
-                    if (oNewDataMapped.CODE && String(oJson.CODE) === String(oNewDataMapped.CODE)) return true;
-                    return false;
+                    var oJson = {};
+                    try { oJson = JSON.parse(row.data || "{}"); } catch(e) {}
+                    
+                    if (aKeyFields.length === 0) return false;
+
+                    return aKeyFields.every(function(keyField) {
+                        var sVal1 = String(oJson[keyField] || "").trim().toUpperCase();
+                        var sVal2 = String(oNewDataMapped[keyField] || "").trim().toUpperCase();
+                        return sVal1 === sVal2 && sVal1 !== "";
+                    });
                 });
 
                 var aUpdatedDiff = oRowData.diff.map(function(d) {
                     var sOldValue = d.oldData;
                     if (oOldRow) {
-                        var oOldJson = JSON.parse(oOldRow.data || "{}");
-                        sOldValue = oOldJson[d.field] !== undefined ? String(oOldJson[d.field]) : "N/A";
+                        var oOldJson = {};
+                        try { oOldJson = JSON.parse(oOldRow.data || "{}"); } catch(e) {}
+                        if (oOldJson[d.field] !== undefined) {
+                            sOldValue = String(oOldJson[d.field]);
+                        }
                     }
                     return {
                         field: d.field,
@@ -370,7 +391,7 @@ sap.ui.define([
                 this._oDiffDialog.setBusy(false);
 
             }.bind(this)).catch(function(e) {
-                console.error("Error loading master data:", e);
+                console.error("Error loading master data for Old Data comparison:", e);
                 this._oDiffDialog.setBusy(false);
             }.bind(this));
         },

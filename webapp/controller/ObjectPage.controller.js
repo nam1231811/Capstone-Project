@@ -53,13 +53,6 @@ sap.ui.define([
             oDisplayModel.setProperty("/CurrentTable", sNewTableName);
             oDisplayModel.setProperty("/searchQuery", "");
 
-            var oTable = this.byId("TablePage") || this.byId("dataTable");
-            if (oTable) oTable.setBusy(true);
-            var oModel = this.getOwnerComponent().getModel();
-
-            var oSettingsModel = this.getView().getModel("settingsModel");
-            var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
-
             GetData.loadTableData(oModel, sNewTableName, "", sLang).then(function (oPayload) {
                 this._processPayload(oPayload);
                 this._displayData();
@@ -136,7 +129,6 @@ sap.ui.define([
 
             aRawData.forEach(function (rowObj, rowIndex) {
                 var oNewRow = {};
-                console.log(rowObj);
                 
                 var oActualData = {};
                 if (rowObj.data) {
@@ -374,7 +366,9 @@ sap.ui.define([
                     field_pos: colMeta.field_pos,
                     has_value_help: bHasVH,
                     datatype: colMeta.datatype,
-                    length: colMeta.leng
+                    length: colMeta.leng,
+                    _state: "None",
+                    _msg: ""
                 };
             }.bind(this));  
 
@@ -403,11 +397,13 @@ sap.ui.define([
             var aMeta = oModel.getProperty("/Meta");
             var aNewRows = aData.filter(row => row[0] && row[0].isNew);
             var aOldRows = aData.filter(row => !(row[0] && row[0].isNew));
-            var aPromises = {};
             var tableName = "";
             var bHasError = false;
             var sErrorMessage = "";
             var aKeyIndexes = [];
+            var oSingleRowData = {}; 
+            var sStartDate = "", sEndDate = "";
+            var sStartFieldName = "", sEndFieldName = "";
 
             oTable.setBusy(true);
 
@@ -418,7 +414,6 @@ sap.ui.define([
 
             aMeta.forEach(function (col, idx) {
                 var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
-
                 if (col.keyflag === "X" || col.keyFlag === "X" ||
                     col.isKey === true || col.is_key === true || col.IsKey === true ||
                     sColName === "ID" || sColName === "CODE" ||
@@ -431,124 +426,98 @@ sap.ui.define([
                 aKeyIndexes.push(0);
             }
 
-            aNewRows.forEach(row => {
-                Object.keys(row).forEach(key => {
-                    if (!isNaN(key) && row[key]) {
-                        row[key]._state = "None";
-                        row[key]._msg = "";
+            var oNewRow = aNewRows[0];
+            
+            var bIsDuplicate = aOldRows.some(function (oOldRow) {
+                return aKeyIndexes.every(function (iKey) {
+                    var sNewVal = oNewRow[iKey] ? String(oNewRow[iKey].value).trim().toUpperCase() : "";
+                    var sOldVal = oOldRow[iKey] ? String(oOldRow[iKey].value).trim().toUpperCase() : "";
+                    return sNewVal === sOldVal && sNewVal !== "";
+                });
+            });
+
+            if (bIsDuplicate) {
+                bHasError = true;
+                var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
+                sErrorMessage = "Duplicate Error: The value for [" + sKeyNames + "] already exists!\n";
+                
+                aKeyIndexes.forEach(function (iKey) {
+                    if (oNewRow[iKey]) {
+                        oNewRow[iKey]._state = "Error";
+                        oNewRow[iKey]._msg = sErrorMessage;
                     }
                 });
-            });
+            }
 
-            aNewRows.forEach(function (oNewRow) {
-                var bIsDuplicate = aOldRows.some(function (oOldRow) {
-                    return aKeyIndexes.every(function (iKey) {
-                        var sNewVal = oNewRow[iKey] ? String(oNewRow[iKey].value).trim().toUpperCase() : "";
-                        var sOldVal = oOldRow[iKey] ? String(oOldRow[iKey].value).trim().toUpperCase() : "";
-                        return sNewVal === sOldVal && sNewVal !== "";
-                    });
-                });
+            Object.keys(oNewRow).forEach(key => {
+                if (!isNaN(key)) {
+                    var oCell = oNewRow[key];
+                    if (oCell && oCell.fieldname) {
+                        tableName = oCell.table_name;
+                        
+                        var iLength = aMeta[key] ? aMeta[key].leng : undefined; 
+                        var oValidation = GridValidator.checkCellFormat(oCell.value, oCell.datatype, iLength);
 
-                if (bIsDuplicate) {
-                    bHasError = true;
-                    var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
-                    sErrorMessage += "Duplicate Error: The value for [" + sKeyNames + "] already exists!\n";
-
-                    aKeyIndexes.forEach(function (iKey) {
-                        if (oNewRow[iKey]) {
-                            oNewRow[iKey]._state = "Error";
-                            oNewRow[iKey]._msg = sErrorMessage;
-                        }
-                    });
-                }
-            });
-
-            aNewRows.forEach(oRow => {
-                var sStartDate = "", 
-                    sEndDate = "",
-                    sStartFieldName = "", 
-                    sEndFieldName = "";
-
-                Object.keys(oRow).forEach(key => {
-                    if (!isNaN(key)) {
-                        var oCell = oRow[key];
-                        if (oCell && oCell.fieldname) {
-                            tableName = oCell.table_name;
+                        if (!oValidation.valid) {
+                            bHasError = true;
+                            sErrorMessage += "Field [" + oCell.fieldname + "]: " + oValidation.msg + "\n";
                             
-                            var iLength = aMeta[key].length;
-                            console.log(oCell.datatype);
-                            
-                            var oValidation = GridValidator.checkCellFormat(oCell.value, oCell.datatype,iLength);
-                            
-                            if (!oValidation.valid) {
-                                bHasError = true;
-                                sErrorMessage += "Field [" + oCell.fieldname + "]: " + oValidation.msg + "\n";
-                                oCell._state = "Error";
-                                oCell._msg = oValidation.msg;
-                            } else {
+                            oCell._state = "Error";
+                            oCell._msg = oValidation.msg;
+                        } else {
+                            if(!bIsDuplicate || aKeyIndexes.indexOf(parseInt(key)) === -1) {
                                 oCell._state = "None";
                                 oCell._msg = "";
-                                aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                             }
-
-                            if (oCell.value) {
-                                var sFN = oCell.fieldname.toUpperCase();
-
-                                if (sFN === "START_DATE" || sFN === "STRAT_DATE" || sFN === "BEGDA") {
-                                    sStartDate = String(oCell.value).trim();
-                                    sStartFieldName = oCell.fieldname;
-                                } else if (sFN === "END_DATE" || sFN === "ENDDA") {
-                                    sEndDate = String(oCell.value).trim();
-                                    sEndFieldName = oCell.fieldname;
-                                }
-                            }
+                            oSingleRowData[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                         }
-                    }
-                });
 
-                if (sStartDate !== "" && sEndDate !== "" && oStartCell && oEndCell) {
-                    var dStart = new Date(sStartDate);
-                    var dEnd = new Date(sEndDate);
-                    if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
-                        if (dEnd < dStart) {
-                            bHasError = true;
-                            sErrorMessage += "Row Error: [" + sEndFieldName + "] must be later than [" + sStartFieldName + "].\n";
-                            oStartCell._state = "Error"; 
-                            oEndCell._state = "Error"; 
-                            oStartCell._msg = "Must be earlier than end date";
-                            oEndCell._msg = "Must be later than start date";
+                        if (oCell.value) {
+                            var sFN = oCell.fieldname.toUpperCase();
+                            if (sFN === "START_DATE" || sFN === "STRAT_DATE" || sFN === "BEGDA") {
+                                sStartDate = String(oCell.value).trim();
+                                sStartFieldName = oCell.fieldname;
+                            } else if (sFN === "END_DATE" || sFN === "ENDDA") {
+                                sEndDate = String(oCell.value).trim();
+                                sEndFieldName = oCell.fieldname;
+                            }
                         }
                     }
                 }
             });
-            oModel.refresh(true);
+
+            if (sStartDate !== "" && sEndDate !== "") {
+                var dStart = new Date(sStartDate);
+                var dEnd = new Date(sEndDate);
+                if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
+                    if (dEnd < dStart) {
+                        bHasError = true;
+                        sErrorMessage += "Row Error: [" + sEndFieldName + "] must be later than [" + sStartFieldName + "].\n";
+                    }
+                }
+            }
 
             if (bHasError) {
                 oTable.setBusy(false);
+                oModel.refresh(true);
                 sap.m.MessageBox.error("Invalid data format detected. Please fix the errors below before saving:\n\n" + sErrorMessage);
                 return;
             }
 
-            var codeData = GetData.encodeFunction(aPromises);
-            if (codeData) {
-                if (aNewRows.length > 0 && aKeyIndexes.length > 0) {
-                    var iFirstKeyIndex = aKeyIndexes[0];
-                    if (aNewRows[0][iFirstKeyIndex]) {
-                        this._sRecentlySavedKey = String(aNewRows[0][iFirstKeyIndex].value).trim();
-                    }
+            if (Object.keys(oSingleRowData).length > 0) {
+                var iFirstKeyIndex = aKeyIndexes[0];
+                if (oNewRow[iFirstKeyIndex]) {
+                    this._sRecentlySavedKey = String(oNewRow[iFirstKeyIndex].value).trim();
                 }
-
-                this._sendToBackend(tableName, codeData);
+                
+                this._sendToBackend(tableName, oSingleRowData);
             } else {
                 oTable.setBusy(false);
-                sap.m.MessageBox.error("Can't add more row", {
-                    title: "Warning",
-                    onClose: function () { this.onRollback(); }.bind(this)
-                });
+                sap.m.MessageBox.error("No valid data to save.");
             }
         },
 
-        _sendToBackend: function (table, data) {
+        _sendToBackend: function (table, oSingleRowData) {
             var oView = this.getView();
             var oModel = oView.getModel();
             var oAuthModel = this.getOwnerComponent().getModel("auth");
@@ -558,7 +527,9 @@ sap.ui.define([
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
 
-                SaveToDatabase.onSaveDB(table, oView, data).then(function () {
+                var sBase64Array = GetData.encodeFunction([oSingleRowData]); 
+
+                SaveToDatabase.onSaveDB(table, oView, sBase64Array).then(function () {
                     sap.ui.core.BusyIndicator.hide();
                     sap.m.MessageToast.show("Updated to database successfully!");
 
@@ -570,19 +541,28 @@ sap.ui.define([
                 return;
             }
 
+            sap.ui.core.BusyIndicator.show(0);
+
+            var sSingleBase64 = GetData.encodeFunction(oSingleRowData);
+            
             var oFinalPayload = {
                 "table_name": table,
-                "data": data
+                "data": sSingleBase64
             };
+            
             var oListBinding = oModel.bindList("/Data");
             var oContext = oListBinding.create(oFinalPayload);
 
             oContext.created().then(function () {
+                sap.ui.core.BusyIndicator.hide();
                 sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
+                
                 this._refreshData(table);
                 this._onEditToggleButtonPress();
             }.bind(this)).catch(function (oError) {
                 this.byId("dataTable").setBusy(false);
+                sap.ui.core.BusyIndicator.hide();
+                
                 if (oContext.isTransient()) {
                     oContext.delete();
                 }
@@ -594,6 +574,7 @@ sap.ui.define([
                         sBackendError = oError.error.message.value || oError.error.message;
                     }
                 }
+                
                 var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
                 if (aMessages && aMessages.length > 0) {
                     var aErrors = aMessages.filter(function(m) { return m.type === "Error"; });
