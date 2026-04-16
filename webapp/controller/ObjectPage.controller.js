@@ -17,16 +17,19 @@ sap.ui.define([
 ) {
     "use strict";
 
+
     return Controller.extend("zapp.controller.ObjectPage", {
         _oFieldName: [],
         _oDataRaw: [],
         _sRecentlySavedKey: null,
+
 
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
             this.oRouter = oOwnerComponent.getRouter();
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
         },
+
 
         _onObjectMatched: function (oEvent) {
             var oDisplayModel = this.getView().getModel("displayModel");
@@ -38,13 +41,16 @@ sap.ui.define([
             var oTable = this.byId("TablePage") || this.byId("dataTable");
             var state = oEvent.getParameter("arguments").newTable || false;
 
+
             if (sCurrentTableName === sNewTableName && oDisplayModel.getProperty("/Meta")?.length > 0) {
                 return;
             }
 
+
             if (!state) {
                 return;
             }
+
 
             if (oTable) {
                 oTable.setBusy(true)
@@ -52,6 +58,7 @@ sap.ui.define([
 
             oDisplayModel.setProperty("/CurrentTable", sNewTableName);
             oDisplayModel.setProperty("/searchQuery", "");
+
 
             GetData.loadTableData(oModel, sNewTableName, "", sLang).then(function (oPayload) {
                 this._processPayload(oPayload);
@@ -65,9 +72,11 @@ sap.ui.define([
                 });
         },
 
+
         _processPayload: function (oPayload) {
             var aRawMeta = oPayload.metadata || [];
             var oUniqueMap = new Map();
+
 
             aRawMeta.forEach(item => {
                 var sFieldName = item.fieldname;
@@ -78,7 +87,9 @@ sap.ui.define([
                 }
             });
 
+
             var aBaseMeta = Array.from(oUniqueMap.values());
+
 
             var aUiMeta = JSON.parse(JSON.stringify(aBaseMeta));
             aUiMeta.sort(function (a, b) {
@@ -86,6 +97,7 @@ sap.ui.define([
                 var posB = parseInt(b.fieldPos || b.field_pos, 10) || 0;
                 return posA - posB;
             });
+
 
             var aTableMeta = JSON.parse(JSON.stringify(aBaseMeta));
             aTableMeta.sort(function (a, b) {
@@ -97,44 +109,48 @@ sap.ui.define([
                         sColName.indexOf("_ID") !== -1 || sColName.indexOf("_CODE") !== -1);
                 };
 
+
                 var aIsKey = checkIsKey(a);
                 var bIsKey = checkIsKey(b);
 
+
                 if (aIsKey && !bIsKey) return -1;
                 if (!aIsKey && bIsKey) return 1;
+
 
                 var posA = parseInt(a.fieldPos || a.field_pos, 10) || 0;
                 var posB = parseInt(b.fieldPos || b.field_pos, 10) || 0;
                 return posA - posB;
             });
 
+
             this._oMetaRaw = aTableMeta;
             this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname || prop.fieldName);
+
 
             var sActualTableName = this._oMetaRaw[0]?.tableName || "Unknown";
             var sActualTableDesc = this._oMetaRaw[0]?.tableDescription || "No description available";
             var iColCount = this._oMetaRaw.length;
+
 
             this.getView().getModel("view")?.setProperty("/tableName", sActualTableName);
             this.getView().getModel("overall")?.setProperty("/tableName", sActualTableName);
             this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);
             this.getView().getModel("overall")?.setProperty("/colCount", iColCount);
 
+
             this.getView().getModel("displayModel").setProperty("/Meta", aTableMeta);
             this.getView().getModel("displayModel").setProperty("/UiMeta", aUiMeta);
             this.getView().getModel("displayModel").setProperty("/Data", oPayload.dataRows);
 
+
             var aRawData = oPayload.dataRows || this.getView().getModel("displayModel").getProperty("/Data") || [];
             var aFormattedData = [];
 
+
             aRawData.forEach(function (rowObj, rowIndex) {
                 var oNewRow = {};
-<<<<<<< Updated upstream
-                
-=======
-                console.log(rowObj);
 
->>>>>>> Stashed changes
                 var oActualData = {};
                 if (rowObj.data) {
                     try {
@@ -143,6 +159,7 @@ sap.ui.define([
                         console.error("Lỗi parse JSON ở dòng " + rowIndex, e);
                     }
                 }
+
 
                 var sRowUuid = rowObj.uuid || "";
 
@@ -161,6 +178,7 @@ sap.ui.define([
                             sValue = oActualData[sMatchingKey];
                         }
                     }
+
 
                     oNewRow[iIndex] = {
                         value: sValue,
@@ -182,22 +200,28 @@ sap.ui.define([
                     };
                 });
 
+
                 aFormattedData.push(oNewRow);
             }.bind(this));
 
+
             var sRecentKey = this._sRecentlySavedKey;
+
 
             aFormattedData.sort(function (a, b) {
                 var valA = a[0] ? String(a[0].value).trim() : "";
                 var valB = b[0] ? String(b[0].value).trim() : "";
+
 
                 if (sRecentKey) {
                     if (valA === sRecentKey) return -1;
                     if (valB === sRecentKey) return 1;
                 }
 
+
                 var numA = parseFloat(valA);
                 var numB = parseFloat(valB);
+
 
                 if (!isNaN(numA) && !isNaN(numB)) {
                     return numB - numA;
@@ -206,7 +230,9 @@ sap.ui.define([
                 }
             });
 
+
             this._oDataRaw = aFormattedData;
+
 
             var minRec = this._oDataRaw.length < 10 ? this._oDataRaw.length : 10;
             var oOverallModel = this.getView().getModel("overall");
@@ -215,8 +241,10 @@ sap.ui.define([
                 oOverallModel.setProperty("/count", this._oDataRaw.length);
             }
 
+
             this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
         },
+
 
         _displayData: function () {
             var oTable = this.byId("dataTable") || this.byId("TablePage");
@@ -227,28 +255,34 @@ sap.ui.define([
                 factory: this.createDynamicColumn.bind(this)
             });
 
+
             oTable.bindRows("displayModel>/Data");
             oTable.detachColumnSelect(this.onColumnSelect, this);
             oTable.attachColumnSelect(this.onColumnSelect, this);
         },
+
 
         createDynamicColumn: function (sId, oContext) {
             var oMeta = oContext.getObject();
             var sPath = oContext.getPath();
             var iIndex = parseInt(sPath.split("/").pop(), 10);
 
+
             var sColName = (oMeta && oMeta.fieldname) ? oMeta.fieldname : "unknown_col";
             var sBaseId = "col_" + sColName + "_" + iIndex;
+
 
             var oExistingCol = this.getView().byId(sBaseId);
             if (oExistingCol) {
                 oExistingCol.destroy();
             }
 
+
             var sStableId = this.getView().createId(sBaseId);
             var sTableName = this.getView().getModel("overall").getProperty("/tableName") || "DefaultTable";
             var sStorageKey = "myApp_" + sTableName + "_GridPerso";
             var sSavedData = window.localStorage.getItem(sStorageKey);
+
 
             var bVisibleDefault = (iIndex < 10);
             if (sSavedData) {
@@ -261,10 +295,12 @@ sap.ui.define([
                 } catch (e) { }
             }
 
+
             var sHeaderText = "N/A";
             if (oMeta) {
                 sHeaderText = oMeta.scrtext_l || oMeta.scrtextM || oMeta.scrtext_s || oMeta.fieldname || "N/A";
             }
+
 
             var oColumn = new sap.ui.table.Column(sStableId, {
                 label: new sap.m.Label({ text: sHeaderText, design: "Bold" }),
@@ -285,6 +321,7 @@ sap.ui.define([
                                     sValue = sValue.toString();
                                     var sSafeValue = sValue.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+
                                     if (!sQuery)
                                         return sSafeValue;
                                     var sEscapedQuery = sQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -293,6 +330,7 @@ sap.ui.define([
                                 }
                             }
                         }),
+
 
                         new sap.m.Input({
                             value: "{displayModel>" + iIndex + "/value}",
@@ -308,6 +346,7 @@ sap.ui.define([
                                 oModel.setProperty(sPath + "/uuid", sColUUID);
                                 oModel.setProperty(sPath + "/fieldname", oMeta.fieldname);
 
+
                                 this._validateLiveGrid();
                             }.bind(this)
                         }).data("tableName", oMeta.table_name || oMeta.tableName || "")
@@ -316,51 +355,64 @@ sap.ui.define([
                 })
             });
 
+
             oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colIndex", value: iIndex }));
             oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colName", value: sHeaderText }));
 
+
             return oColumn;
         },
+
 
         onPersonalization: function () {
             PersonalizationData.onPersonalization.call(this);
         },
 
+
         onColumnSelect: function (oEvent) {
             SortData.onColumnSelect.call(this, oEvent);
         },
+
 
         onSortColumnDirect: function (bDescending, iColIndex, bMultiSort, bGroup) {
             SortData.onSortColumnDirect.call(this, bDescending, iColIndex, bMultiSort, bGroup);
         },
 
+
         onSearch: function (oEvent) {
             SearchData.onSearch.call(this, oEvent);
         },
+
 
         onFilter: function () {
             FilterData.onFilter.call(this);
         },
 
+
         onFilterConfirm: function (oEvent) {
             FilterData.onFilterConfirm.call(this, oEvent);
         },
+
 
         onAdd: function () {
             var footer = this._onEditToggleButtonPress();
             var oModel = this.getView().getModel("displayModel");
 
+
             var aData = oModel.getProperty("/Data") ? oModel.getProperty("/Data").slice() : [];
+
 
             if (footer) {
                 return;
             }
+
 
             var aMeta = oModel.getProperty("/Meta");
             var oNewRow = {};
 
             aMeta.forEach(function (colMeta, iIndex) {
                 var bHasVH = (colMeta.hasValueHelp === true);
+
 
                 oNewRow[iIndex] = {
                     value: "",
@@ -377,10 +429,13 @@ sap.ui.define([
                 };
             }.bind(this));
 
+
             aData.unshift(oNewRow);
             oModel.setProperty("/Data", aData);
 
+
             oModel.refresh(true);
+
 
             var oOverallModel = this.getView().getModel("overall");
             if (oOverallModel) {
@@ -389,11 +444,13 @@ sap.ui.define([
                 oOverallModel.setProperty("/minRecord", minRec > 0 ? minRec : 1);
             }
 
+
             var oTable = this.byId("dataTable");
             if (oTable) {
                 oTable.setFirstVisibleRow(0);
             }
         },
+
 
         onSave: function () {
             var oTable = this.byId("dataTable");
@@ -401,29 +458,25 @@ sap.ui.define([
             var aData = oModel.getProperty("/Data");
             var aMeta = oModel.getProperty("/Meta");
             var aNewRows = aData.filter(row => row[0] && row[0].isNew);
-<<<<<<< Updated upstream
             var aOldRows = aData.filter(row => !(row[0] && row[0].isNew));
             var tableName = "";
             var bHasError = false;
             var sErrorMessage = "";
             var aKeyIndexes = [];
-            var oSingleRowData = {}; 
+            var oSingleRowData = {};
             var sStartDate = "", sEndDate = "";
             var sStartFieldName = "", sEndFieldName = "";
-=======
-            var aPromises = {};
-            var tableName = "";
-            var bHasError = false;
->>>>>>> Stashed changes
+
 
             oTable.setBusy(true);
+
 
             if (aNewRows.length === 0) {
                 oTable.setBusy(false);
                 return;
             }
 
-<<<<<<< Updated upstream
+
             aMeta.forEach(function (col, idx) {
                 var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
                 if (col.keyflag === "X" || col.keyFlag === "X" ||
@@ -434,12 +487,14 @@ sap.ui.define([
                 }
             });
 
+
             if (aKeyIndexes.length === 0) {
                 aKeyIndexes.push(0);
             }
 
+
             var oNewRow = aNewRows[0];
-            
+
             var bIsDuplicate = aOldRows.some(function (oOldRow) {
                 return aKeyIndexes.every(function (iKey) {
                     var sNewVal = oNewRow[iKey] ? String(oNewRow[iKey].value).trim().toUpperCase() : "";
@@ -448,59 +503,45 @@ sap.ui.define([
                 });
             });
 
+
             if (bIsDuplicate) {
                 bHasError = true;
                 var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
                 sErrorMessage = "Duplicate Error: The value for [" + sKeyNames + "] already exists!\n";
-                
+
                 aKeyIndexes.forEach(function (iKey) {
                     if (oNewRow[iKey]) {
                         oNewRow[iKey]._state = "Error";
                         oNewRow[iKey]._msg = sErrorMessage;
-=======
-            // =================================================================
-            // BƯỚC 1: QUÉT LỖI NHANH VÀ ÉP GIAO DIỆN HIỂN THỊ MÀU ĐỎ
-            // =================================================================
-            // 1.1 Gọi lại Validator để chắc chắn dữ liệu mới nhất đã được quét 100%
-            aData = GridValidator.performLiveValidation(aData, aMeta);
-            oModel.setProperty("/Data", aData);
-            oModel.refresh(true); // Ép UI5 vẽ lại viền đỏ ngay lập tức
-
-            // 1.2 Kiểm tra xem có cờ Error không và in ra Console để dễ tìm
-            aData.forEach(function (row, rowIndex) {
-                Object.keys(row).forEach(function (key) {
-                    if (!isNaN(key) && row[key] && row[key]._state === "Error") {
-                        bHasError = true;
-                        // In thẳng ra Console xem dòng nào, ô nào đang giấu lỗi
-                        console.log("🚨 Phát hiện lỗi ẩn tại Dòng thứ:", rowIndex, "| Cột:", row[key].fieldname, "| Chi tiết lỗi:", row[key]._msg);
->>>>>>> Stashed changes
                     }
                 });
             }
 
-<<<<<<< Updated upstream
+
             Object.keys(oNewRow).forEach(key => {
                 if (!isNaN(key)) {
                     var oCell = oNewRow[key];
                     if (oCell && oCell.fieldname) {
                         tableName = oCell.table_name;
-                        
-                        var iLength = aMeta[key] ? aMeta[key].leng : undefined; 
+
+                        var iLength = aMeta[key] ? aMeta[key].leng : undefined;
                         var oValidation = GridValidator.checkCellFormat(oCell.value, oCell.datatype, iLength);
+
 
                         if (!oValidation.valid) {
                             bHasError = true;
                             sErrorMessage += "Field [" + oCell.fieldname + "]: " + oValidation.msg + "\n";
-                            
+
                             oCell._state = "Error";
                             oCell._msg = oValidation.msg;
                         } else {
-                            if(!bIsDuplicate || aKeyIndexes.indexOf(parseInt(key)) === -1) {
+                            if (!bIsDuplicate || aKeyIndexes.indexOf(parseInt(key)) === -1) {
                                 oCell._state = "None";
                                 oCell._msg = "";
                             }
                             oSingleRowData[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                         }
+
 
                         if (oCell.value) {
                             var sFN = oCell.fieldname.toUpperCase();
@@ -516,6 +557,7 @@ sap.ui.define([
                 }
             });
 
+
             if (sStartDate !== "" && sEndDate !== "") {
                 var dStart = new Date(sStartDate);
                 var dEnd = new Date(sEndDate);
@@ -527,6 +569,7 @@ sap.ui.define([
                 }
             }
 
+
             if (bHasError) {
                 oTable.setBusy(false);
                 oModel.refresh(true);
@@ -534,74 +577,20 @@ sap.ui.define([
                 return;
             }
 
+
             if (Object.keys(oSingleRowData).length > 0) {
                 var iFirstKeyIndex = aKeyIndexes[0];
                 if (oNewRow[iFirstKeyIndex]) {
                     this._sRecentlySavedKey = String(oNewRow[iFirstKeyIndex].value).trim();
                 }
-                
+
                 this._sendToBackend(tableName, oSingleRowData);
             } else {
                 oTable.setBusy(false);
                 sap.m.MessageBox.error("No valid data to save.");
-=======
-            if (bHasError) {
-                oTable.setBusy(false);
-                sap.m.MessageBox.error("Please correct the faulty cells (highlighted in red) before saving!\n\n(Tip: Press F12 to check the Console and find exactly which row is hidden out of view).");
-                return; // Ngắt luồng ngay lập tức
-            }
-
-            // =================================================================
-            // BƯỚC 2: GOM DỮ LIỆU & FORMAT (Chuẩn bị Payload gửi Backend)
-            // =================================================================
-            aNewRows.forEach(oRow => {
-                Object.keys(oRow).forEach(key => {
-                    if (!isNaN(key)) {
-                        var oCell = oRow[key];
-                        if (oCell && oCell.fieldname) {
-                            tableName = oCell.table_name || tableName;
-                            // Format dữ liệu bằng Utility của bạn trước khi lưu
-                            aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
-                        }
-                    }
-                });
-            });
-
-            // =================================================================
-            // BƯỚC 3: MÃ HÓA & GỬI REQUEST
-            // =================================================================
-            var codeData = GetData.encodeFunction(aPromises);
-
-            if (codeData) {
-                // Lấy ID vừa lưu để Focus/Highlight sau khi Save xong
-                var aKeyIndexes = [];
-                aMeta.forEach(function (col, idx) {
-                    var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
-                    if (col.keyflag === "X" || col.keyFlag === "X" || col.isKey === true || sColName === "ID" || sColName.indexOf("_ID") !== -1) {
-                        aKeyIndexes.push(idx);
-                    }
-                });
-                if (aKeyIndexes.length === 0) aKeyIndexes.push(0);
-
-                if (aNewRows.length > 0 && aKeyIndexes.length > 0) {
-                    var iFirstKeyIndex = aKeyIndexes[0];
-                    if (aNewRows[0][iFirstKeyIndex]) {
-                        this._sRecentlySavedKey = String(aNewRows[0][iFirstKeyIndex].value).trim();
-                    }
-                }
-
-                // GỌI HÀM LƯU DB
-                this._sendToBackend(tableName, codeData);
-
-            } else {
-                oTable.setBusy(false);
-                sap.m.MessageBox.error("Can't add more row. Formatting failed.", {
-                    title: "Warning",
-                    onClose: function () { this.onRollback(); }.bind(this)
-                });
->>>>>>> Stashed changes
             }
         },
+
 
         _sendToBackend: function (table, oSingleRowData) {
             var oView = this.getView();
@@ -610,14 +599,18 @@ sap.ui.define([
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
             var bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
 
+
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
 
-                var sBase64Array = GetData.encodeFunction([oSingleRowData]); 
+
+                var sBase64Array = GetData.encodeFunction([oSingleRowData]);
+
 
                 SaveToDatabase.onSaveDB(table, oView, sBase64Array).then(function () {
                     sap.ui.core.BusyIndicator.hide();
                     sap.m.MessageToast.show("Updated to database successfully!");
+
 
                     this._refreshData(table);
                     this._onEditToggleButtonPress();
@@ -627,28 +620,31 @@ sap.ui.define([
                 return;
             }
 
+
             sap.ui.core.BusyIndicator.show(0);
 
+
             var sSingleBase64 = GetData.encodeFunction(oSingleRowData);
-            
+
             var oFinalPayload = {
                 "table_name": table,
                 "data": sSingleBase64
             };
-            
+
             var oListBinding = oModel.bindList("/Data");
             var oContext = oListBinding.create(oFinalPayload);
+
 
             oContext.created().then(function () {
                 sap.ui.core.BusyIndicator.hide();
                 sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
-                
+
                 this._refreshData(table);
                 this._onEditToggleButtonPress();
             }.bind(this)).catch(function (oError) {
                 this.byId("dataTable").setBusy(false);
                 sap.ui.core.BusyIndicator.hide();
-                
+
                 if (oContext.isTransient()) {
                     oContext.delete();
                 }
@@ -660,7 +656,7 @@ sap.ui.define([
                         sBackendError = oError.error.message.value || oError.error.message;
                     }
                 }
-                
+
                 var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
                 if (aMessages && aMessages.length > 0) {
                     var aErrors = aMessages.filter(function (m) { return m.type === "Error"; });
@@ -669,15 +665,18 @@ sap.ui.define([
                     }
                 }
 
+
                 sap.m.MessageBox.error("Failed to send request:\n\n" + sBackendError);
             }.bind(this));
         },
+
 
         _onEditToggleButtonPress: function () {
             var oObjectPage = this.getView().byId("TableContent"),
                 bCurrentShowFooterState = oObjectPage.getShowFooter(),
                 oModel = this.getView().getModel("displayModel"),
                 aData = oModel.getProperty("/Data") || [];
+
 
             oObjectPage.setShowFooter(!bCurrentShowFooterState);
             if (bCurrentShowFooterState) {
@@ -688,6 +687,7 @@ sap.ui.define([
             }
             return bCurrentShowFooterState
         },
+
 
         onMedataPress: function (oEvent) {
             var oFCL = this.oView.getParent().getParent();
@@ -706,12 +706,15 @@ sap.ui.define([
             }
         },
 
+
         onListItemPress: function (oEvent) {
             var oRowContext = oEvent.getParameter("rowContext");
+
 
             if (!oRowContext) {
                 return;
             }
+
 
             var oFCL = this.oView.getParent().getParent();
             if (oFCL) {
@@ -730,23 +733,28 @@ sap.ui.define([
             }
         },
 
+
         onUploadExcelPress: function (oEvent) {
             UploadExcelData.onUploadExcelPress.call(this, oEvent);
         },
 
+
         onDownloadExcelPress: function () {
             DownloadExcelData.onDownloadExcelPress(this);
         },
+
 
         onDynamicValueHelp: function (oEvent) {
             var oInput = oEvent.getSource();
             var sTableName = oInput.data("tableName");
             var sFieldName = oInput.data("fieldName");
 
+
             if (!sTableName || !sFieldName) {
                 console.error("Missing Metadata for Value Help");
                 return;
             }
+
 
             if (!this._oDynamicVHDialog) {
                 this._oDynamicVHDialog = new sap.m.SelectDialog({
@@ -756,10 +764,12 @@ sap.ui.define([
                 this.getView().addDependent(this._oDynamicVHDialog);
             }
 
+
             var aFilters = [
                 new sap.ui.model.Filter("TableName", "EQ", sTableName),
                 new sap.ui.model.Filter("FieldName", "EQ", sFieldName)
             ];
+
 
             this._oDynamicVHDialog.bindAggregation("items", {
                 path: "/DynamicVHSet",
@@ -771,9 +781,11 @@ sap.ui.define([
                 filters: aFilters
             });
 
+
             this._oDynamicVHDialog.data("targetInput", oInput);
             this._oDynamicVHDialog.open();
         },
+
 
         onValueHelpConfirm: function (oEvent) {
             var oSelectedItem = oEvent.getParameter("selectedItem");
@@ -781,11 +793,14 @@ sap.ui.define([
                 var oInput = oEvent.getSource().data("targetInput");
                 var sSelectedKey = oSelectedItem.getTitle();
 
+
                 oInput.setValue(sSelectedKey);
+
 
                 oInput.fireChange({ value: sSelectedKey });
             }
         },
+
 
         _refreshData: function (sTableName) {
             var oTable = this.byId("dataTable") || this.byId("TablePage");
@@ -793,9 +808,11 @@ sap.ui.define([
             var oSettingsModel = this.getView().getModel("settingsModel");
             var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
 
+
             if (oTable) {
                 oTable.setBusy(true);
             }
+
 
             GetData.loadTableData(oModel, sTableName, "", sLang)
                 .then(function (oPayload) {
@@ -813,6 +830,7 @@ sap.ui.define([
                 });
         },
 
+
         _validateLiveGrid: function () {
             var oModel = this.getView().getModel("displayModel");
             var aCleanedData = GridValidator.performLiveValidation(oModel.getProperty("/Data"), oModel.getProperty("/Meta"));
@@ -820,3 +838,4 @@ sap.ui.define([
         },
     });
 });
+
