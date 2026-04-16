@@ -96,9 +96,9 @@
                                         <Label text="N/A" />
                                         
                                         <ObjectStatus 
-                                            text="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'Admin (Full Access)' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'Manager' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'Clerk' : 'Unassigned')) }" 
-                                            icon="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'sap-icon://unlocked' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'sap-icon://manager' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'sap-icon://employee' : 'sap-icon://sys-enter-2')) }"
-                                            state="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'Error' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'Success' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'Warning' : 'Information')) }" />
+    text="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true' || ${IsAdmin} === 'X') ? 'Admin (Full Access)' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true' || ${IsManager} === 'X') ? 'Manager' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true' || ${IsClerk} === 'X') ? 'Clerk' : 'Unassigned')) }" 
+    icon="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true' || ${IsAdmin} === 'X') ? 'sap-icon://unlocked' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true' || ${IsManager} === 'X') ? 'sap-icon://manager' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true' || ${IsClerk} === 'X') ? 'sap-icon://employee' : 'sap-icon://sys-enter-2')) }"
+    state="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true' || ${IsAdmin} === 'X') ? 'Error' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true' || ${IsManager} === 'X') ? 'Success' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true' || ${IsClerk} === 'X') ? 'Warning' : 'Information')) }" />
 
                                         <ObjectStatus 
                                             text="{ValidityText}" 

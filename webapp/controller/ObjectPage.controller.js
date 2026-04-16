@@ -20,7 +20,7 @@ sap.ui.define([
     return Controller.extend("zapp.controller.ObjectPage", {
         _oFieldName: [],
         _oDataRaw: [],
-        _sRecentlySavedKey: null, 
+        _sRecentlySavedKey: null,
 
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
@@ -46,10 +46,10 @@ sap.ui.define([
                 return;
             }
 
-            if (oTable){
+            if (oTable) {
                 oTable.setBusy(true)
             };
-            
+
             oDisplayModel.setProperty("/CurrentTable", sNewTableName);
             oDisplayModel.setProperty("/searchQuery", "");
 
@@ -60,9 +60,9 @@ sap.ui.define([
                 console.error("Load Meta/Data Error:", err);
                 sap.m.MessageBox.error("No data found for the selected table.");
             })
-            .finally(function () {
-                if (oTable) oTable.setBusy(false);
-            });
+                .finally(function () {
+                    if (oTable) oTable.setBusy(false);
+                });
         },
 
         _processPayload: function (oPayload) {
@@ -80,8 +80,8 @@ sap.ui.define([
 
             var aBaseMeta = Array.from(oUniqueMap.values());
 
-            var aUiMeta = JSON.parse(JSON.stringify(aBaseMeta)); 
-            aUiMeta.sort(function(a, b) {
+            var aUiMeta = JSON.parse(JSON.stringify(aBaseMeta));
+            aUiMeta.sort(function (a, b) {
                 var posA = parseInt(a.fieldPos || a.field_pos, 10) || 0;
                 var posB = parseInt(b.fieldPos || b.field_pos, 10) || 0;
                 return posA - posB;
@@ -89,12 +89,12 @@ sap.ui.define([
 
             var aTableMeta = JSON.parse(JSON.stringify(aBaseMeta));
             aTableMeta.sort(function (a, b) {
-                var checkIsKey = function(col) {
+                var checkIsKey = function (col) {
                     var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
-                    return (col.keyflag === "X" || col.keyFlag === "X" || 
-                            col.isKey === true || col.is_key === true || col.IsKey === true || 
-                            sColName === "ID" || sColName === "CODE" || 
-                            sColName.indexOf("_ID") !== -1 || sColName.indexOf("_CODE") !== -1);
+                    return (col.keyflag === "X" || col.keyFlag === "X" ||
+                        col.isKey === true || col.is_key === true || col.IsKey === true ||
+                        sColName === "ID" || sColName === "CODE" ||
+                        sColName.indexOf("_ID") !== -1 || sColName.indexOf("_CODE") !== -1);
                 };
 
                 var aIsKey = checkIsKey(a);
@@ -111,17 +111,17 @@ sap.ui.define([
             this._oMetaRaw = aTableMeta;
             this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname || prop.fieldName);
 
-            var sActualTableName = this._oMetaRaw[0]?.tableName|| "Unknown";
+            var sActualTableName = this._oMetaRaw[0]?.tableName || "Unknown";
             var sActualTableDesc = this._oMetaRaw[0]?.tableDescription || "No description available";
             var iColCount = this._oMetaRaw.length;
 
             this.getView().getModel("view")?.setProperty("/tableName", sActualTableName);
             this.getView().getModel("overall")?.setProperty("/tableName", sActualTableName);
-            this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);    
+            this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);
             this.getView().getModel("overall")?.setProperty("/colCount", iColCount);
 
-            this.getView().getModel("displayModel").setProperty("/Meta", aTableMeta); 
-            this.getView().getModel("displayModel").setProperty("/UiMeta", aUiMeta);   
+            this.getView().getModel("displayModel").setProperty("/Meta", aTableMeta);
+            this.getView().getModel("displayModel").setProperty("/UiMeta", aUiMeta);
             this.getView().getModel("displayModel").setProperty("/Data", oPayload.dataRows);
 
             var aRawData = oPayload.dataRows || this.getView().getModel("displayModel").getProperty("/Data") || [];
@@ -129,7 +129,12 @@ sap.ui.define([
 
             aRawData.forEach(function (rowObj, rowIndex) {
                 var oNewRow = {};
+<<<<<<< Updated upstream
                 
+=======
+                console.log(rowObj);
+
+>>>>>>> Stashed changes
                 var oActualData = {};
                 if (rowObj.data) {
                     try {
@@ -140,11 +145,11 @@ sap.ui.define([
                 }
 
                 var sRowUuid = rowObj.uuid || "";
-                
+
                 this._oMetaRaw.forEach(function (colMeta, iIndex) {
                     var sFieldName = colMeta.fieldname;
                     var key = false;
-                    if(colMeta.keyflag ==='X'){
+                    if (colMeta.keyflag === 'X') {
                         key = true;
                     }
                     var sValue = "";
@@ -180,7 +185,7 @@ sap.ui.define([
                 aFormattedData.push(oNewRow);
             }.bind(this));
 
-            var sRecentKey = this._sRecentlySavedKey; 
+            var sRecentKey = this._sRecentlySavedKey;
 
             aFormattedData.sort(function (a, b) {
                 var valA = a[0] ? String(a[0].value).trim() : "";
@@ -195,7 +200,7 @@ sap.ui.define([
                 var numB = parseFloat(valB);
 
                 if (!isNaN(numA) && !isNaN(numB)) {
-                    return numB - numA; 
+                    return numB - numA;
                 } else {
                     return String(valB).localeCompare(String(valA));
                 }
@@ -215,7 +220,7 @@ sap.ui.define([
 
         _displayData: function () {
             var oTable = this.byId("dataTable") || this.byId("TablePage");
-            
+
             oTable.destroyColumns();
             oTable.bindAggregation("columns", {
                 path: "displayModel>/Meta",
@@ -353,7 +358,7 @@ sap.ui.define([
 
             var aMeta = oModel.getProperty("/Meta");
             var oNewRow = {};
-            
+
             aMeta.forEach(function (colMeta, iIndex) {
                 var bHasVH = (colMeta.hasValueHelp === true);
 
@@ -370,7 +375,7 @@ sap.ui.define([
                     _state: "None",
                     _msg: ""
                 };
-            }.bind(this));  
+            }.bind(this));
 
             aData.unshift(oNewRow);
             oModel.setProperty("/Data", aData);
@@ -396,6 +401,7 @@ sap.ui.define([
             var aData = oModel.getProperty("/Data");
             var aMeta = oModel.getProperty("/Meta");
             var aNewRows = aData.filter(row => row[0] && row[0].isNew);
+<<<<<<< Updated upstream
             var aOldRows = aData.filter(row => !(row[0] && row[0].isNew));
             var tableName = "";
             var bHasError = false;
@@ -404,6 +410,11 @@ sap.ui.define([
             var oSingleRowData = {}; 
             var sStartDate = "", sEndDate = "";
             var sStartFieldName = "", sEndFieldName = "";
+=======
+            var aPromises = {};
+            var tableName = "";
+            var bHasError = false;
+>>>>>>> Stashed changes
 
             oTable.setBusy(true);
 
@@ -412,6 +423,7 @@ sap.ui.define([
                 return;
             }
 
+<<<<<<< Updated upstream
             aMeta.forEach(function (col, idx) {
                 var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
                 if (col.keyflag === "X" || col.keyFlag === "X" ||
@@ -445,10 +457,28 @@ sap.ui.define([
                     if (oNewRow[iKey]) {
                         oNewRow[iKey]._state = "Error";
                         oNewRow[iKey]._msg = sErrorMessage;
+=======
+            // =================================================================
+            // BƯỚC 1: QUÉT LỖI NHANH VÀ ÉP GIAO DIỆN HIỂN THỊ MÀU ĐỎ
+            // =================================================================
+            // 1.1 Gọi lại Validator để chắc chắn dữ liệu mới nhất đã được quét 100%
+            aData = GridValidator.performLiveValidation(aData, aMeta);
+            oModel.setProperty("/Data", aData);
+            oModel.refresh(true); // Ép UI5 vẽ lại viền đỏ ngay lập tức
+
+            // 1.2 Kiểm tra xem có cờ Error không và in ra Console để dễ tìm
+            aData.forEach(function (row, rowIndex) {
+                Object.keys(row).forEach(function (key) {
+                    if (!isNaN(key) && row[key] && row[key]._state === "Error") {
+                        bHasError = true;
+                        // In thẳng ra Console xem dòng nào, ô nào đang giấu lỗi
+                        console.log("🚨 Phát hiện lỗi ẩn tại Dòng thứ:", rowIndex, "| Cột:", row[key].fieldname, "| Chi tiết lỗi:", row[key]._msg);
+>>>>>>> Stashed changes
                     }
                 });
             }
 
+<<<<<<< Updated upstream
             Object.keys(oNewRow).forEach(key => {
                 if (!isNaN(key)) {
                     var oCell = oNewRow[key];
@@ -514,6 +544,62 @@ sap.ui.define([
             } else {
                 oTable.setBusy(false);
                 sap.m.MessageBox.error("No valid data to save.");
+=======
+            if (bHasError) {
+                oTable.setBusy(false);
+                sap.m.MessageBox.error("Please correct the faulty cells (highlighted in red) before saving!\n\n(Tip: Press F12 to check the Console and find exactly which row is hidden out of view).");
+                return; // Ngắt luồng ngay lập tức
+            }
+
+            // =================================================================
+            // BƯỚC 2: GOM DỮ LIỆU & FORMAT (Chuẩn bị Payload gửi Backend)
+            // =================================================================
+            aNewRows.forEach(oRow => {
+                Object.keys(oRow).forEach(key => {
+                    if (!isNaN(key)) {
+                        var oCell = oRow[key];
+                        if (oCell && oCell.fieldname) {
+                            tableName = oCell.table_name || tableName;
+                            // Format dữ liệu bằng Utility của bạn trước khi lưu
+                            aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
+                        }
+                    }
+                });
+            });
+
+            // =================================================================
+            // BƯỚC 3: MÃ HÓA & GỬI REQUEST
+            // =================================================================
+            var codeData = GetData.encodeFunction(aPromises);
+
+            if (codeData) {
+                // Lấy ID vừa lưu để Focus/Highlight sau khi Save xong
+                var aKeyIndexes = [];
+                aMeta.forEach(function (col, idx) {
+                    var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
+                    if (col.keyflag === "X" || col.keyFlag === "X" || col.isKey === true || sColName === "ID" || sColName.indexOf("_ID") !== -1) {
+                        aKeyIndexes.push(idx);
+                    }
+                });
+                if (aKeyIndexes.length === 0) aKeyIndexes.push(0);
+
+                if (aNewRows.length > 0 && aKeyIndexes.length > 0) {
+                    var iFirstKeyIndex = aKeyIndexes[0];
+                    if (aNewRows[0][iFirstKeyIndex]) {
+                        this._sRecentlySavedKey = String(aNewRows[0][iFirstKeyIndex].value).trim();
+                    }
+                }
+
+                // GỌI HÀM LƯU DB
+                this._sendToBackend(tableName, codeData);
+
+            } else {
+                oTable.setBusy(false);
+                sap.m.MessageBox.error("Can't add more row. Formatting failed.", {
+                    title: "Warning",
+                    onClose: function () { this.onRollback(); }.bind(this)
+                });
+>>>>>>> Stashed changes
             }
         },
 
@@ -566,7 +652,7 @@ sap.ui.define([
                 if (oContext.isTransient()) {
                     oContext.delete();
                 }
-                
+
                 var sBackendError = "Unknown backend error occurred.";
                 if (oError) {
                     sBackendError = oError.message || sBackendError;
@@ -577,7 +663,7 @@ sap.ui.define([
                 
                 var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
                 if (aMessages && aMessages.length > 0) {
-                    var aErrors = aMessages.filter(function(m) { return m.type === "Error"; });
+                    var aErrors = aMessages.filter(function (m) { return m.type === "Error"; });
                     if (aErrors.length > 0) {
                         sBackendError = aErrors[aErrors.length - 1].message;
                     }
@@ -637,7 +723,8 @@ sap.ui.define([
                     layout: fioriLibrary.LayoutType.TwoColumnsMidExpanded,
                     rowId: row_id,
                     tableName: tableName
-                ,}, true);
+                    ,
+                }, true);
             } else {
                 console.error("FCL object not found");
             }

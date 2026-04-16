@@ -9,14 +9,35 @@ sap.ui.define([
         onInit: function () {
         },
 
+        _checkHasRole: function () {
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            var bIsAdmin = oAuthModel.getProperty("/isAdmin");
+            var bIsManager = oAuthModel.getProperty("/isManager");
+            var bIsClerk = oAuthModel.getProperty("/isClerk");
+
+            if (!bIsAdmin && !bIsManager && !bIsClerk) {
+                MessageBox.error("You are currently Unassigned!\nPlease contact the IT Administrator to request system access.", {
+                    title: "Access Denied"
+                });
+                return false;
+            }
+            return true;
+        },
+
         onNavToApp: function () {
+            // Chặn ngay từ cửa nếu không có role
+            if (!this._checkHasRole()) return;
+
             var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteMain"); 
+            oRouter.navTo("RouteMain");
         },
 
         onNavToMyRequests: function () {
+            // Chặn ngay từ cửa nếu không có role
+            if (!this._checkHasRole()) return;
+
             var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteMyRequests"); 
+            oRouter.navTo("RouteMyRequests");
         },
 
         onNavToDashboard: function () {
@@ -31,21 +52,23 @@ sap.ui.define([
             }
 
             var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteDashboard"); 
+            oRouter.navTo("RouteDashboard");
         },
 
         onNavToApproval: function () {
             var oAuthModel = this.getOwnerComponent().getModel("auth");
-            
-            if (oAuthModel.getProperty("/isClerk") && !oAuthModel.getProperty("/isAdmin") && !oAuthModel.getProperty("/isManager")) {
-                MessageBox.warning("Approval function is only available for Managers and Admins!\nYou do not have permission to access!", {
+            var bIsAdmin = oAuthModel.getProperty("/isAdmin");
+            var bIsManager = oAuthModel.getProperty("/isManager");
+
+            if (!bIsAdmin && !bIsManager) {
+                sap.m.MessageBox.warning("Approval function is only available for Managers and Admins!\nYou do not have permission to access!", {
                     title: "Access Denied"
                 });
                 return;
             }
 
             var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteApproval"); 
+            oRouter.navTo("RouteApproval");
         },
 
         onNavToAuditLog: function () {
@@ -60,7 +83,7 @@ sap.ui.define([
             }
 
             var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteAuditLog"); 
+            oRouter.navTo("RouteAuditLog");
         },
 
         onNavToRoleAssignment: function () {
@@ -75,7 +98,7 @@ sap.ui.define([
             }
 
             var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteRoleAssignment"); 
+            oRouter.navTo("RouteRoleAssignment");
         }
     });
 });
