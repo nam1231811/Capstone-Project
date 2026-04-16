@@ -476,6 +476,7 @@ sap.ui.define([
                             tableName = oCell.table_name;
                             
                             var iLength = aMeta[key].length;
+                            console.log(oCell.datatype);
                             
                             var oValidation = GridValidator.checkCellFormat(oCell.value, oCell.datatype,iLength);
                             
@@ -747,8 +748,7 @@ sap.ui.define([
         _validateLiveGrid: function () {
             var oModel = this.getView().getModel("displayModel");
             var aCleanedData = GridValidator.performLiveValidation(oModel.getProperty("/Data"), oModel.getProperty("/Meta"));
-            // oModel.setProperty("/Data", aCleanedData);
-            oModel.refresh(true);
+            oModel.setProperty("/Data", aCleanedData);
         },
     });
 });
