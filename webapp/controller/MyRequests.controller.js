@@ -284,7 +284,7 @@ sap.ui.define([
                                         path: "myreq>/currentDetail/fields",
                                         template: new sap.m.ColumnListItem({
                                             cells: [
-                                                new sap.m.Text({ text: "{myreq>field}" }), 
+                                                new sap.m.Text({ text: "{myreq>field}", design: "Bold" }), 
                                                 new sap.m.Text({ text: "{myreq>oldData}" }),
                                                 
                                                 new sap.m.HBox({
@@ -350,25 +350,47 @@ sap.ui.define([
             this._oResubmitDialog.setBusy(true);
 
             var oODataModel = this.getOwnerComponent().getModel();
-            GetData.loadTableData(oODataModel, oRowData.tableName, "", "E").then(function(oPayload) {
+            
+            GetData.loadTableData(oODataModel, oRowData.tableName).then(function(oPayload) {
                 var aMasterData = oPayload.dataRows || oPayload.Data || [];
+                var aMeta = oPayload.metadata || oPayload.Meta || [];
                 
                 var oNewDataMapped = {};
                 oClone.fields.forEach(function(d) { oNewDataMapped[d.field] = d.value; });
 
+                var aKeyFields = [];
+                aMeta.forEach(function(col) {
+                    if (col.keyflag === "X" || col.keyFlag === "X" || col.isKey === true) {
+                        aKeyFields.push(col.fieldname || col.fieldName);
+                    }
+                });
+                
+                if (aKeyFields.length === 0) {
+                    var oIdCol = aMeta.find(c => (c.fieldname || c.fieldName || "").toUpperCase().includes("ID"));
+                    if (oIdCol) aKeyFields.push(oIdCol.fieldname || oIdCol.fieldName);
+                }
+
                 var oOldRow = aMasterData.find(function(row) {
-                    var oJson = JSON.parse(row.data || "{}");
-                    if (oNewDataMapped.ID && String(oJson.ID) === String(oNewDataMapped.ID)) return true;
-                    if (oNewDataMapped.UUID && String(oJson.UUID) === String(oNewDataMapped.UUID)) return true;
-                    if (oNewDataMapped.CODE && String(oJson.CODE) === String(oNewDataMapped.CODE)) return true;
-                    return false;
+                    var oJson = {};
+                    try { oJson = JSON.parse(row.data || "{}"); } catch(e) {}
+                    
+                    if (aKeyFields.length === 0) return false;
+                    
+                    return aKeyFields.every(function(keyField) {
+                        var sVal1 = String(oJson[keyField] || "").trim().toUpperCase();
+                        var sVal2 = String(oNewDataMapped[keyField] || "").trim().toUpperCase();
+                        return sVal1 === sVal2 && sVal1 !== "";
+                    });
                 });
 
                 var aUpdatedFields = oClone.fields.map(function(d) {
                     var sOldValue = "N/A";
                     if (oOldRow) {
-                        var oOldJson = JSON.parse(oOldRow.data || "{}");
-                        sOldValue = oOldJson[d.field] !== undefined ? String(oOldJson[d.field]) : "N/A";
+                        var oOldJson = {};
+                        try { oOldJson = JSON.parse(oOldRow.data || "{}"); } catch(e) {}
+                        if (oOldJson[d.field] !== undefined) {
+                            sOldValue = String(oOldJson[d.field]);
+                        }
                     }
                     return {
                         field: d.field,
