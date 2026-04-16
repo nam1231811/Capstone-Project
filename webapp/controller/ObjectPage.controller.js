@@ -53,13 +53,6 @@ sap.ui.define([
             oDisplayModel.setProperty("/CurrentTable", sNewTableName);
             oDisplayModel.setProperty("/searchQuery", "");
 
-            var oTable = this.byId("TablePage") || this.byId("dataTable");
-            if (oTable) oTable.setBusy(true);
-            var oModel = this.getOwnerComponent().getModel();
-
-            var oSettingsModel = this.getView().getModel("settingsModel");
-            var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
-
             GetData.loadTableData(oModel, sNewTableName, "", sLang).then(function (oPayload) {
                 this._processPayload(oPayload);
                 this._displayData();
@@ -136,7 +129,6 @@ sap.ui.define([
 
             aRawData.forEach(function (rowObj, rowIndex) {
                 var oNewRow = {};
-                console.log(rowObj);
                 
                 var oActualData = {};
                 if (rowObj.data) {
@@ -374,7 +366,9 @@ sap.ui.define([
                     field_pos: colMeta.field_pos,
                     has_value_help: bHasVH,
                     datatype: colMeta.datatype,
-                    length: colMeta.leng
+                    length: colMeta.leng,
+                    _state: "None",
+                    _msg: ""
                 };
             }.bind(this));  
 
@@ -443,10 +437,16 @@ sap.ui.define([
             });
 
             if (bIsDuplicate) {
-                oTable.setBusy(false);
+                bHasError = true;
                 var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
-                sap.m.MessageBox.error("Duplicate Error: The value for [" + sKeyNames + "] already exists!");
-                return;
+                sErrorMessage = "Duplicate Error: The value for [" + sKeyNames + "] already exists!\n";
+                
+                aKeyIndexes.forEach(function (iKey) {
+                    if (oNewRow[iKey]) {
+                        oNewRow[iKey]._state = "Error";
+                        oNewRow[iKey]._msg = sErrorMessage;
+                    }
+                });
             }
 
             Object.keys(oNewRow).forEach(key => {
@@ -454,16 +454,21 @@ sap.ui.define([
                     var oCell = oNewRow[key];
                     if (oCell && oCell.fieldname) {
                         tableName = oCell.table_name;
-                        var oValidation = GridValidator.checkCellFormat(
-                            oCell.value,
-                            oCell.datatype,
-                            { fieldname: oCell.fieldname }
-                        );
+                        
+                        var iLength = aMeta[key] ? aMeta[key].leng : undefined; 
+                        var oValidation = GridValidator.checkCellFormat(oCell.value, oCell.datatype, iLength);
 
                         if (!oValidation.valid) {
                             bHasError = true;
                             sErrorMessage += "Field [" + oCell.fieldname + "]: " + oValidation.msg + "\n";
+                            
+                            oCell._state = "Error";
+                            oCell._msg = oValidation.msg;
                         } else {
+                            if(!bIsDuplicate || aKeyIndexes.indexOf(parseInt(key)) === -1) {
+                                oCell._state = "None";
+                                oCell._msg = "";
+                            }
                             oSingleRowData[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                         }
 
@@ -494,6 +499,7 @@ sap.ui.define([
 
             if (bHasError) {
                 oTable.setBusy(false);
+                oModel.refresh(true);
                 sap.m.MessageBox.error("Invalid data format detected. Please fix the errors below before saving:\n\n" + sErrorMessage);
                 return;
             }
@@ -723,8 +729,7 @@ sap.ui.define([
         _validateLiveGrid: function () {
             var oModel = this.getView().getModel("displayModel");
             var aCleanedData = GridValidator.performLiveValidation(oModel.getProperty("/Data"), oModel.getProperty("/Meta"));
-            // oModel.setProperty("/Data", aCleanedData);
-            oModel.refresh(true);
+            oModel.setProperty("/Data", aCleanedData);
         },
     });
 });
