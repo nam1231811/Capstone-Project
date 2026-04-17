@@ -14,7 +14,8 @@ sap.ui.define([
         onInit: function () {
             var oModel = new JSONModel({
                 list: [],
-                currentDetail: null
+                currentDetail: null,
+                isTableBusy: false
             });
             this.getView().setModel(oModel, "myreq");
 
@@ -22,7 +23,7 @@ sap.ui.define([
             if (oRouter.getRoute("RouteMyRequests")) {
                 oRouter.getRoute("RouteMyRequests").attachPatternMatched(this._onRouteMatched, this);
             } else {
-                this._loadMyRequests();
+                this._loadMyRequests(true);
             }
         },
 
@@ -32,29 +33,47 @@ sap.ui.define([
         },
 
         _onRouteMatched: function () {
-            this._loadMyRequests();
+            this._loadMyRequests(true);
         },
 
+<<<<<<< HEAD
         onRefreshList: function () {
             this._loadMyRequests();
+=======
+        onRefreshList: function() {
+            this._loadMyRequests(true);
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
         },
 
-        _loadMyRequests: function () {
+        _loadMyRequests: function (bForceRefresh) {
             var oView = this.getView();
             var oODataModel = this.getOwnerComponent().getModel();
             var oMyReqModel = oView.getModel("myreq");
+<<<<<<< HEAD
             var oAuthModel = this.getOwnerComponent().getModel("auth");
+=======
+            var oAuthModel = this.getOwnerComponent().getModel("auth"); 
+            var oAuditModel = this.getOwnerComponent().getModel("auditOData");
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
 
-            if (!oODataModel) return;
+            if (!oODataModel || !oAuditModel) return;
             oView.setBusy(true);
+
+            if (bForceRefresh) {
+                oODataModel.refresh();
+                oAuditModel.refresh();
+            }
 
             var sCurrentUser = oAuthModel.getProperty("/currentUser");
 
             var oPendingBinding = oODataModel.bindList("/Data", null, null, [
                 new Filter("status", FilterOperator.EQ, "P")
             ]);
+<<<<<<< HEAD
 
             var oAuditModel = this.getOwnerComponent().getModel("auditOData");
+=======
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
             var oHistoryBinding = oAuditModel.bindList("/AuditLog", null, null, null);
 
             Promise.all([
@@ -239,8 +258,21 @@ sap.ui.define([
             var oModel = this.getView().getModel("myreq");
 
             var oClone = Object.assign({}, oRowData);
+<<<<<<< HEAD
             oClone.fields = JSON.parse(JSON.stringify(oRowData.fields));
 
+=======
+            var bNeedsFetch = (oRowData.action === "UPDATE" || oRowData.action === "CREATE");
+
+            if (bNeedsFetch) {
+                oClone.fields = []; 
+                oModel.setProperty("/isTableBusy", true);
+            } else {
+                oClone.fields = JSON.parse(JSON.stringify(oRowData.fields));
+                oModel.setProperty("/isTableBusy", false);
+            }
+            
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
             oModel.setProperty("/currentDetail", oClone);
 
             var bIsRejected = (oRowData.status === "REJECTED");
@@ -273,21 +305,28 @@ sap.ui.define([
                                     text: "Comment for this Rejection: {myreq>/currentDetail/rejectReason}",
                                     type: "Error",
                                     showIcon: true,
-                                    visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }"
+                                    visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && !${myreq>/isTableBusy} }"
                                 }).addStyleClass("sapUiSmallMargin"),
 
                                 new sap.m.Table({
+                                    busy: "{myreq>/isTableBusy}",
+                                    busyIndicatorDelay: 0,
                                     backgroundDesign: "Solid",
                                     sticky: ["ColumnHeaders"],
                                     items: {
                                         path: "myreq>/currentDetail/fields",
                                         template: new sap.m.ColumnListItem({
                                             cells: [
+<<<<<<< HEAD
                                                 new sap.m.Text({ text: "{myreq>field}", design: "Bold" }),
+=======
+                                                new sap.m.Label({ text: "{myreq>field}", design: "Bold" }), 
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
                                                 new sap.m.Text({ text: "{myreq>oldData}" }),
 
                                                 new sap.m.HBox({
                                                     items: [
+<<<<<<< HEAD
                                                         new sap.m.Input({
                                                             value: { path: 'myreq>value' },
                                                             valueLiveUpdate: true,
@@ -295,6 +334,12 @@ sap.ui.define([
                                                             valueState: "{myreq>valueState}",
                                                             valueStateText: "{myreq>valueStateText}",
                                                             change: this.onDialogInputChange.bind(this)
+=======
+                                                        new sap.m.Input({ 
+                                                            value: "{myreq>value}", 
+                                                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }",
+                                                            editable: "{= ${myreq>isKey} !== true }" 
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
                                                         }),
                                                         new sap.m.ObjectStatus({
                                                             text: "{myreq>value}",
@@ -318,17 +363,10 @@ sap.ui.define([
                     ],
                     buttons: [
                         new sap.m.Button({
-                            text: "Delete Draft",
-                            type: "Reject",
-                            icon: "sap-icon://delete",
-                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }",
-                            press: this._processDeleteDraft.bind(this)
-                        }),
-                        new sap.m.Button({
                             text: "Resubmit Request",
                             type: "Accept",
                             icon: "sap-icon://paper-plane",
-                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }",
+                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && !${myreq>/isTableBusy} }",
                             press: this._processResubmit.bind(this)
                         }),
                         new sap.m.Button({
@@ -343,14 +381,12 @@ sap.ui.define([
 
             this._oResubmitDialog.bindElement({ path: "myreq>/currentDetail" });
             this._oResubmitDialog.setTitle(bIsRejected ? "Edit Rejected Request" : "Request Details");
+
             this._oResubmitDialog.open();
 
-            if (oRowData.action !== "UPDATE") {
-                this._oResubmitDialog.setBusy(false);
+            if (!bNeedsFetch) {
                 return;
             }
-
-            this._oResubmitDialog.setBusy(true);
 
             var oODataModel = this.getOwnerComponent().getModel();
 
@@ -359,18 +395,22 @@ sap.ui.define([
                 var aMeta = oPayload.metadata || oPayload.Meta || (oPayload.d && oPayload.d.results) || [];
 
                 var oNewDataMapped = {};
+<<<<<<< HEAD
                 oClone.fields.forEach(function (d) { oNewDataMapped[d.field] = d.value; });
+=======
+                oRowData.fields.forEach(function(d) { oNewDataMapped[d.field] = d.value; });
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
 
                 var aKeyFields = [];
                 aMeta.forEach(function (col) {
                     if (col.keyflag === "X" || col.keyFlag === "X" || col.isKey === true) {
-                        aKeyFields.push(col.fieldname || col.fieldName);
+                        aKeyFields.push((col.fieldname || col.fieldName).toUpperCase());
                     }
                 });
 
                 if (aKeyFields.length === 0) {
                     var oIdCol = aMeta.find(c => (c.fieldname || c.fieldName || "").toUpperCase().includes("ID"));
-                    if (oIdCol) aKeyFields.push(oIdCol.fieldname || oIdCol.fieldName);
+                    if (oIdCol) aKeyFields.push((oIdCol.fieldname || oIdCol.fieldName).toUpperCase());
                 }
 
                 var oOldRow = aMasterData.find(function (row) {
@@ -386,7 +426,11 @@ sap.ui.define([
                     });
                 });
 
+<<<<<<< HEAD
                 var aUpdatedFields = oClone.fields.map(function (d) {
+=======
+                var aUpdatedFields = oRowData.fields.map(function(d) {
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
                     var sOldValue = "N/A";
                     if (oOldRow) {
                         var oOldJson = {};
@@ -396,22 +440,31 @@ sap.ui.define([
                         }
                     }
 
+<<<<<<< HEAD
                     var oMetaDef = aMeta.find(function (m) {
                         var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
                         return sName.toUpperCase() === (d.field || "").toUpperCase();
                     }) || {};
+=======
+                    var bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase());
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
 
                     return {
                         field: d.field,
                         oldData: sOldValue,
                         value: d.value,
+<<<<<<< HEAD
                         datatype: oMetaDef.datatype || oMetaDef.dataType || oMetaDef.DATATYPE || "", // Vẫn giữ để DataFormatter chạy đúng
                         valueState: "None",
                         valueStateText: ""
+=======
+                        isKey: bIsKeyField 
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
                     };
                 });
 
                 oModel.setProperty("/currentDetail/fields", aUpdatedFields);
+<<<<<<< HEAD
                 this._checkDates(); // Gọi hàm check Ngày tháng 1 lần khi mở Popup
                 this._oResubmitDialog.setBusy(false);
 
@@ -505,6 +558,17 @@ sap.ui.define([
             });
         },
 
+=======
+                oModel.setProperty("/isTableBusy", false);
+
+            }.bind(this)).catch(function(e) {
+                console.error("Error loading master data:", e);
+                oModel.setProperty("/isTableBusy", false);
+                sap.m.MessageBox.error("Cannot fetch old data right now.");
+            }.bind(this));
+        },
+
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
         _processResubmit: function () {
             var oView = this.getView();
             var oModel = oView.getModel("myreq");
@@ -535,7 +599,7 @@ sap.ui.define([
                 sap.m.MessageBox.error("Data encoding error!"); return;
             }
 
-            sap.ui.core.BusyIndicator.show(0);
+            this._oResubmitDialog.setBusy(true);
 
             var sServiceUrl = oODataModel.getServiceUrl();
             if (!sServiceUrl.endsWith("/")) {
@@ -550,9 +614,55 @@ sap.ui.define([
                     "X-CSRF-Token": "Fetch"
                 }
             })
+<<<<<<< HEAD
                 .then(function (headResponse) {
                     if (!headResponse.ok) {
                         throw new Error("Cannot fetch CSRF token");
+=======
+            .then(function (headResponse) {
+                if (!headResponse.ok) {
+                    throw new Error("Cannot fetch CSRF token" + headResponse.status);
+                }
+                
+                var sToken = headResponse.headers.get("X-CSRF-Token");
+                var oPayload = {
+                    "table_name": oCurrentReq.tableName,
+                    "json_data": sNewBase64
+                };
+
+                return fetch(sActionUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": sToken,
+                        "If-Match": "*"
+                    },
+                    body: JSON.stringify(oPayload)
+                });
+            })
+            .then(function (postResponse) {
+                if (!postResponse.ok) {
+                    return postResponse.json().then(function (errData) {
+                        throw errData;
+                    });
+                }
+
+                that._oResubmitDialog.setBusy(false);
+                sap.m.MessageToast.show("Resubmitted successfully!");
+                that._oResubmitDialog.close();
+                
+                that._loadMyRequests(true); 
+            })
+            .catch(function (err) {
+                that._oResubmitDialog.setBusy(false);
+                var sMsg = "Error during resubmit!";
+
+                try {
+                    if (err.error && err.error.message) {
+                        sMsg = err.error.message.value || err.error.message;
+                    } else if (err.message) {
+                        sMsg = err.message;
+>>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
                     }
 
                     var sToken = headResponse.headers.get("X-CSRF-Token");
