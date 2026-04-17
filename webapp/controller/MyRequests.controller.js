@@ -6,8 +6,9 @@ sap.ui.define([
     "sap/m/MessageBox",
     "sap/m/MessageToast",
     "zapp/models/GetData",
-    "zapp/utils/DataFormatter"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData, DataFormatter) {
+    "zapp/utils/DataFormatter",
+    "zapp/utils/GridValidator" // <-- IMPORT GRIDVALIDATOR VÀO ĐÂY
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData, DataFormatter, GridValidator) {
     "use strict";
 
     return Controller.extend("zapp.controller.MyRequests", {
@@ -36,25 +37,16 @@ sap.ui.define([
             this._loadMyRequests(true);
         },
 
-<<<<<<< HEAD
         onRefreshList: function () {
-            this._loadMyRequests();
-=======
-        onRefreshList: function() {
             this._loadMyRequests(true);
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
         },
 
         _loadMyRequests: function (bForceRefresh) {
             var oView = this.getView();
             var oODataModel = this.getOwnerComponent().getModel();
             var oMyReqModel = oView.getModel("myreq");
-<<<<<<< HEAD
             var oAuthModel = this.getOwnerComponent().getModel("auth");
-=======
-            var oAuthModel = this.getOwnerComponent().getModel("auth"); 
             var oAuditModel = this.getOwnerComponent().getModel("auditOData");
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
 
             if (!oODataModel || !oAuditModel) return;
             oView.setBusy(true);
@@ -69,11 +61,6 @@ sap.ui.define([
             var oPendingBinding = oODataModel.bindList("/Data", null, null, [
                 new Filter("status", FilterOperator.EQ, "P")
             ]);
-<<<<<<< HEAD
-
-            var oAuditModel = this.getOwnerComponent().getModel("auditOData");
-=======
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
             var oHistoryBinding = oAuditModel.bindList("/AuditLog", null, null, null);
 
             Promise.all([
@@ -239,6 +226,7 @@ sap.ui.define([
 
             }.bind(this)).catch(function (e) {
                 oView.setBusy(false);
+                console.error(e);
             });
         },
 
@@ -258,21 +246,16 @@ sap.ui.define([
             var oModel = this.getView().getModel("myreq");
 
             var oClone = Object.assign({}, oRowData);
-<<<<<<< HEAD
-            oClone.fields = JSON.parse(JSON.stringify(oRowData.fields));
-
-=======
             var bNeedsFetch = (oRowData.action === "UPDATE" || oRowData.action === "CREATE");
 
             if (bNeedsFetch) {
-                oClone.fields = []; 
+                oClone.fields = [];
                 oModel.setProperty("/isTableBusy", true);
             } else {
                 oClone.fields = JSON.parse(JSON.stringify(oRowData.fields));
                 oModel.setProperty("/isTableBusy", false);
             }
-            
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
+
             oModel.setProperty("/currentDetail", oClone);
 
             var bIsRejected = (oRowData.status === "REJECTED");
@@ -317,29 +300,20 @@ sap.ui.define([
                                         path: "myreq>/currentDetail/fields",
                                         template: new sap.m.ColumnListItem({
                                             cells: [
-<<<<<<< HEAD
-                                                new sap.m.Text({ text: "{myreq>field}", design: "Bold" }),
-=======
-                                                new sap.m.Label({ text: "{myreq>field}", design: "Bold" }), 
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
+                                                new sap.m.Label({ text: "{myreq>field}", design: "Bold" }),
                                                 new sap.m.Text({ text: "{myreq>oldData}" }),
 
                                                 new sap.m.HBox({
                                                     items: [
-<<<<<<< HEAD
                                                         new sap.m.Input({
                                                             value: { path: 'myreq>value' },
                                                             valueLiveUpdate: true,
                                                             visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }",
+                                                            editable: "{= ${myreq>isKey} !== true }",
+                                                            // BINDING ĐỂ HIỂN THỊ LỖI
                                                             valueState: "{myreq>valueState}",
                                                             valueStateText: "{myreq>valueStateText}",
                                                             change: this.onDialogInputChange.bind(this)
-=======
-                                                        new sap.m.Input({ 
-                                                            value: "{myreq>value}", 
-                                                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }",
-                                                            editable: "{= ${myreq>isKey} !== true }" 
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
                                                         }),
                                                         new sap.m.ObjectStatus({
                                                             text: "{myreq>value}",
@@ -392,14 +366,10 @@ sap.ui.define([
 
             GetData.loadTableData(oODataModel, oRowData.tableName).then(function (oPayload) {
                 var aMasterData = oPayload.dataRows || oPayload.Data || [];
-                var aMeta = oPayload.metadata || oPayload.Meta || (oPayload.d && oPayload.d.results) || [];
+                var aMeta = oPayload.metadata || oPayload.Meta || [];
 
                 var oNewDataMapped = {};
-<<<<<<< HEAD
-                oClone.fields.forEach(function (d) { oNewDataMapped[d.field] = d.value; });
-=======
-                oRowData.fields.forEach(function(d) { oNewDataMapped[d.field] = d.value; });
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
+                oRowData.fields.forEach(function (d) { oNewDataMapped[d.field] = d.value; });
 
                 var aKeyFields = [];
                 aMeta.forEach(function (col) {
@@ -426,11 +396,7 @@ sap.ui.define([
                     });
                 });
 
-<<<<<<< HEAD
-                var aUpdatedFields = oClone.fields.map(function (d) {
-=======
-                var aUpdatedFields = oRowData.fields.map(function(d) {
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
+                var aUpdatedFields = oRowData.fields.map(function (d) {
                     var sOldValue = "N/A";
                     if (oOldRow) {
                         var oOldJson = {};
@@ -440,135 +406,112 @@ sap.ui.define([
                         }
                     }
 
-<<<<<<< HEAD
+                    var bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase());
+
+                    // --- TRÍCH XUẤT METADATA ĐỂ GRIDVALIDATOR DÙNG ---
                     var oMetaDef = aMeta.find(function (m) {
                         var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
                         return sName.toUpperCase() === (d.field || "").toUpperCase();
                     }) || {};
-=======
-                    var bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase());
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
+
+                    var sDataType = oMetaDef.datatype || oMetaDef.dataType || oMetaDef.DATATYPE || oMetaDef.type || "";
+                    var iLength = parseInt(oMetaDef.leng || oMetaDef.length || oMetaDef.LENG || oMetaDef.LENGTH || oMetaDef.maxLength || oMetaDef.MaxLength || 0, 10);
+                    if (isNaN(iLength)) iLength = 0;
+
+                    // Tiên đoán kiểu nếu API trả Meta lỗi/rỗng
+                    var sFN = String(d.field).toUpperCase();
+                    if (!sDataType || sDataType.toUpperCase() === "CHAR" || sDataType.toUpperCase() === "STRING") {
+                        if (sFN.includes("DATE") || sFN === "BEGDA" || sFN === "ENDDA") sDataType = "DATS";
+                        else if (sFN === "ID" || sFN.includes("_ID") || sFN.includes("SALARY") || sFN.includes("AMOUNT") || sFN.includes("PRICE") || sFN.includes("PHONE") || sFN.includes("NUM")) sDataType = "NUMC";
+                    }
 
                     return {
                         field: d.field,
                         oldData: sOldValue,
                         value: d.value,
-<<<<<<< HEAD
-                        datatype: oMetaDef.datatype || oMetaDef.dataType || oMetaDef.DATATYPE || "", // Vẫn giữ để DataFormatter chạy đúng
+                        isKey: bIsKeyField,
+                        datatype: sDataType,
+                        length: iLength,
                         valueState: "None",
                         valueStateText: ""
-=======
-                        isKey: bIsKeyField 
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
                     };
                 });
 
                 oModel.setProperty("/currentDetail/fields", aUpdatedFields);
-<<<<<<< HEAD
-                this._checkDates(); // Gọi hàm check Ngày tháng 1 lần khi mở Popup
-                this._oResubmitDialog.setBusy(false);
-
-            }.bind(this)).catch(function (e) {
-                this._oResubmitDialog.setBusy(false);
-            }.bind(this));
-        },
-
-        _checkDates: function () {
-            var oModel = this.getView().getModel("myreq");
-            var aAllFields = oModel.getProperty("/currentDetail/fields");
-            if (!aAllFields) return false;
-
-            var sStartDate = "", sEndDate = "";
-            var sStartPath = "", sEndPath = "";
-            var bHasDateError = false;
-
-            // 
-            aAllFields.forEach(function (f, index) {
-                var fName = f.field.toUpperCase();
-                if (fName === "START_DATE" || fName === "STRAT_DATE" || fName === "BEGDA") {
-                    sStartDate = f.value;
-                    sStartPath = "/currentDetail/fields/" + index;
-                } else if (fName === "END_DATE" || fName === "ENDDA") {
-                    sEndDate = f.value;
-                    sEndPath = "/currentDetail/fields/" + index;
-                }
-            });
-
-            if (sStartPath !== "" && sEndPath !== "") {
-                var dStart = new Date(sStartDate);
-                var dEnd = new Date(sEndDate);
-
-                if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime()) && dEnd < dStart) {
-                    oModel.setProperty(sStartPath + "/valueState", "Error");
-                    oModel.setProperty(sStartPath + "/valueStateText", "Must be earlier than End Date");
-                    oModel.setProperty(sEndPath + "/valueState", "Error");
-                    oModel.setProperty(sEndPath + "/valueStateText", "Must be later than Start Date");
-                    bHasDateError = true;
-                } else {
-                    oModel.setProperty(sStartPath + "/valueState", "None");
-                    oModel.setProperty(sStartPath + "/valueStateText", "");
-                    oModel.setProperty(sEndPath + "/valueState", "None");
-                    oModel.setProperty(sEndPath + "/valueStateText", "");
-                }
-            }
-            return bHasDateError;
-        },
-
-        onDialogInputChange: function (oEvent) {
-            var oInput = oEvent.getSource();
-            var sValue = oEvent.getParameter("value");
-            var sPath = oInput.getBindingContext("myreq").getPath();
-
-            this.getView().getModel("myreq").setProperty(sPath + "/value", sValue);
-
-            this._checkDates();
-        },
-
-        _processDeleteDraft: function () {
-            var oView = this.getView();
-            var oModel = oView.getModel("myreq");
-            var oCurrentReq = oModel.getProperty("/currentDetail");
-
-            var oODataContext = oCurrentReq._odataContext;
-            if (!oODataContext) {
-                MessageBox.error("Connection to original data lost. Please refresh!");
-                return;
-            }
-
-            MessageBox.confirm("Are you sure you want to permanently delete this draft?", {
-                title: "Confirm Deletion",
-                icon: MessageBox.Icon.WARNING,
-                actions: [MessageBox.Action.YES, MessageBox.Action.NO],
-                onClose: function (sAction) {
-                    if (sAction === MessageBox.Action.YES) {
-                        sap.ui.core.BusyIndicator.show(0);
-
-                        oODataContext.delete().then(function () {
-                            sap.ui.core.BusyIndicator.hide();
-                            MessageToast.show("Draft deleted successfully!");
-                            this._oResubmitDialog.close();
-                            this._loadMyRequests();
-
-                        }.bind(this)).catch(function (oError) {
-                            sap.ui.core.BusyIndicator.hide();
-                            MessageBox.error("Error during deletion.");
-                        });
-                    }
-                }.bind(this)
-            });
-        },
-
-=======
                 oModel.setProperty("/isTableBusy", false);
 
-            }.bind(this)).catch(function(e) {
+                // Quét lỗi 1 lần ngay khi mở Dialog
+                this._validateDialogFields();
+
+            }.bind(this)).catch(function (e) {
                 console.error("Error loading master data:", e);
                 oModel.setProperty("/isTableBusy", false);
                 sap.m.MessageBox.error("Cannot fetch old data right now.");
             }.bind(this));
         },
 
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
+        // ========================================================================
+        // HÀM FAKE ROW: "Đóng gói" danh sách dọc thành hàng ngang cho GridValidator
+        // ========================================================================
+        _validateDialogFields: function () {
+            var oModel = this.getView().getModel("myreq");
+            var oCurrentReq = oModel.getProperty("/currentDetail");
+            if (!oCurrentReq || !oCurrentReq.fields || oCurrentReq.action === "DELETE") return false;
+
+            // 1. Tạo Meta ảo và Row giả lập
+            var aFakeMeta = [];
+            var oFakeRow = {};
+
+            oCurrentReq.fields.forEach(function (f, idx) {
+                aFakeMeta.push({
+                    fieldname: f.field,
+                    datatype: f.datatype,
+                    length: f.length
+                });
+
+                oFakeRow[idx] = {
+                    fieldname: f.field,
+                    value: f.value,
+                    isEditable: !f.isKey, // Các trường khóa chính (Read-only) không cần Validator quét format
+                    isNew: (idx === 0)    // Mẹo để lừa GridValidator đây là ObjectPage
+                };
+            });
+
+            // 2. Chuyển thẳng cho "Bộ não" GridValidator xử lý (Bản nguyên gốc 100%)
+            var aValidatedData = GridValidator.performLiveValidation([oFakeRow], aFakeMeta, []);
+            var oResultRow = aValidatedData[0];
+
+            // 3. Rút kết quả lỗi (_state, _msg) đập ngược lại vào mảng dọc
+            var bHasError = false;
+            oCurrentReq.fields.forEach(function (f, idx) {
+                var oCell = oResultRow[idx];
+                var sPath = "/currentDetail/fields/" + idx;
+
+                if (oCell && oCell._state === "Error") {
+                    oModel.setProperty(sPath + "/valueState", "Error");
+                    oModel.setProperty(sPath + "/valueStateText", oCell._msg);
+                    bHasError = true;
+                } else {
+                    oModel.setProperty(sPath + "/valueState", "None");
+                    oModel.setProperty(sPath + "/valueStateText", "");
+                }
+            });
+
+            return bHasError;
+        },
+
+        // Gọi ngay khi user vừa gõ xong (click chuột ra ngoài/nhấn Tab)
+        onDialogInputChange: function (oEvent) {
+            var oInput = oEvent.getSource();
+            var sValue = oEvent.getParameter("value");
+            var sPath = oInput.getBindingContext("myreq").getPath();
+
+            // Cập nhật giá trị vào model tức thì
+            this.getView().getModel("myreq").setProperty(sPath + "/value", sValue);
+            // Gọi GridValidator
+            this._validateDialogFields();
+        },
+
         _processResubmit: function () {
             var oView = this.getView();
             var oModel = oView.getModel("myreq");
@@ -576,10 +519,11 @@ sap.ui.define([
             var oODataModel = this.getOwnerComponent().getModel();
             var that = this;
 
-            var bHasError = this._checkDates();
+            // CHỐT CHẶN: Ép chạy GridValidator một lần cuối trước khi Submit
+            var bHasError = this._validateDialogFields();
 
             if (bHasError) {
-                sap.m.MessageBox.error("Please correct the date fields (highlighted in red) before resubmitting!");
+                sap.m.MessageBox.error("Please correct the faulty fields (highlighted in red) before resubmitting!");
                 return;
             }
 
@@ -588,6 +532,7 @@ sap.ui.define([
                 if (oCurrentReq.action === "DELETE") {
                     oNewPayload[item.field] = item.oldData;
                 } else {
+                    // Gọi DataFormatter để chuẩn bị data gửi Backend
                     oNewPayload[item.field] = DataFormatter.formatValueByType(item.value, item.datatype);
                 }
             });
@@ -614,55 +559,9 @@ sap.ui.define([
                     "X-CSRF-Token": "Fetch"
                 }
             })
-<<<<<<< HEAD
                 .then(function (headResponse) {
                     if (!headResponse.ok) {
-                        throw new Error("Cannot fetch CSRF token");
-=======
-            .then(function (headResponse) {
-                if (!headResponse.ok) {
-                    throw new Error("Cannot fetch CSRF token" + headResponse.status);
-                }
-                
-                var sToken = headResponse.headers.get("X-CSRF-Token");
-                var oPayload = {
-                    "table_name": oCurrentReq.tableName,
-                    "json_data": sNewBase64
-                };
-
-                return fetch(sActionUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-Token": sToken,
-                        "If-Match": "*"
-                    },
-                    body: JSON.stringify(oPayload)
-                });
-            })
-            .then(function (postResponse) {
-                if (!postResponse.ok) {
-                    return postResponse.json().then(function (errData) {
-                        throw errData;
-                    });
-                }
-
-                that._oResubmitDialog.setBusy(false);
-                sap.m.MessageToast.show("Resubmitted successfully!");
-                that._oResubmitDialog.close();
-                
-                that._loadMyRequests(true); 
-            })
-            .catch(function (err) {
-                that._oResubmitDialog.setBusy(false);
-                var sMsg = "Error during resubmit!";
-
-                try {
-                    if (err.error && err.error.message) {
-                        sMsg = err.error.message.value || err.error.message;
-                    } else if (err.message) {
-                        sMsg = err.message;
->>>>>>> f93a570b18ee79d37e0eddc42ab376f1294cfdc8
+                        throw new Error("Cannot fetch CSRF token" + headResponse.status);
                     }
 
                     var sToken = headResponse.headers.get("X-CSRF-Token");
@@ -688,14 +587,16 @@ sap.ui.define([
                         });
                     }
 
-                    sap.ui.core.BusyIndicator.hide();
+                    that._oResubmitDialog.setBusy(false);
                     sap.m.MessageToast.show("Resubmitted successfully!");
                     that._oResubmitDialog.close();
-                    that._loadMyRequests();
+
+                    that._loadMyRequests(true);
                 })
                 .catch(function (err) {
-                    sap.ui.core.BusyIndicator.hide();
+                    that._oResubmitDialog.setBusy(false);
                     var sMsg = "Error during resubmit!";
+
                     try {
                         if (err.error && err.error.message) {
                             sMsg = err.error.message.value || err.error.message;
@@ -703,6 +604,7 @@ sap.ui.define([
                             sMsg = err.message;
                         }
                     } catch (e) { }
+
                     sap.m.MessageBox.error(sMsg);
                 });
         }
