@@ -114,6 +114,9 @@
 
                                                 <m:Input 
                                                     value="{detailRecord>value}" 
+                                                    valueState="{detailRecord>_state}"
+                                                    valueStateText="{detailRecord>_msg}"
+                                                    change=".onInputChange"
                                                     visible="{= ${viewModel>/isEditMode} &amp;&amp; !${detailRecord>keyFlag} }"
                                                     width="100%"
                                                     showValueHelp="{= ${detailRecord>has_value_help} === true || ${detailRecord>hasValueHelp} === true }" 
@@ -123,6 +126,7 @@
                                                         <core:CustomData key="fieldName" value="{detailRecord>fieldname}" />
                                                     </m:customData>
                                                 </m:Input>
+                                                
                                                 <m:Text 
                                                     text="{detailRecord>value}" 
                                                     visible="{= ${viewModel>/isEditMode} !== true || ${detailRecord>keyFlag} === true }"
@@ -138,20 +142,20 @@
             </ObjectPageSection>
 
             <ObjectPageSection title="Technical Information">
-				<subSections>
-					<ObjectPageSubSection>
-						<blocks>
-							<form:SimpleForm
-								maxContainerCols="2"
-								editable="false"
-								layout="ResponsiveGridLayout"
-								labelSpanL="12"
-								labelSpanM="12"
-								emptySpanL="0"
-								emptySpanM="0"
-								columnsL="1"
-								columnsM="1">
-								<form:content >
+                <subSections>
+                    <ObjectPageSubSection>
+                        <blocks>
+                            <form:SimpleForm
+                                maxContainerCols="2"
+                                editable="false"
+                                layout="ResponsiveGridLayout"
+                                labelSpanL="12"
+                                labelSpanM="12"
+                                emptySpanL="0"
+                                emptySpanM="0"
+                                columnsL="1"
+                                columnsM="1">
+                                <form:content >
                                     <l:Grid 
                                         defaultSpan="XL6 L6 M6 S12" 
                                         vSpacing="1" 
@@ -200,15 +204,15 @@
                                                     text="{detailRecord>/Data/0/changedAt}"
                                                     width="100%" />
                                             </m:VBox>
-											
+                                            
                                         </l:content>
                                     </l:Grid>
                                 </form:content>
-							</form:SimpleForm>
-						</blocks>
-					</ObjectPageSubSection>
-				</subSections>
-			</ObjectPageSection>
+                            </form:SimpleForm>
+                        </blocks>
+                    </ObjectPageSubSection>
+                </subSections>
+            </ObjectPageSection>
             
             <ObjectPageSection title="Impact Analysis">
                 <subSections>

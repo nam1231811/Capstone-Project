@@ -6,8 +6,8 @@ sap.ui.define([
     "sap/m/MessageBox",
     "sap/m/MessageToast",
     "zapp/models/GetData",
-    "zapp/utils/DataFormatter" 
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData, DataFormatter) { 
+    "zapp/utils/DataFormatter"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData, DataFormatter) {
     "use strict";
 
     return Controller.extend("zapp.controller.MyRequests", {
@@ -19,7 +19,7 @@ sap.ui.define([
             this.getView().setModel(oModel, "myreq");
 
             var oRouter = this.getOwnerComponent().getRouter();
-            if (oRouter.getRoute("RouteMyRequests")) { 
+            if (oRouter.getRoute("RouteMyRequests")) {
                 oRouter.getRoute("RouteMyRequests").attachPatternMatched(this._onRouteMatched, this);
             } else {
                 this._loadMyRequests();
@@ -28,14 +28,14 @@ sap.ui.define([
 
         onNavBack: function () {
             var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteHome", {}, true); 
+            oRouter.navTo("RouteHome", {}, true);
         },
 
         _onRouteMatched: function () {
             this._loadMyRequests();
         },
 
-        onRefreshList: function() {
+        onRefreshList: function () {
             this._loadMyRequests();
         },
 
@@ -43,17 +43,17 @@ sap.ui.define([
             var oView = this.getView();
             var oODataModel = this.getOwnerComponent().getModel();
             var oMyReqModel = oView.getModel("myreq");
-            var oAuthModel = this.getOwnerComponent().getModel("auth"); 
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
 
             if (!oODataModel) return;
             oView.setBusy(true);
 
             var sCurrentUser = oAuthModel.getProperty("/currentUser");
-            
+
             var oPendingBinding = oODataModel.bindList("/Data", null, null, [
-                new Filter("status", FilterOperator.EQ, "P") 
+                new Filter("status", FilterOperator.EQ, "P")
             ]);
-             
+
             var oAuditModel = this.getOwnerComponent().getModel("auditOData");
             var oHistoryBinding = oAuditModel.bindList("/AuditLog", null, null, null);
 
@@ -61,13 +61,13 @@ sap.ui.define([
                 oPendingBinding.requestContexts(0, 500),
                 oHistoryBinding.requestContexts(0, 500)
             ]).then(function (aResults) {
-                var aList = []; 
+                var aList = [];
                 var aAllContexts = [];
-                
+
                 aResults[0].forEach(ctx => aAllContexts.push({ ctx: ctx, source: "TEMP" }));
                 aResults[1].forEach(ctx => aAllContexts.push({ ctx: ctx, source: "AUDIT" }));
-                
-                aAllContexts.forEach(function(oWrapper) {
+
+                aAllContexts.forEach(function (oWrapper) {
                     var oData = oWrapper.ctx.getObject();
                     var sCheckStatus = String(oData.status || oData.Status || "").toUpperCase();
 
@@ -75,29 +75,29 @@ sap.ui.define([
                     if (oWrapper.source === "TEMP") {
                         sStatusText = "PENDING";
                     } else {
-                        if (sCheckStatus === "P") return; 
+                        if (sCheckStatus === "P") return;
                         if (sCheckStatus === "R") {
                             sStatusText = "REJECTED";
                         } else {
-                            sStatusText = "APPROVED"; 
+                            sStatusText = "APPROVED";
                         }
                     }
 
                     var sRecordOwner = oData.created_by || oData.CreatedBy || oData.changed_by || oData.ChangedBy || "";
                     if (sRecordOwner.toUpperCase() !== sCurrentUser.toUpperCase()) {
-                        return; 
+                        return;
                     }
 
                     var sReqId = "";
                     if (oWrapper.source === "TEMP") {
                         sReqId = oData.uuid || oData.Uuid || oData.UUID || "";
                     } else {
-                        sReqId = oData.log_uuid || oData.LogUuid || oData.LOG_UUID || oData.uuid || ""; 
+                        sReqId = oData.log_uuid || oData.LogUuid || oData.LOG_UUID || oData.uuid || "";
                     }
 
                     var sActionCode = String(oData.action_type || oData.ActionType || oData.action || oData.Action || "").toUpperCase();
                     var sActionText = "UPDATE";
-                    
+
                     if (sActionCode === "C" || sActionCode === "CREATE") sActionText = "CREATE";
                     else if (sActionCode === "D" || sActionCode === "DELETE") sActionText = "DELETE";
                     else if (sActionCode === "U" || sActionCode === "UPDATE") sActionText = "UPDATE";
@@ -115,36 +115,36 @@ sap.ui.define([
 
                     if (sTempData) {
                         if (sActionText === "DELETE") sOldDataStr = sTempData;
-                        else if (sActionText === "CREATE") sNewDataStr = sTempData; 
+                        else if (sActionText === "CREATE") sNewDataStr = sTempData;
                         else sNewDataStr = sTempData;
                     }
 
                     if (sActionText === "DELETE" && !sOldDataStr && sNewDataStr) {
                         sOldDataStr = sNewDataStr;
-                        sNewDataStr = "";          
+                        sNewDataStr = "";
                     }
 
                     if (sActionText === "CREATE" && !sNewDataStr && sOldDataStr) {
-                        sNewDataStr = sOldDataStr; 
+                        sNewDataStr = sOldDataStr;
                         sOldDataStr = "";
                     }
 
                     var oParsedOld = {};
                     if (sOldDataStr) {
                         try {
-                            oParsedOld = (!sOldDataStr.startsWith("{") && !sOldDataStr.startsWith("[")) 
-                                        ? GetData.decodeFunction({ json_string: sOldDataStr }) 
-                                        : JSON.parse(sOldDataStr);
-                        } catch (e) {}
+                            oParsedOld = (!sOldDataStr.startsWith("{") && !sOldDataStr.startsWith("["))
+                                ? GetData.decodeFunction({ json_string: sOldDataStr })
+                                : JSON.parse(sOldDataStr);
+                        } catch (e) { }
                     }
 
                     var oParsedNew = {};
                     if (sNewDataStr) {
                         try {
-                            oParsedNew = (!sNewDataStr.startsWith("{") && !sNewDataStr.startsWith("[")) 
-                                        ? GetData.decodeFunction({ json_string: sNewDataStr }) 
-                                        : JSON.parse(sNewDataStr);
-                        } catch (e) {}
+                            oParsedNew = (!sNewDataStr.startsWith("{") && !sNewDataStr.startsWith("["))
+                                ? GetData.decodeFunction({ json_string: sNewDataStr })
+                                : JSON.parse(sNewDataStr);
+                        } catch (e) { }
                     }
 
                     var aFields = [];
@@ -156,48 +156,48 @@ sap.ui.define([
                         if (sActionText !== "CREATE") {
                             sOldVal = oParsedOld[key] !== undefined ? String(oParsedOld[key]) : "Loading...";
                         }
-                        
+
                         var sNewVal = "-";
                         if (sActionText !== "DELETE") {
                             sNewVal = oParsedNew[key] !== undefined ? String(oParsedNew[key]) : "-";
                         }
 
-                        aFields.push({ 
-                            field: key, 
-                            oldData: sOldVal, 
-                            value: sNewVal 
+                        aFields.push({
+                            field: key,
+                            oldData: sOldVal,
+                            value: sNewVal
                         });
                     });
 
                     aList.push({
                         _odataContext: oWrapper.ctx,
-                        source: oWrapper.source, 
-                        reqId: sReqId,           
+                        source: oWrapper.source,
+                        reqId: sReqId,
                         tableName: oData.table_name || oData.TableName || "",
                         action: sActionText,
                         status: sStatusText,
-                        rawDataDate: new Date(oData.changed_at || oData.ChangedAt || oData.created_at || oData.CreatedAt), 
+                        rawDataDate: new Date(oData.changed_at || oData.ChangedAt || oData.created_at || oData.CreatedAt),
                         changedAt: DataFormatter.formatDateTime(oData.changed_at || oData.ChangedAt || oData.created_at || oData.CreatedAt),
                         rejectReason: oData.RejectReason || oData.reject_reason || "",
                         fields: aFields
                     });
                 });
 
-                aList.sort(function(a, b) {
+                aList.sort(function (a, b) {
                     return b.rawDataDate - a.rawDataDate;
                 });
 
                 var aUniqueList = [];
                 var oSeenSignatures = {};
 
-                aList.forEach(function(item) {
+                aList.forEach(function (item) {
                     var sRecordId = "";
-                    
+
                     var oIdField = item.fields.find(f => f.field.indexOf("ID") !== -1 || f.field.indexOf("CODE") !== -1 || f.field === "UUID");
                     if (oIdField) {
                         sRecordId = (oIdField.oldData !== "-" && oIdField.oldData !== "N/A") ? oIdField.oldData : oIdField.value;
                     } else if (item.fields.length > 0) {
-                        sRecordId = item.fields[0].value; 
+                        sRecordId = item.fields[0].value;
                     }
 
                     var sSignature = item.tableName + "_" + item.action + "_" + sRecordId;
@@ -207,10 +207,10 @@ sap.ui.define([
                         aUniqueList.push(item);
                     }
                 });
-                
-                aList = aUniqueList; 
 
-                aList.forEach(function(item, index) {
+                aList = aUniqueList;
+
+                aList.forEach(function (item, index) {
                     item.indexNo = index + 1;
                 });
 
@@ -218,13 +218,12 @@ sap.ui.define([
                 oView.setBusy(false);
                 this.onStatusFilterSelect();
 
-            }.bind(this)).catch(function(e) {
+            }.bind(this)).catch(function (e) {
                 oView.setBusy(false);
-                console.error(e);
             });
         },
 
-        onStatusFilterSelect: function() {
+        onStatusFilterSelect: function () {
             var sKey = this.byId("statusFilterBar").getSelectedKey();
             var oBinding = this.byId("myRequestsTable").getBinding("items");
             if (sKey === "ALL") {
@@ -238,17 +237,17 @@ sap.ui.define([
             var oContext = oEvent.getSource().getBindingContext("myreq");
             var oRowData = oContext.getObject();
             var oModel = this.getView().getModel("myreq");
-            
+
             var oClone = Object.assign({}, oRowData);
             oClone.fields = JSON.parse(JSON.stringify(oRowData.fields));
-            
+
             oModel.setProperty("/currentDetail", oClone);
 
             var bIsRejected = (oRowData.status === "REJECTED");
 
             if (!this._oResubmitDialog) {
                 this._oResubmitDialog = new sap.m.Dialog({
-                    contentWidth: "800px", 
+                    contentWidth: "800px",
                     contentHeight: "500px",
                     resizable: true,
                     draggable: true,
@@ -276,7 +275,7 @@ sap.ui.define([
                                     showIcon: true,
                                     visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }"
                                 }).addStyleClass("sapUiSmallMargin"),
-                                
+
                                 new sap.m.Table({
                                     backgroundDesign: "Solid",
                                     sticky: ["ColumnHeaders"],
@@ -284,18 +283,22 @@ sap.ui.define([
                                         path: "myreq>/currentDetail/fields",
                                         template: new sap.m.ColumnListItem({
                                             cells: [
-                                                new sap.m.Text({ text: "{myreq>field}", design: "Bold" }), 
+                                                new sap.m.Text({ text: "{myreq>field}", design: "Bold" }),
                                                 new sap.m.Text({ text: "{myreq>oldData}" }),
-                                                
+
                                                 new sap.m.HBox({
                                                     items: [
-                                                        new sap.m.Input({ 
-                                                            value: "{myreq>value}", 
-                                                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }" 
+                                                        new sap.m.Input({
+                                                            value: { path: 'myreq>value' },
+                                                            valueLiveUpdate: true,
+                                                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }",
+                                                            valueState: "{myreq>valueState}",
+                                                            valueStateText: "{myreq>valueStateText}",
+                                                            change: this.onDialogInputChange.bind(this)
                                                         }),
-                                                        new sap.m.ObjectStatus({ 
-                                                            text: "{myreq>value}", 
-                                                            visible: "{= ${myreq>/currentDetail/status} !== 'REJECTED' || ${myreq>/currentDetail/action} === 'DELETE' }", 
+                                                        new sap.m.ObjectStatus({
+                                                            text: "{myreq>value}",
+                                                            visible: "{= ${myreq>/currentDetail/status} !== 'REJECTED' || ${myreq>/currentDetail/action} === 'DELETE' }",
                                                             state: "{= ${myreq>oldData} !== ${myreq>value} && ${myreq>oldData} !== 'N/A' && ${myreq>oldData} !== '-' ? 'Warning' : 'Success' }",
                                                             icon: "{= ${myreq>oldData} !== ${myreq>value} && ${myreq>oldData} !== 'N/A' && ${myreq>oldData} !== '-' ? 'sap-icon://edit' : 'sap-icon://sys-enter-2' }"
                                                         })
@@ -331,7 +334,7 @@ sap.ui.define([
                         new sap.m.Button({
                             text: "Close",
                             type: "Transparent",
-                            press: function() { this._oResubmitDialog.close(); }.bind(this)
+                            press: function () { this._oResubmitDialog.close(); }.bind(this)
                         })
                     ]
                 });
@@ -350,62 +353,122 @@ sap.ui.define([
             this._oResubmitDialog.setBusy(true);
 
             var oODataModel = this.getOwnerComponent().getModel();
-            
-            GetData.loadTableData(oODataModel, oRowData.tableName).then(function(oPayload) {
+
+            GetData.loadTableData(oODataModel, oRowData.tableName).then(function (oPayload) {
                 var aMasterData = oPayload.dataRows || oPayload.Data || [];
-                var aMeta = oPayload.metadata || oPayload.Meta || [];
-                
+                var aMeta = oPayload.metadata || oPayload.Meta || (oPayload.d && oPayload.d.results) || [];
+
                 var oNewDataMapped = {};
-                oClone.fields.forEach(function(d) { oNewDataMapped[d.field] = d.value; });
+                oClone.fields.forEach(function (d) { oNewDataMapped[d.field] = d.value; });
 
                 var aKeyFields = [];
-                aMeta.forEach(function(col) {
+                aMeta.forEach(function (col) {
                     if (col.keyflag === "X" || col.keyFlag === "X" || col.isKey === true) {
                         aKeyFields.push(col.fieldname || col.fieldName);
                     }
                 });
-                
+
                 if (aKeyFields.length === 0) {
                     var oIdCol = aMeta.find(c => (c.fieldname || c.fieldName || "").toUpperCase().includes("ID"));
                     if (oIdCol) aKeyFields.push(oIdCol.fieldname || oIdCol.fieldName);
                 }
 
-                var oOldRow = aMasterData.find(function(row) {
+                var oOldRow = aMasterData.find(function (row) {
                     var oJson = {};
-                    try { oJson = JSON.parse(row.data || "{}"); } catch(e) {}
-                    
+                    try { oJson = JSON.parse(row.data || "{}"); } catch (e) { }
+
                     if (aKeyFields.length === 0) return false;
-                    
-                    return aKeyFields.every(function(keyField) {
+
+                    return aKeyFields.every(function (keyField) {
                         var sVal1 = String(oJson[keyField] || "").trim().toUpperCase();
                         var sVal2 = String(oNewDataMapped[keyField] || "").trim().toUpperCase();
                         return sVal1 === sVal2 && sVal1 !== "";
                     });
                 });
 
-                var aUpdatedFields = oClone.fields.map(function(d) {
+                var aUpdatedFields = oClone.fields.map(function (d) {
                     var sOldValue = "N/A";
                     if (oOldRow) {
                         var oOldJson = {};
-                        try { oOldJson = JSON.parse(oOldRow.data || "{}"); } catch(e) {}
+                        try { oOldJson = JSON.parse(oOldRow.data || "{}"); } catch (e) { }
                         if (oOldJson[d.field] !== undefined) {
                             sOldValue = String(oOldJson[d.field]);
                         }
                     }
+
+                    var oMetaDef = aMeta.find(function (m) {
+                        var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
+                        return sName.toUpperCase() === (d.field || "").toUpperCase();
+                    }) || {};
+
                     return {
                         field: d.field,
                         oldData: sOldValue,
-                        value: d.value 
+                        value: d.value,
+                        datatype: oMetaDef.datatype || oMetaDef.dataType || oMetaDef.DATATYPE || "", // Vẫn giữ để DataFormatter chạy đúng
+                        valueState: "None",
+                        valueStateText: ""
                     };
                 });
 
                 oModel.setProperty("/currentDetail/fields", aUpdatedFields);
+                this._checkDates(); // Gọi hàm check Ngày tháng 1 lần khi mở Popup
                 this._oResubmitDialog.setBusy(false);
 
-            }.bind(this)).catch(function(e) {
-                console.error("Error loading master data:", e);
+            }.bind(this)).catch(function (e) {
                 this._oResubmitDialog.setBusy(false);
             }.bind(this));
+        },
+
+        _checkDates: function () {
+            var oModel = this.getView().getModel("myreq");
+            var aAllFields = oModel.getProperty("/currentDetail/fields");
+            if (!aAllFields) return false;
+
+            var sStartDate = "", sEndDate = "";
+            var sStartPath = "", sEndPath = "";
+            var bHasDateError = false;
+
+            // 
+            aAllFields.forEach(function (f, index) {
+                var fName = f.field.toUpperCase();
+                if (fName === "START_DATE" || fName === "STRAT_DATE" || fName === "BEGDA") {
+                    sStartDate = f.value;
+                    sStartPath = "/currentDetail/fields/" + index;
+                } else if (fName === "END_DATE" || fName === "ENDDA") {
+                    sEndDate = f.value;
+                    sEndPath = "/currentDetail/fields/" + index;
+                }
+            });
+
+            if (sStartPath !== "" && sEndPath !== "") {
+                var dStart = new Date(sStartDate);
+                var dEnd = new Date(sEndDate);
+
+                if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime()) && dEnd < dStart) {
+                    oModel.setProperty(sStartPath + "/valueState", "Error");
+                    oModel.setProperty(sStartPath + "/valueStateText", "Must be earlier than End Date");
+                    oModel.setProperty(sEndPath + "/valueState", "Error");
+                    oModel.setProperty(sEndPath + "/valueStateText", "Must be later than Start Date");
+                    bHasDateError = true;
+                } else {
+                    oModel.setProperty(sStartPath + "/valueState", "None");
+                    oModel.setProperty(sStartPath + "/valueStateText", "");
+                    oModel.setProperty(sEndPath + "/valueState", "None");
+                    oModel.setProperty(sEndPath + "/valueStateText", "");
+                }
+            }
+            return bHasDateError;
+        },
+
+        onDialogInputChange: function (oEvent) {
+            var oInput = oEvent.getSource();
+            var sValue = oEvent.getParameter("value");
+            var sPath = oInput.getBindingContext("myreq").getPath();
+
+            this.getView().getModel("myreq").setProperty(sPath + "/value", sValue);
+
+            this._checkDates();
         },
 
         _processDeleteDraft: function () {
@@ -430,14 +493,12 @@ sap.ui.define([
                         oODataContext.delete().then(function () {
                             sap.ui.core.BusyIndicator.hide();
                             MessageToast.show("Draft deleted successfully!");
-                            
                             this._oResubmitDialog.close();
                             this._loadMyRequests();
 
                         }.bind(this)).catch(function (oError) {
                             sap.ui.core.BusyIndicator.hide();
-                            MessageBox.error("Error during deletion: " + (oError.message || "Check Console"));
-                            console.error(oError);
+                            MessageBox.error("Error during deletion.");
                         });
                     }
                 }.bind(this)
@@ -451,19 +512,26 @@ sap.ui.define([
             var oODataModel = this.getOwnerComponent().getModel();
             var that = this;
 
+            var bHasError = this._checkDates();
+
+            if (bHasError) {
+                sap.m.MessageBox.error("Please correct the date fields (highlighted in red) before resubmitting!");
+                return;
+            }
+
             var oNewPayload = {};
-            oCurrentReq.fields.forEach(function(item) {
+            oCurrentReq.fields.forEach(function (item) {
                 if (oCurrentReq.action === "DELETE") {
-                    oNewPayload[item.field] = item.oldData; 
+                    oNewPayload[item.field] = item.oldData;
                 } else {
-                    oNewPayload[item.field] = item.value; 
+                    oNewPayload[item.field] = DataFormatter.formatValueByType(item.value, item.datatype);
                 }
             });
 
             var sNewBase64 = "";
             try {
                 sNewBase64 = GetData.encodeFunction(oNewPayload);
-            } catch(e) {
+            } catch (e) {
                 sap.m.MessageBox.error("Data encoding error!"); return;
             }
 
@@ -473,7 +541,7 @@ sap.ui.define([
             if (!sServiceUrl.endsWith("/")) {
                 sServiceUrl += "/";
             }
-            
+
             var sActionUrl = sServiceUrl + "Data(uuid=" + oCurrentReq.reqId + ")/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.resubmit";
 
             fetch(sServiceUrl, {
@@ -482,53 +550,51 @@ sap.ui.define([
                     "X-CSRF-Token": "Fetch"
                 }
             })
-            .then(function (headResponse) {
-                if (!headResponse.ok) {
-                    throw new Error("Cannot fetch CSRF token" + headResponse.status);
-                }
-                
-                var sToken = headResponse.headers.get("X-CSRF-Token");
-                var oPayload = {
-                    "table_name": oCurrentReq.tableName,
-                    "json_data": sNewBase64
-                };
-
-                return fetch(sActionUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-Token": sToken,
-                        "If-Match": "*"
-                    },
-                    body: JSON.stringify(oPayload)
-                });
-            })
-            .then(function (postResponse) {
-                if (!postResponse.ok) {
-                    return postResponse.json().then(function (errData) {
-                        throw errData;
-                    });
-                }
-
-                sap.ui.core.BusyIndicator.hide();
-                sap.m.MessageToast.show("Resubmitted successfully!");
-                that._oResubmitDialog.close();
-                that._loadMyRequests(); 
-            })
-            .catch(function (err) {
-                sap.ui.core.BusyIndicator.hide();
-                var sMsg = "Error during resubmit!";
-
-                try {
-                    if (err.error && err.error.message) {
-                        sMsg = err.error.message.value || err.error.message;
-                    } else if (err.message) {
-                        sMsg = err.message;
+                .then(function (headResponse) {
+                    if (!headResponse.ok) {
+                        throw new Error("Cannot fetch CSRF token");
                     }
-                } catch(e) {}
-                
-                sap.m.MessageBox.error(sMsg);
-            });
+
+                    var sToken = headResponse.headers.get("X-CSRF-Token");
+                    var oPayload = {
+                        "table_name": oCurrentReq.tableName,
+                        "json_data": sNewBase64
+                    };
+
+                    return fetch(sActionUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-Token": sToken,
+                            "If-Match": "*"
+                        },
+                        body: JSON.stringify(oPayload)
+                    });
+                })
+                .then(function (postResponse) {
+                    if (!postResponse.ok) {
+                        return postResponse.json().then(function (errData) {
+                            throw errData;
+                        });
+                    }
+
+                    sap.ui.core.BusyIndicator.hide();
+                    sap.m.MessageToast.show("Resubmitted successfully!");
+                    that._oResubmitDialog.close();
+                    that._loadMyRequests();
+                })
+                .catch(function (err) {
+                    sap.ui.core.BusyIndicator.hide();
+                    var sMsg = "Error during resubmit!";
+                    try {
+                        if (err.error && err.error.message) {
+                            sMsg = err.error.message.value || err.error.message;
+                        } else if (err.message) {
+                            sMsg = err.message;
+                        }
+                    } catch (e) { }
+                    sap.m.MessageBox.error(sMsg);
+                });
         }
     });
 });

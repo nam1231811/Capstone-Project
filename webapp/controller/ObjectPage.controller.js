@@ -458,128 +458,50 @@ sap.ui.define([
             var aData = oModel.getProperty("/Data");
             var aMeta = oModel.getProperty("/Meta");
             var aNewRows = aData.filter(row => row[0] && row[0].isNew);
-            var aOldRows = aData.filter(row => !(row[0] && row[0].isNew));
             var tableName = "";
             var bHasError = false;
-            var sErrorMessage = "";
-            var aKeyIndexes = [];
             var oSingleRowData = {};
-            var sStartDate = "", sEndDate = "";
-            var sStartFieldName = "", sEndFieldName = "";
-
 
             oTable.setBusy(true);
-
 
             if (aNewRows.length === 0) {
                 oTable.setBusy(false);
                 return;
             }
 
-
-            aMeta.forEach(function (col, idx) {
-                var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
-                if (col.keyflag === "X" || col.keyFlag === "X" ||
-                    col.isKey === true || col.is_key === true || col.IsKey === true ||
-                    sColName === "ID" || sColName === "CODE" ||
-                    sColName.indexOf("_ID") !== -1 || sColName.indexOf("_CODE") !== -1) {
-                    aKeyIndexes.push(idx);
-                }
-            });
-
-
-            if (aKeyIndexes.length === 0) {
-                aKeyIndexes.push(0);
-            }
-
+            aData = GridValidator.performLiveValidation(aData, aMeta);
+            oModel.setProperty("/Data", aData);
+            oModel.refresh(true);
 
             var oNewRow = aNewRows[0];
-
-            var bIsDuplicate = aOldRows.some(function (oOldRow) {
-                return aKeyIndexes.every(function (iKey) {
-                    var sNewVal = oNewRow[iKey] ? String(oNewRow[iKey].value).trim().toUpperCase() : "";
-                    var sOldVal = oOldRow[iKey] ? String(oOldRow[iKey].value).trim().toUpperCase() : "";
-                    return sNewVal === sOldVal && sNewVal !== "";
-                });
-            });
-
-
-            if (bIsDuplicate) {
-                bHasError = true;
-                var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
-                sErrorMessage = "Duplicate Error: The value for [" + sKeyNames + "] already exists!\n";
-
-                aKeyIndexes.forEach(function (iKey) {
-                    if (oNewRow[iKey]) {
-                        oNewRow[iKey]._state = "Error";
-                        oNewRow[iKey]._msg = sErrorMessage;
-                    }
-                });
-            }
-
-
             Object.keys(oNewRow).forEach(key => {
-                if (!isNaN(key)) {
+                if (!isNaN(key) && oNewRow[key]) {
                     var oCell = oNewRow[key];
-                    if (oCell && oCell.fieldname) {
-                        tableName = oCell.table_name;
+                    if (oCell.fieldname) tableName = oCell.table_name || tableName;
 
-                        var iLength = aMeta[key] ? aMeta[key].leng : undefined;
-                        var oValidation = GridValidator.checkCellFormat(oCell.value, oCell.datatype, iLength);
-
-
-                        if (!oValidation.valid) {
-                            bHasError = true;
-                            sErrorMessage += "Field [" + oCell.fieldname + "]: " + oValidation.msg + "\n";
-
-                            oCell._state = "Error";
-                            oCell._msg = oValidation.msg;
-                        } else {
-                            if (!bIsDuplicate || aKeyIndexes.indexOf(parseInt(key)) === -1) {
-                                oCell._state = "None";
-                                oCell._msg = "";
-                            }
-                            oSingleRowData[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
-                        }
-
-
-                        if (oCell.value) {
-                            var sFN = oCell.fieldname.toUpperCase();
-                            if (sFN === "START_DATE" || sFN === "STRAT_DATE" || sFN === "BEGDA") {
-                                sStartDate = String(oCell.value).trim();
-                                sStartFieldName = oCell.fieldname;
-                            } else if (sFN === "END_DATE" || sFN === "ENDDA") {
-                                sEndDate = String(oCell.value).trim();
-                                sEndFieldName = oCell.fieldname;
-                            }
-                        }
+                    if (oCell._state === "Error") {
+                        bHasError = true;
+                    } else {
+                        oSingleRowData[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                     }
                 }
             });
-
-
-            if (sStartDate !== "" && sEndDate !== "") {
-                var dStart = new Date(sStartDate);
-                var dEnd = new Date(sEndDate);
-                if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
-                    if (dEnd < dStart) {
-                        bHasError = true;
-                        sErrorMessage += "Row Error: [" + sEndFieldName + "] must be later than [" + sStartFieldName + "].\n";
-                    }
-                }
-            }
-
 
             if (bHasError) {
                 oTable.setBusy(false);
-                oModel.refresh(true);
-                sap.m.MessageBox.error("Invalid data format detected. Please fix the errors below before saving:\n\n" + sErrorMessage);
+                sap.m.MessageBox.error("Please correct the faulty cells (highlighted in red) before saving!");
                 return;
             }
 
-
             if (Object.keys(oSingleRowData).length > 0) {
-                var iFirstKeyIndex = aKeyIndexes[0];
+                // Tìm nhanh vị trí của cột Khóa chính để lưu RecentlySavedKey
+                var iFirstKeyIndex = aMeta.findIndex(col =>
+                    col.keyflag === "X" || col.isKey === true ||
+                    (col.fieldname || "").toUpperCase() === "ID" ||
+                    (col.fieldname || "").toUpperCase().indexOf("_ID") !== -1
+                );
+                iFirstKeyIndex = iFirstKeyIndex !== -1 ? iFirstKeyIndex : 0;
+
                 if (oNewRow[iFirstKeyIndex]) {
                     this._sRecentlySavedKey = String(oNewRow[iFirstKeyIndex].value).trim();
                 }

@@ -30,12 +30,12 @@ sap.ui.define([
 
         _onRouteMatched: function () {
             var oAuthModel = this.getOwnerComponent().getModel("auth");
-            
+
             if (!oAuthModel.getProperty("/isAdmin")) {
                 sap.m.MessageBox.error("Access Denied! You do not have permission to view this page.");
-                this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true); 
+                this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true);
                 return;
-            } 
+            }
         },
 
         onNavBack: function () {
@@ -82,9 +82,13 @@ sap.ui.define([
             var oRowData = oContext.getObject();
             var oModel = this.getView().getModel("roleLocal");
 
-            var sCurrentRole = "Clerk";
-            if (oRowData.IsAdmin) sCurrentRole = "Admin";
-            else if (oRowData.IsManager) sCurrentRole = "Manager";
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            var sCurrentUser = oAuthModel ? oAuthModel.getProperty("/currentUser") : "";
+
+            if (sCurrentUser && oRowData.Username && sCurrentUser.toUpperCase() === oRowData.Username.toUpperCase()) {
+                sap.m.MessageBox.warning("Action Denied!\nYou cannot modify your own system role.");
+                return;
+            }
 
             var sCurrentRole = "";
             if (oRowData.IsAdmin === true || oRowData.IsAdmin === 'true' || oRowData.IsAdmin === 'Yes') sCurrentRole = "Admin";
@@ -173,7 +177,6 @@ sap.ui.define([
                 return;
             }
 
-            // 1. LẤY NGÀY TRỰC TIẾP TỪ MODEL (Không cần tìm ID nữa)
             var sValidTo = oFormData.validTo;
             var sFormattedDate = "99991231";
 
@@ -198,7 +201,6 @@ sap.ui.define([
                 }
             }
 
-            // 2. CHUẨN BỊ ACTION NAME
             var sActionName = "";
             if (oFormData.roleId === "Admin") {
                 sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignAdmin";
@@ -208,13 +210,11 @@ sap.ui.define([
                 sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignClerk";
             }
 
-            // 3. BIND ACTION & TRUYỀN THAM SỐ XUỐNG ABAP
             var sPath = "/UserRoleList('" + sUserId + "')/" + sActionName + "(...)";
             var oActionContext = oView.getModel().bindContext(sPath);
 
             oActionContext.setParameter("ValidTo", sFormattedDate);
 
-            // 4. THỰC THI ACTION VÀ CHỜ BACKEND ABAP XỬ LÝ
             sap.ui.core.BusyIndicator.show(0);
 
             oActionContext.execute().then(function () {
@@ -235,6 +235,14 @@ sap.ui.define([
         onRevokeRole: function (oEvent) {
             var oContext = oEvent.getSource().getBindingContext();
             var sUsername = oContext.getProperty("Username");
+
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            var sCurrentUser = oAuthModel ? oAuthModel.getProperty("/currentUser") : "";
+
+            if (sCurrentUser && sUsername && sCurrentUser.toUpperCase() === sUsername.toUpperCase()) {
+                sap.m.MessageBox.warning("Action Denied!\nYou cannot revoke your own system role.");
+                return;
+            }
 
             sap.m.MessageBox.confirm("Are you sure you want to revoke the role for " + sUsername + "?", {
                 onClose: function (sAction) {

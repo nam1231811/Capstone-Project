@@ -17,7 +17,7 @@ sap.ui.define([
             this.oRouter = oOwnerComponent.getRouter();
             this.oRouter.getRoute("DetailData").attachPatternMatched(this._onObjectMatched, this);
 
-            var oDetailRecord = new JSONModel({ Data: [] , records: []});
+            var oDetailRecord = new JSONModel({ Data: [], records: [] });
             this.getView().setModel(oDetailRecord, "detailRecord");
 
             var oViewModel = new JSONModel({ isEditMode: false });
@@ -28,7 +28,6 @@ sap.ui.define([
             this.getView().getModel("viewModel").setProperty("/isEditMode", false);
 
             this._record = oEvent.getParameter("arguments").rowId || this._record || "0";
-
             this._tableName = oEvent.getParameter("arguments").tableName || this.getView().getModel("overall").getProperty("/tableName");
 
             var aData = this.getView().getModel("displayModel").getProperty("/Data");
@@ -47,15 +46,13 @@ sap.ui.define([
                 this.getView().getModel("detailRecord").setProperty("/Data", oDataClone);
 
                 var formatData = Object.values(oDataClone);
-
-                var primaryKeys = formatData.filter(function(cell) {
+                var primaryKeys = formatData.filter(function (cell) {
                     if (cell && cell.keyFlag) {
-                        return cell;                    }
+                        return cell;
+                    }
                 });
 
                 this.getView().getModel("detailRecord").setProperty("/title", primaryKeys[0]);
-                console.log(oDataClone);
-                
                 this._loadImpactAnalysisData();
             }
         },
@@ -63,14 +60,85 @@ sap.ui.define([
         onEditAction: function () {
             var oView = this.getView();
             var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
-            
+
             var aCells = Object.values(oDetailModel).filter(i => typeof i === 'object' && i.uuid);
             if (aCells.length === 0) {
                 sap.m.MessageBox.warning("No valid data found for editing!");
                 return;
             }
-            
+
             oView.getModel("viewModel").setProperty("/isEditMode", true);
+        },
+
+        onInputChange: function () {
+            this._validateDetailForm();
+        },
+
+        _validateDetailForm: function () {
+            var oView = this.getView();
+            var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
+            var aMeta = oView.getModel("displayModel").getProperty("/Meta") || [];
+            var bHasError = false;
+
+            Object.keys(oDetailModel).forEach(function (key) {
+                if (!isNaN(key)) {
+                    var oCell = oDetailModel[key];
+                    if (oCell && oCell.fieldname) {
+                        var oMetaDef = aMeta[key] || {};
+                        var sDataType = oMetaDef.datatype || oMetaDef.dataType || "";
+                        var iLength = parseInt(oMetaDef.leng || oMetaDef.length || 0, 10);
+
+                        var sFN = oCell.fieldname.toUpperCase();
+                        if (!sDataType || sDataType === "CHAR" || sDataType === "STRING") {
+                            if (sFN.includes("DATE") || sFN === "BEGDA" || sFN === "ENDDA") sDataType = "DATS";
+                            else if (sFN === "ID" || sFN.includes("_ID") || sFN.includes("SALARY") || sFN.includes("AMOUNT") || sFN.includes("PRICE")) sDataType = "NUMC";
+                        }
+
+                        var oVal = GridValidator.checkCellFormat(oCell.value, sDataType, iLength || 255);
+
+                        if (!oVal.valid) {
+                            bHasError = true;
+                            oCell._state = "Error";
+                            oCell._msg = oVal.msg;
+                        } else {
+                            oCell._state = "None";
+                            oCell._msg = "";
+                        }
+                    }
+                }
+            });
+
+            var sStartDate = "", sEndDate = "";
+            var oStartCell = null, oEndCell = null;
+
+            Object.keys(oDetailModel).forEach(function (key) {
+                if (!isNaN(key)) {
+                    var oCell = oDetailModel[key];
+                    if (oCell && oCell.fieldname) {
+                        var sFN = oCell.fieldname.toUpperCase();
+                        if (sFN === "START_DATE" || sFN === "STRAT_DATE" || sFN === "BEGDA") {
+                            sStartDate = oCell.value; oStartCell = oCell;
+                        } else if (sFN === "END_DATE" || sFN === "ENDDA") {
+                            sEndDate = oCell.value; oEndCell = oCell;
+                        }
+                    }
+                }
+            });
+
+            if (sStartDate && sEndDate) {
+                var dStart = new Date(sStartDate);
+                var dEnd = new Date(sEndDate);
+                if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime()) && dEnd < dStart) {
+                    bHasError = true;
+                    if (oStartCell) { oStartCell._state = "Error"; oStartCell._msg = "Must be earlier than End Date"; }
+                    if (oEndCell) { oEndCell._state = "Error"; oEndCell._msg = "Must be later than Start Date"; }
+                }
+            }
+
+            oView.getModel("detailRecord").setProperty("/Data", oDetailModel);
+            oView.getModel("detailRecord").refresh(true);
+
+            return bHasError;
         },
 
         onSaveAction: function () {
@@ -78,7 +146,15 @@ sap.ui.define([
             var oModel = oView.getModel();
             var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
             var tableName = this._tableName;
-            var enUuid = Object.values(oDetailModel)[0].uuid;
+
+            var bHasFormatError = this._validateDetailForm();
+            if (bHasFormatError) {
+                sap.m.MessageBox.error("Please correct the faulty fields (highlighted in red) before saving!");
+                return;
+            }
+
+            var oFirstCell = Object.values(oDetailModel).find(c => c && typeof c === 'object' && c.uuid);
+            var enUuid = oFirstCell ? oFirstCell.uuid : "";
 
             var oAuthModel = this.getOwnerComponent().getModel("auth");
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
@@ -140,80 +216,17 @@ sap.ui.define([
                 return;
             }
 
-            var bHasError = false;
-            var sErrorMessage = "";
             var aPromises = {};
-
-            var arrayData = Object.values(oDetailModel);
-            arrayData.forEach(oCell => {
-                if (oCell && oCell.fieldname) {
-                    var oValidation = GridValidator.checkCellFormat(
-                        oCell.value,
-                        oCell.datatype,
-                        oCell.length
-                    );
-
-                    if (!oValidation.valid) {
-                        bHasError = true;
-                        sErrorMessage += "Field [" + oCell.fieldname + "]: " + oValidation.msg + "\n";
-                    } else {
-                        aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
+            Object.keys(oDetailModel).forEach(function (key) {
+                if (!isNaN(key)) {
+                    var oCell = oDetailModel[key];
+                    if (oCell && oCell.fieldname) {
+                        var sDataType = aMeta[key] ? (aMeta[key].datatype || aMeta[key].dataType) : "";
+                        aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, sDataType);
                     }
                 }
             });
 
-            var rStart = /(START|STRAT|BEG|FROM|DATAB)/i;
-            var rEnd = /(END|TO|UNTIL|DATBI)/i;
-            var aDateFields = [];
-
-            // 1. Quét tìm và phân loại cột
-            arrayData.forEach(oCell => {
-                if (oCell && oCell.fieldname && oCell.value) {
-                    var sFN = oCell.fieldname.toUpperCase();
-                    // Nhận diện loại cột
-                    var sType = rStart.test(sFN) ? "START" : (rEnd.test(sFN) ? "END" : "UNKNOWN");
-
-                    if (sType !== "UNKNOWN") {
-                        // Cắt bỏ từ khóa để lấy phần thân chung (Base Name)
-                        var sBaseName = sFN.replace(rStart, "").replace(rEnd, "").replace(/_$/, "");
-
-                        aDateFields.push({
-                            baseName: sBaseName,
-                            type: sType,
-                            name: oCell.fieldname,
-                            value: String(oCell.value).trim()
-                        });
-                    }
-                }
-            });
-
-            // 2. Gom nhóm theo phần thân chung
-            var oDateGroups = {};
-            aDateFields.forEach(f => {
-                if (!oDateGroups[f.baseName]) oDateGroups[f.baseName] = {};
-                oDateGroups[f.baseName][f.type] = f;
-            });
-
-            // 3. Tiến hành so sánh từng cặp
-            Object.keys(oDateGroups).forEach(key => {
-                var group = oDateGroups[key];
-                if (group.START && group.END && group.START.value !== "" && group.END.value !== "") {
-                    var dStart = new Date(group.START.value);
-                    var dEnd = new Date(group.END.value);
-
-                    if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
-                        if (dEnd < dStart) {
-                            bHasError = true;
-                            sErrorMessage += "Logic Error: [" + group.END.name + "] must be later than [" + group.START.name + "].\n";
-                        }
-                    }
-                }
-            });
-
-            if (bHasError) {
-                sap.m.MessageBox.error("Invalid data format detected. Please fix the errors below before saving:\n\n" + sErrorMessage);
-                return;
-            }
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
 
@@ -341,7 +354,7 @@ sap.ui.define([
                     }.bind(this)).catch(function (oError) {
                         sap.ui.core.BusyIndicator.hide();
                         sap.m.MessageBox.error("Something is wrong, try another time");
-                         oView.setBusy(false);
+                        oView.setBusy(false);
                         console.error(oError);
                     });
                 }.bind(this)
@@ -360,15 +373,15 @@ sap.ui.define([
                 sap.m.MessageToast.show("Deleted successfully from database!");
                 oDisplayModel.setProperty("/Data", aNewData);
                 sap.m.MessageBox.success("Delete record " + sRowId + " successfully", {
-                title: "Successfull",
-                onClose: function () {
-                    this.onRollback();
-                }.bind(this)
-            });
+                    title: "Successfull",
+                    onClose: function () {
+                        this.onRollback();
+                    }.bind(this)
+                });
             }
             this.getView().getModel("overall").setProperty("/count", aNewData.length);
             oDisplayModel.refresh(true);
-            
+
         },
 
         onDynamicValueHelp: function (oEvent) {
@@ -415,7 +428,6 @@ sap.ui.define([
                 var sSelectedKey = oSelectedItem.getTitle();
 
                 oInput.setValue(sSelectedKey);
-
                 oInput.fireChange({ value: sSelectedKey });
             }
         },
@@ -431,17 +443,17 @@ sap.ui.define([
 
             var oDetailData = oView.getModel("detailRecord").getProperty("/Data");
             var aCells = Object.values(oDetailData).filter(i => typeof i === 'object');
-            
-            var sKeyValue = ""; 
+
+            var sKeyValue = "";
             var sUuid = "";
 
             if (aCells.length > 0) {
                 aCells.forEach(cell => {
-                    if(cell.keyFlag === true) {
+                    if (cell.keyFlag === true) {
                         sKeyValue = cell.value;
                     }
                 });
-                
+
                 var oCellWithUuid = aCells.find(cell => cell.uuid);
                 if (oCellWithUuid) {
                     sUuid = oCellWithUuid.uuid;
@@ -449,19 +461,18 @@ sap.ui.define([
             }
 
             if (!sTableName || !sKeyValue || !sUuid) {
-                console.warn("Impact Analysis: Missing Table Name, Key Value, or UUID");
                 return;
             }
 
-            var sActionPath = "/Data(uuid=" + sUuid + ")/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.getimpactanalysis(...)"; 
+            var sActionPath = "/Data(uuid=" + sUuid + ")/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.getimpactanalysis(...)";
             var oActionContext = oModel.bindContext(sActionPath);
-            
+
             oActionContext.setParameter("table_name", sTableName);
             oActionContext.setParameter("key_value", sKeyValue);
 
             oActionContext.execute().then(function () {
                 var oResult = oActionContext.getBoundContext().getObject();
-                
+
                 if (oResult && oResult.json_string) {
                     try {
                         var oParsedGraphData = JSON.parse(oResult.json_string);
@@ -476,19 +487,20 @@ sap.ui.define([
             });
         },
 
-        onShowChild: function(oEvent) {
+        onShowChild: function (oEvent) {
             var oNode = oEvent.getSource();
             var oContext = oNode.getBindingContext("graph");
             var oRowData = oContext.getObject();
 
             var aEmployeeList = JSON.parse(oRowData.detaildata || "[]");
-            
+
             if (aEmployeeList.length === 0) {
-                return sap.m.MessageBox.warning("This table has no related data.",{
+                return sap.m.MessageBox.warning("This table has no related data.", {
                     onClose: function (sAction) {
-                    if (sAction !== sap.m.MessageBox.Action.OK) {
-                        return;
-                    }}
+                        if (sAction !== sap.m.MessageBox.Action.OK) {
+                            return;
+                        }
+                    }
                 });
             }
 
@@ -496,7 +508,7 @@ sap.ui.define([
 
             var oTable = new sap.m.Table({
                 width: "650px",
-                columns: fieldNames.filter(function(sName) {
+                columns: fieldNames.filter(function (sName) {
                     return sName && sName.toUpperCase() !== "MANDT";
                 }).map(function (sName) {
                     return new sap.m.Column({
@@ -504,11 +516,11 @@ sap.ui.define([
                     });
                 })
             });
-        
+
             oTable.bindItems({
-                path: "graph>" + oContext.getPath() + "/detailDataParsed", 
+                path: "graph>" + oContext.getPath() + "/detailDataParsed",
                 template: new sap.m.ColumnListItem({
-                    cells: fieldNames.filter(function(sName) {
+                    cells: fieldNames.filter(function (sName) {
                         return sName && sName.toUpperCase() !== "MANDT";
                     }).map(function (sName) {
                         return new sap.m.Text({
@@ -517,11 +529,11 @@ sap.ui.define([
                     })
                 })
             });
-        
+
             this.getView().getModel("graph").setProperty(oContext.getPath() + "/detailDataParsed", aEmployeeList);
-        
+
             if (!this._oPopover) {
-                
+
                 this._oPopover = new sap.m.ResponsivePopover({
                     title: "Detail Table: " + oRowData.title,
                     contentWidth: "650px",
@@ -529,7 +541,7 @@ sap.ui.define([
                 });
                 this.getView().addDependent(this._oPopover);
             }
-        
+
             this._oPopover.removeAllContent();
             this._oPopover.addContent(oTable);
             this._oPopover.openBy(oNode);
