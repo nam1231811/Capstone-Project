@@ -211,6 +211,7 @@
 
                                 <VBox width="35%" alignItems="Center" justifyContent="Center">
                                     <mc:RadialMicroChart 
+                                        alignContent="Center"
                                         size="L" 
                                         percentage="{dash>/qualityPercentage}" 
                                         valueColor="{dash>/qualityColor}" />
