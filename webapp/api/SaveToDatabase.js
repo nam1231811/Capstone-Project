@@ -8,7 +8,7 @@ sap.ui.define([
         onSaveDB: function (sTableName, oView, vCustomData) {
             var oModel = oView.getModel();
             var sBase64Data = "";
-            
+
             if (!sTableName) {
                 sap.m.MessageBox.error("Table is unknown");
                 return Promise.reject(new Error("Table is unknown"));
@@ -19,7 +19,7 @@ sap.ui.define([
             } else {
                 var aData = vCustomData || oView.getModel("displayModel").getProperty("/Data") || [];
                 var dataUpdate = [];
-                
+
                 if (!aData || aData.length === 0) {
                     sap.m.MessageToast.show("No data to update");
                     return Promise.reject(new Error("No data to update"));
@@ -39,7 +39,7 @@ sap.ui.define([
                     });
                     dataUpdate.push(aPromises)
                 });
-                
+
                 sBase64Data = GetData.encodeFunction(dataUpdate);
             }
 
@@ -53,7 +53,7 @@ sap.ui.define([
 
             return oActionContext.execute().then(function () {
                 var bHasError = false;
-                var sBackendErrMsg = "System error while saving data"; 
+                var sBackendErrMsg = "System error while saving data";
 
                 var oResult = oActionContext.getBoundContext().getObject();
                 if (oResult && oResult.json_string) {
@@ -61,20 +61,20 @@ sap.ui.define([
                         var oResData = JSON.parse(oResult.json_string);
                         if (oResData.status === "error") {
                             bHasError = true;
-                            if (oResData.message) sBackendErrMsg = oResData.message; 
+                            if (oResData.message) sBackendErrMsg = oResData.message;
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
 
                 var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
-                var aErrors = aMessages.filter(function(m) { return m.type === "Error"; });
+                var aErrors = aMessages.filter(function (m) { return m.type === "Error"; });
                 if (aErrors.length > 0) {
                     bHasError = true;
-                    sBackendErrMsg = aErrors[aErrors.length - 1].message; 
+                    sBackendErrMsg = aErrors[aErrors.length - 1].message;
                 }
 
                 if (bHasError) {
-                    sap.ui.getCore().getMessageManager().removeAllMessages(); 
+                    sap.ui.getCore().getMessageManager().removeAllMessages();
                     throw new Error(sBackendErrMsg);
                 }
 
@@ -85,7 +85,7 @@ sap.ui.define([
                     sFinalError = oError.error.message.value || oError.error.message;
                 }
                 sap.m.MessageBox.error(sFinalError, { title: "Cannot save data" });
-                throw new Error(sFinalError); 
+                throw new Error(sFinalError);
             });
         }
     }
