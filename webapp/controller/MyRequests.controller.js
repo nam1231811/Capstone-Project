@@ -14,7 +14,8 @@ sap.ui.define([
         onInit: function () {
             var oModel = new JSONModel({
                 list: [],
-                currentDetail: null
+                currentDetail: null,
+                isTableBusy: false
             });
             this.getView().setModel(oModel, "myreq");
 
@@ -22,7 +23,7 @@ sap.ui.define([
             if (oRouter.getRoute("RouteMyRequests")) { 
                 oRouter.getRoute("RouteMyRequests").attachPatternMatched(this._onRouteMatched, this);
             } else {
-                this._loadMyRequests();
+                this._loadMyRequests(true);
             }
         },
 
@@ -32,29 +33,33 @@ sap.ui.define([
         },
 
         _onRouteMatched: function () {
-            this._loadMyRequests();
+            this._loadMyRequests(true);
         },
 
         onRefreshList: function() {
-            this._loadMyRequests();
+            this._loadMyRequests(true);
         },
 
-        _loadMyRequests: function () {
+        _loadMyRequests: function (bForceRefresh) {
             var oView = this.getView();
             var oODataModel = this.getOwnerComponent().getModel();
             var oMyReqModel = oView.getModel("myreq");
             var oAuthModel = this.getOwnerComponent().getModel("auth"); 
+            var oAuditModel = this.getOwnerComponent().getModel("auditOData");
 
-            if (!oODataModel) return;
+            if (!oODataModel || !oAuditModel) return;
             oView.setBusy(true);
 
+            if (bForceRefresh) {
+                oODataModel.refresh();
+                oAuditModel.refresh();
+            }
+
             var sCurrentUser = oAuthModel.getProperty("/currentUser");
-            
+
             var oPendingBinding = oODataModel.bindList("/Data", null, null, [
                 new Filter("status", FilterOperator.EQ, "P") 
             ]);
-             
-            var oAuditModel = this.getOwnerComponent().getModel("auditOData");
             var oHistoryBinding = oAuditModel.bindList("/AuditLog", null, null, null);
 
             Promise.all([
@@ -240,7 +245,15 @@ sap.ui.define([
             var oModel = this.getView().getModel("myreq");
             
             var oClone = Object.assign({}, oRowData);
-            oClone.fields = JSON.parse(JSON.stringify(oRowData.fields));
+            var bNeedsFetch = (oRowData.action === "UPDATE" || oRowData.action === "CREATE");
+
+            if (bNeedsFetch) {
+                oClone.fields = []; 
+                oModel.setProperty("/isTableBusy", true);
+            } else {
+                oClone.fields = JSON.parse(JSON.stringify(oRowData.fields));
+                oModel.setProperty("/isTableBusy", false);
+            }
             
             oModel.setProperty("/currentDetail", oClone);
 
@@ -274,24 +287,27 @@ sap.ui.define([
                                     text: "Comment for this Rejection: {myreq>/currentDetail/rejectReason}",
                                     type: "Error",
                                     showIcon: true,
-                                    visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }"
+                                    visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && !${myreq>/isTableBusy} }"
                                 }).addStyleClass("sapUiSmallMargin"),
                                 
                                 new sap.m.Table({
+                                    busy: "{myreq>/isTableBusy}",
+                                    busyIndicatorDelay: 0,
                                     backgroundDesign: "Solid",
                                     sticky: ["ColumnHeaders"],
                                     items: {
                                         path: "myreq>/currentDetail/fields",
                                         template: new sap.m.ColumnListItem({
                                             cells: [
-                                                new sap.m.Text({ text: "{myreq>field}", design: "Bold" }), 
+                                                new sap.m.Label({ text: "{myreq>field}", design: "Bold" }), 
                                                 new sap.m.Text({ text: "{myreq>oldData}" }),
                                                 
                                                 new sap.m.HBox({
                                                     items: [
                                                         new sap.m.Input({ 
                                                             value: "{myreq>value}", 
-                                                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }" 
+                                                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }",
+                                                            editable: "{= ${myreq>isKey} !== true }" 
                                                         }),
                                                         new sap.m.ObjectStatus({ 
                                                             text: "{myreq>value}", 
@@ -315,17 +331,10 @@ sap.ui.define([
                     ],
                     buttons: [
                         new sap.m.Button({
-                            text: "Delete Draft",
-                            type: "Reject",
-                            icon: "sap-icon://delete",
-                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }",
-                            press: this._processDeleteDraft.bind(this)
-                        }),
-                        new sap.m.Button({
                             text: "Resubmit Request",
                             type: "Accept",
                             icon: "sap-icon://paper-plane",
-                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' }",
+                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && !${myreq>/isTableBusy} }",
                             press: this._processResubmit.bind(this)
                         }),
                         new sap.m.Button({
@@ -340,14 +349,12 @@ sap.ui.define([
 
             this._oResubmitDialog.bindElement({ path: "myreq>/currentDetail" });
             this._oResubmitDialog.setTitle(bIsRejected ? "Edit Rejected Request" : "Request Details");
+
             this._oResubmitDialog.open();
 
-            if (oRowData.action !== "UPDATE") {
-                this._oResubmitDialog.setBusy(false);
+            if (!bNeedsFetch) {
                 return;
             }
-
-            this._oResubmitDialog.setBusy(true);
 
             var oODataModel = this.getOwnerComponent().getModel();
             
@@ -356,18 +363,18 @@ sap.ui.define([
                 var aMeta = oPayload.metadata || oPayload.Meta || [];
                 
                 var oNewDataMapped = {};
-                oClone.fields.forEach(function(d) { oNewDataMapped[d.field] = d.value; });
+                oRowData.fields.forEach(function(d) { oNewDataMapped[d.field] = d.value; });
 
                 var aKeyFields = [];
                 aMeta.forEach(function(col) {
                     if (col.keyflag === "X" || col.keyFlag === "X" || col.isKey === true) {
-                        aKeyFields.push(col.fieldname || col.fieldName);
+                        aKeyFields.push((col.fieldname || col.fieldName).toUpperCase());
                     }
                 });
                 
                 if (aKeyFields.length === 0) {
                     var oIdCol = aMeta.find(c => (c.fieldname || c.fieldName || "").toUpperCase().includes("ID"));
-                    if (oIdCol) aKeyFields.push(oIdCol.fieldname || oIdCol.fieldName);
+                    if (oIdCol) aKeyFields.push((oIdCol.fieldname || oIdCol.fieldName).toUpperCase());
                 }
 
                 var oOldRow = aMasterData.find(function(row) {
@@ -383,7 +390,7 @@ sap.ui.define([
                     });
                 });
 
-                var aUpdatedFields = oClone.fields.map(function(d) {
+                var aUpdatedFields = oRowData.fields.map(function(d) {
                     var sOldValue = "N/A";
                     if (oOldRow) {
                         var oOldJson = {};
@@ -392,56 +399,25 @@ sap.ui.define([
                             sOldValue = String(oOldJson[d.field]);
                         }
                     }
+
+                    var bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase());
+
                     return {
                         field: d.field,
                         oldData: sOldValue,
-                        value: d.value 
+                        value: d.value,
+                        isKey: bIsKeyField 
                     };
                 });
 
                 oModel.setProperty("/currentDetail/fields", aUpdatedFields);
-                this._oResubmitDialog.setBusy(false);
+                oModel.setProperty("/isTableBusy", false);
 
             }.bind(this)).catch(function(e) {
                 console.error("Error loading master data:", e);
-                this._oResubmitDialog.setBusy(false);
+                oModel.setProperty("/isTableBusy", false);
+                sap.m.MessageBox.error("Cannot fetch old data right now.");
             }.bind(this));
-        },
-
-        _processDeleteDraft: function () {
-            var oView = this.getView();
-            var oModel = oView.getModel("myreq");
-            var oCurrentReq = oModel.getProperty("/currentDetail");
-
-            var oODataContext = oCurrentReq._odataContext;
-            if (!oODataContext) {
-                MessageBox.error("Connection to original data lost. Please refresh!");
-                return;
-            }
-
-            MessageBox.confirm("Are you sure you want to permanently delete this draft?", {
-                title: "Confirm Deletion",
-                icon: MessageBox.Icon.WARNING,
-                actions: [MessageBox.Action.YES, MessageBox.Action.NO],
-                onClose: function (sAction) {
-                    if (sAction === MessageBox.Action.YES) {
-                        sap.ui.core.BusyIndicator.show(0);
-
-                        oODataContext.delete().then(function () {
-                            sap.ui.core.BusyIndicator.hide();
-                            MessageToast.show("Draft deleted successfully!");
-                            
-                            this._oResubmitDialog.close();
-                            this._loadMyRequests();
-
-                        }.bind(this)).catch(function (oError) {
-                            sap.ui.core.BusyIndicator.hide();
-                            MessageBox.error("Error during deletion: " + (oError.message || "Check Console"));
-                            console.error(oError);
-                        });
-                    }
-                }.bind(this)
-            });
         },
 
         _processResubmit: function () {
@@ -467,7 +443,7 @@ sap.ui.define([
                 sap.m.MessageBox.error("Data encoding error!"); return;
             }
 
-            sap.ui.core.BusyIndicator.show(0);
+            this._oResubmitDialog.setBusy(true);
 
             var sServiceUrl = oODataModel.getServiceUrl();
             if (!sServiceUrl.endsWith("/")) {
@@ -510,13 +486,14 @@ sap.ui.define([
                     });
                 }
 
-                sap.ui.core.BusyIndicator.hide();
+                that._oResubmitDialog.setBusy(false);
                 sap.m.MessageToast.show("Resubmitted successfully!");
                 that._oResubmitDialog.close();
-                that._loadMyRequests(); 
+                
+                that._loadMyRequests(true); 
             })
             .catch(function (err) {
-                sap.ui.core.BusyIndicator.hide();
+                that._oResubmitDialog.setBusy(false);
                 var sMsg = "Error during resubmit!";
 
                 try {
