@@ -86,7 +86,7 @@
                                     <cells>
                                         <HBox alignItems="Center">
                                             <Avatar src="sap-icon://person-placeholder" displaySize="XS" class="sapUiTinyMarginEnd" 
-                                                    backgroundColor="{parts: ['IsAdmin', 'IsManager', 'IsClerk'], formatter: '.formatterAvatarColor'}"/>
+                                                    backgroundColor="{parts: [{path: 'IsAdmin'}, {path: 'IsManager'}, {path: 'IsClerk'}], formatter: '.formatterAvatarColor'}"/>
                                             <VBox justifyContent="Center">
                                                 <Label text="{FullName}" design="Bold" visible="{= ${FullName} ? true : false }" />
                                                 <Label text="{Username}" />
@@ -96,9 +96,9 @@
                                         <Label text="N/A" />
                                         
                                         <ObjectStatus 
-                                            text="{parts: ['IsAdmin', 'IsManager', 'IsClerk'], formatter: '.formatterRoleText'}" 
-                                            icon="{parts: ['IsAdmin', 'IsManager', 'IsClerk'], formatter: '.formatterRoleIcon'}"
-                                            state="{parts: ['IsAdmin', 'IsManager', 'IsClerk'], formatter: '.formatterRoleState'}" />
+                                            text="{parts: [{path: 'IsAdmin'}, {path: 'IsManager'}, {path: 'IsClerk'}], formatter: '.formatterRoleText'}" 
+                                            icon="{parts: [{path: 'IsAdmin'}, {path: 'IsManager'}, {path: 'IsClerk'}], formatter: '.formatterRoleIcon'}"
+                                            state="{parts: [{path: 'IsAdmin'}, {path: 'IsManager'}, {path: 'IsClerk'}], formatter: '.formatterRoleState'}" />
 
                                         <ObjectStatus 
                                             text="{ValidityText}" 
@@ -108,7 +108,7 @@
                                         <HBox justifyContent="Center">
                                             <Button icon="sap-icon://edit" type="Transparent" tooltip="Edit Role" press=".onEditRole" class="sapUiTinyMarginEnd"/>     
                                             <Button icon="sap-icon://delete" type="Transparent" tooltip="Revoke Role" press=".onRevokeRole" 
-                                                    enabled="{parts: ['IsAdmin', 'IsManager', 'IsClerk'], formatter: '.formatterEnableDelete'}"/>
+                                                    enabled="{parts: [{path: 'IsAdmin'}, {path: 'IsManager'}, {path: 'IsClerk'}], formatter: '.formatterEnableDelete'}"/>
                                         </HBox>
                                     </cells>
                                 </ColumnListItem>
