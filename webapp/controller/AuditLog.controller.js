@@ -125,108 +125,125 @@ sap.ui.define([
                 return;
             }
 
+            var sUpperTableName = sTableName.trim().toUpperCase();
+
+            // 1. KIỂM TRA BẢNG CÓ TỒN TẠI KHÔNG TRƯỚC KHI TÌM LOG
+            var oMainODataModel = this.getOwnerComponent().getModel(); // Lấy model chính chứa TableLookup
+            var oLookupBinding = oMainODataModel.bindList("/TableLookup");
+
             this.byId("auditMasterTable").setBusy(true);
 
-            var oListBinding = oODataModel.bindList("/AuditLog");
-            oListBinding.filter(new sap.ui.model.Filter("TableName", sap.ui.model.FilterOperator.EQ, sTableName.toUpperCase()));
+            oLookupBinding.filter(new sap.ui.model.Filter("TableName", sap.ui.model.FilterOperator.EQ, sUpperTableName));
+            oLookupBinding.requestContexts(0, 1).then(function (aLookupContexts) {
 
-            oListBinding.requestContexts(0, 5000).then(function (aContexts) {
-                var aAllLogs = [];
-                aContexts.forEach(function (oCtx) {
-                    aAllLogs.push(oCtx.getObject());
-                });
+                // Nếu mảng aLookupContexts rỗng -> Tên bảng không tồn tại trong hệ thống
+                if (aLookupContexts.length === 0) {
+                    this.byId("auditMasterTable").setBusy(false);
+                    oLocalModel.setProperty("/mainLogs", []);
+                    oLocalModel.setProperty("/allLogs", []);
+                    sap.m.MessageBox.error("Table '" + sUpperTableName + "' does not exist in the system!");
+                    return;
+                }
 
-                aAllLogs.sort(function (a, b) {
-                    return new Date(b.ChangedAt) - new Date(a.ChangedAt);
-                });
+                // 2. NẾU BẢNG TỒN TẠI -> TIẾP TỤC GỌI API LẤY AUDIT LOG
+                var oListBinding = oODataModel.bindList("/AuditLog");
+                oListBinding.filter(new sap.ui.model.Filter("TableName", sap.ui.model.FilterOperator.EQ, sUpperTableName));
 
-                oLocalModel.setProperty("/allLogs", aAllLogs);
+                oListBinding.requestContexts(0, 5000).then(function (aContexts) {
+                    var aAllLogs = [];
+                    aContexts.forEach(function (oCtx) {
+                        aAllLogs.push(oCtx.getObject());
+                    });
 
-                var aMainLogs = [];
+                    aAllLogs.sort(function (a, b) {
+                        return new Date(b.ChangedAt) - new Date(a.ChangedAt);
+                    });
 
-                aAllLogs.forEach(function (oLog) {
-                    if (oLog.Status !== 'P') {
-                        var sAction = "UPDATE";
-                        if (oLog.Action === 'C') sAction = "CREATE";
-                        if (oLog.Action === 'D') sAction = "DELETE";
+                    oLocalModel.setProperty("/allLogs", aAllLogs);
+                    var aMainLogs = [];
 
-                        var sTime = DataFormatter.formatDateTime(oLog.ApprovedAt || oLog.ChangedAt);
+                    aAllLogs.forEach(function (oLog) {
+                        if (oLog.Status !== 'P') {
+                            var sAction = "UPDATE";
+                            if (oLog.Action === 'C') sAction = "CREATE";
+                            if (oLog.Action === 'D') sAction = "DELETE";
 
-                        var sDisplayKey = oLog.RecordKey; // Mặc định nếu lỗi thì vẫn hiện mã Hash
-                        try {
-                            // Ưu tiên lấy NewData, nếu xóa (Delete) không có NewData thì lấy OldData
-                            var sJsonToParse = oLog.NewData ? oLog.NewData : oLog.OldData;
-                            if (sJsonToParse) {
-                                var oDataObj = JSON.parse(sJsonToParse);
+                            var sTime = DataFormatter.formatDateTime(oLog.ApprovedAt || oLog.ChangedAt);
+                            var sDisplayKey = oLog.RecordKey;
+                            try {
+                                var sJsonToParse = oLog.NewData ? oLog.NewData : oLog.OldData;
+                                if (sJsonToParse) {
+                                    var oDataObj = JSON.parse(sJsonToParse);
+                                    var aKeys = Object.keys(oDataObj).filter(k => k.toUpperCase() !== 'MANDT');
+                                    var sMainField = aKeys.find(k => {
+                                        var sUpperK = k.toUpperCase();
+                                        return sUpperK === 'ID' ||
+                                            sUpperK === 'CODE' ||
+                                            sUpperK.indexOf('_ID') !== -1 ||
+                                            sUpperK.indexOf('_CODE') !== -1 ||
+                                            sUpperK.indexOf('ID_') !== -1;
+                                    }) || aKeys[0];
 
-                                // Lọc bỏ trường hệ thống MANDT
-                                var aKeys = Object.keys(oDataObj).filter(k => k.toUpperCase() !== 'MANDT');
-
-                                // Thuật toán dò tìm thông minh: Ưu tiên tìm cột có chữ 'ID' hoặc 'CODE'
-                                // Nếu không có, mặc định lấy cột đầu tiên trong bảng
-                                var sMainField = aKeys.find(k => {
-                                    var sUpperK = k.toUpperCase();
-                                    return sUpperK === 'ID' ||
-                                        sUpperK === 'CODE' ||
-                                        sUpperK.indexOf('_ID') !== -1 ||
-                                        sUpperK.indexOf('_CODE') !== -1 ||
-                                        sUpperK.indexOf('ID_') !== -1;
-                                }) || aKeys[0];
-
-                                if (sMainField && oDataObj[sMainField]) {
-                                    // Sẽ tạo ra chuỗi đẹp mắt, VD: "ID: 47" hoặc "COMPANY_NAME: FPT"
-                                    sDisplayKey = sMainField + ": " + oDataObj[sMainField];
+                                    if (sMainField && oDataObj[sMainField]) {
+                                        sDisplayKey = sMainField + ": " + oDataObj[sMainField];
+                                    }
                                 }
-                            }
-                        } catch (e) {
-                            // Bỏ qua lỗi parse JSON nếu có
+                            } catch (e) { }
+
+                            aMainLogs.push({
+                                rowId: oLog.RecordKey,
+                                displayKey: sDisplayKey,
+                                lastAction: sAction,
+                                lastUser: oLog.ChangedBy,
+                                lastTimestamp: sTime,
+                                logUuid: oLog.LogUuid,
+                                rawDate: new Date(oLog.ChangedAt)
+                            });
                         }
+                    });
+                    oLocalModel.setProperty("/mainLogs", aMainLogs);
 
-                        aMainLogs.push({
-                            rowId: oLog.RecordKey,
-                            displayKey: sDisplayKey,
-                            lastAction: sAction,
-                            lastUser: oLog.ChangedBy,
-                            lastTimestamp: sTime,
-                            logUuid: oLog.LogUuid,
-                            rawDate: new Date(oLog.ChangedAt)
-                        });
+                    // Cập nhật Filter Data
+                    var aUniqueUsers = [];
+                    var oUserMap = {};
+                    aMainLogs.forEach(function (oLog) {
+                        var sUser = oLog.lastUser;
+                        if (sUser && !oUserMap[sUser]) {
+                            oUserMap[sUser] = true;
+                            aUniqueUsers.push({ userName: sUser });
+                        }
+                    });
+                    oLocalModel.setProperty("/uniqueUsers", aUniqueUsers);
+
+                    var aUniqueActions = [];
+                    var oActionMap = {};
+                    aMainLogs.forEach(function (oLog) {
+                        var sActionStr = oLog.lastAction;
+                        if (sActionStr && !oActionMap[sActionStr]) {
+                            oActionMap[sActionStr] = true;
+                            aUniqueActions.push({ actionName: sActionStr });
+                        }
+                    });
+                    oLocalModel.setProperty("/uniqueActions", aUniqueActions);
+
+                    this.byId("auditMasterTable").setBusy(false);
+
+                    // Nếu bảng tồn tại nhưng chưa có Log nào
+                    if (aMainLogs.length === 0) {
+                        sap.m.MessageToast.show("No audit logs found for table: " + sUpperTableName);
+                    } else {
+                        sap.m.MessageToast.show("Loaded audit log for table: " + sUpperTableName);
                     }
-                });
-                oLocalModel.setProperty("/mainLogs", aMainLogs);
 
+                }.bind(this)).catch(function (oError) {
+                    this.byId("auditMasterTable").setBusy(false);
+                    sap.m.MessageBox.error("Error occurred while loading audit log data: " + oError.message);
+                }.bind(this));
 
-                //Filter unique users for User Filter Popover
-                var aUniqueUsers = [];
-                var oUserMap = {};
-
-                aMainLogs.forEach(function (oLog) {
-                    var sUser = oLog.lastUser;
-                    if (sUser && !oUserMap[sUser]) {
-                        oUserMap[sUser] = true;
-                        aUniqueUsers.push({ userName: sUser });
-                    }
-                });
-                oLocalModel.setProperty("/uniqueUsers", aUniqueUsers);
-
-                //Filter unique actions for Action Filter Popover
-                var aUniqueActions = [];
-                var oActionMap = {};
-
-                aMainLogs.forEach(function (oLog) {
-                    var sActionStr = oLog.lastAction;
-                    if (sActionStr && !oActionMap[sActionStr]) {
-                        oActionMap[sActionStr] = true;
-                        aUniqueActions.push({ actionName: sActionStr });
-                    }
-                });
-                oLocalModel.setProperty("/uniqueActions", aUniqueActions);
-
+            }.bind(this)).catch(function (oLookupError) {
                 this.byId("auditMasterTable").setBusy(false);
-                sap.m.MessageToast.show("Loaded audit log for table: " + sTableName.toUpperCase());
-            }.bind(this)).catch(function (oError) {
-                this.byId("auditMasterTable").setBusy(false);
-                sap.m.MessageBox.error("Error occurred while loading audit log data: " + oError.message);
+                sap.m.MessageBox.error("System error when validating table name!");
+                console.error(oLookupError);
             }.bind(this));
         },
 
@@ -242,6 +259,10 @@ sap.ui.define([
 
             var sRowId = oRowData.rowId;
             oLocalModel.setProperty("/selectedRowId", sRowId);
+
+            // BỔ SUNG: Lưu lại tên hiển thị đẹp (Ví dụ: COURSE_ID: VOV131) vào model
+            oLocalModel.setProperty("/selectedDisplayKey", oRowData.displayKey);
+
             var sClickedLogUuid = oRowData.logUuid;
 
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
@@ -320,7 +341,7 @@ sap.ui.define([
                     aProcessNodes.push({
                         id: oLog.LogUuid,
                         lane: sLaneId,
-                        title: "Request for: " + sAction + "Record",
+                        title: "Request for: " + sAction + " Record",
                         titleAbbreviation: sAction.substring(0, 2).toUpperCase(),
                         children: aChildren,
                         state: sState,
@@ -329,8 +350,6 @@ sap.ui.define([
                         isHighlighted: bIsTargetNode,
                         isFocused: bIsTargetNode
                     });
-
-
                 });
             });
 
@@ -408,7 +427,11 @@ sap.ui.define([
             var sTableName = this.byId("auditSearchInput").getValue();
             var sRowId = oLocalModel.getProperty("/selectedRowId");
 
-            var sMessage = "You are about to revert the record [ID: " + sRowId + "] to the state at: " + sTime + ".\n\n" +
+            // LẤY TÊN HIỂN THỊ ĐẸP ĐỂ SHOW LÊN POPUP
+            var sDisplayKey = oLocalModel.getProperty("/selectedDisplayKey") || ("ID: " + sRowId);
+
+            // SỬA CÂU THÔNG BÁO Ở ĐÂY
+            var sMessage = "You are about to revert the record [" + sDisplayKey + "] to the state at: " + sTime + ".\n\n" +
                 "Are you sure you want to create this Request?";
 
             MessageBox.confirm(sMessage, {

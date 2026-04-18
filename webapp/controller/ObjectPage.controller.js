@@ -179,6 +179,7 @@ sap.ui.define([
                         }
                     }
 
+                    var bHasVH = (colMeta.hasValueHelp === true || colMeta.hasValueHelp === "X" || colMeta.has_value_help === true || colMeta.has_value_help === "X");
 
                     oNewRow[iIndex] = {
                         value: sValue,
@@ -186,7 +187,7 @@ sap.ui.define([
                         isNew: false,
                         fieldname: sFieldName,
                         table_name: colMeta.tableName,
-                        has_value_help: !!(colMeta.hasValueHelp),
+                        has_value_help: bHasVH,
                         field_pos: colMeta.field_pos,
                         datatype: colMeta.datatype,
                         row_id: rowObj.rowId || rowObj.row_id || (rowIndex + 1).toString(),
@@ -411,8 +412,7 @@ sap.ui.define([
             var oNewRow = {};
 
             aMeta.forEach(function (colMeta, iIndex) {
-                var bHasVH = (colMeta.hasValueHelp === true);
-
+                var bHasVH = (colMeta.hasValueHelp === true || colMeta.hasValueHelp === "X" || colMeta.has_value_help === true || colMeta.has_value_help === "X");
 
                 oNewRow[iIndex] = {
                     value: "",

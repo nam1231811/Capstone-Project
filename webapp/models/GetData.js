@@ -7,7 +7,7 @@ sap.ui.define([
             return new Promise(function (resolve, reject) {
                 var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.SearchTables(...)";
                 var oActionContext = oModel.bindContext(sActionPath);
-                
+
                 oActionContext.setParameter("table_name", sSearchName || "");
                 oActionContext.setParameter("table_description", sSearchDesc || "");
 
@@ -37,7 +37,7 @@ sap.ui.define([
             return new Promise(function (resolve, reject) {
                 var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.LoadTable(...)";
                 var oActionContext = oModel.bindContext(sActionPath);
-                
+
                 oActionContext.setParameter("table_name", sTableName);
                 oActionContext.setParameter("table_description", "");
 
@@ -63,33 +63,28 @@ sap.ui.define([
             }.bind(this));
         },
 
+        // --- HÀM GIẢI MÃ UTF-8 CHUẨN ---
         decodeFunction: function (object) {
-            
-            try{
+            try {
                 if (object && object.json_string) {
                     var sBase64 = object.json_string;
-                    var sDecodedString = escape(window.atob(sBase64));
-                    var sDecodedJson = decodeURIComponent(sDecodedString);
-
-                    var oPayload = JSON.parse(sDecodedJson);
-                    return oPayload;
+                    // Dùng escape và decodeURIComponent để khôi phục tiếng Việt
+                    var sDecodedJson = decodeURIComponent(escape(window.atob(sBase64)));
+                    return JSON.parse(sDecodedJson);
                 }
-            }catch (e) {
+            } catch (e) {
                 console.error("GetData [decodeFunction]", e);
-                throw new Error("Lỗi decode json từ be:", e.message);
+                throw new Error("Lỗi decode json từ be: " + e.message);
             }
         },
 
+        // --- HÀM MÃ HÓA UTF-8 CHUẨN ---
         encodeFunction: function (oPayload) {
             try {
                 if (oPayload) {
                     var sJsonString = JSON.stringify(oPayload);
-                    var sBase64 = btoa(encodeURIComponent(sJsonString).replace(/%([0-9A-F]{2})/g,
-                        function toSolidBytes(match, p1) {
-                            return String.fromCharCode('0x' + p1);
-                        }));
-
-                    return sBase64;
+                    // Dùng encodeURIComponent và unescape để bảo toàn tiếng Việt trước khi Base64
+                    return window.btoa(unescape(encodeURIComponent(sJsonString)));
                 }
             } catch (e) {
                 console.error("Error [encodeFunction]", e);

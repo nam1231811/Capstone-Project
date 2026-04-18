@@ -87,13 +87,16 @@ sap.ui.define([
                         var oMetaDef = aMeta[key] || {};
                         var sDataType = oMetaDef.datatype || oMetaDef.dataType || "";
                         var iLength = parseInt(oMetaDef.leng || oMetaDef.length || 0, 10);
-
                         var sFN = oCell.fieldname.toUpperCase();
+
+                        // Bộ não tiên đoán: Chỉ dự phòng cho trường Ngày tháng nếu API trả về thiếu
                         if (!sDataType || sDataType === "CHAR" || sDataType === "STRING") {
-                            if (sFN.includes("DATE") || sFN === "BEGDA" || sFN === "ENDDA") sDataType = "DATS";
-                            else if (sFN === "ID" || sFN.includes("_ID") || sFN.includes("SALARY") || sFN.includes("AMOUNT") || sFN.includes("PRICE")) sDataType = "NUMC";
+                            if (sFN.includes("DATE") || sFN === "BEGDA" || sFN === "ENDDA") {
+                                sDataType = "DATS";
+                            }
                         }
 
+                        // Gọi Validator kiểm tra (Nếu LEVEL là NUMC, nhập "Level 2" sẽ báo lỗi tại đây)
                         var oVal = GridValidator.checkCellFormat(oCell.value, sDataType, iLength || 255);
 
                         if (!oVal.valid) {
@@ -108,6 +111,7 @@ sap.ui.define([
                 }
             });
 
+            // Kiểm tra logic ngày bắt đầu phải nhỏ hơn ngày kết thúc
             var sStartDate = "", sEndDate = "";
             var oStartCell = null, oEndCell = null;
 
@@ -116,7 +120,7 @@ sap.ui.define([
                     var oCell = oDetailModel[key];
                     if (oCell && oCell.fieldname) {
                         var sFN = oCell.fieldname.toUpperCase();
-                        if (sFN === "START_DATE" || sFN === "STRAT_DATE" || sFN === "BEGDA") {
+                        if (sFN === "START_DATE" || sFN === "BEGDA") {
                             sStartDate = oCell.value; oStartCell = oCell;
                         } else if (sFN === "END_DATE" || sFN === "ENDDA") {
                             sEndDate = oCell.value; oEndCell = oCell;
@@ -135,9 +139,7 @@ sap.ui.define([
                 }
             }
 
-            oView.getModel("detailRecord").setProperty("/Data", oDetailModel);
             oView.getModel("detailRecord").refresh(true);
-
             return bHasError;
         },
 
@@ -147,96 +149,28 @@ sap.ui.define([
             var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
             var tableName = this._tableName;
 
-            var bHasFormatError = this._validateDetailForm();
-            if (bHasFormatError) {
-                sap.m.MessageBox.error("Please correct the faulty fields (highlighted in red) before saving!");
+            // 1. Chạy Validation trước
+            if (this._validateDetailForm()) {
+                sap.m.MessageBox.error("Please correct the red fields before saving!");
                 return;
             }
 
-            var oFirstCell = Object.values(oDetailModel).find(c => c && typeof c === 'object' && c.uuid);
-            var enUuid = oFirstCell ? oFirstCell.uuid : "";
-
+            // 2. Kiểm tra quyền
             var oAuthModel = this.getOwnerComponent().getModel("auth");
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
             var bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
+            var sStatus = oView.getModel("detailRecord").getProperty("/status");
 
-            var aAllData = oView.getModel("displayModel").getProperty("/Data") || [];
-            var aMeta = oView.getModel("displayModel").getProperty("/Meta") || [];
+            // Lấy thông tin UUID đầu tiên (nếu có)
+            var oFirstCell = Object.values(oDetailModel).find(c => c && typeof c === 'object' && c.uuid);
+            var enUuid = oFirstCell ? oFirstCell.uuid : "";
 
-            var aKeyIndexes = [];
-
-            aMeta.forEach(function (col, idx) {
-                var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
-                if (col.keyflag === "X" || col.keyFlag === "X" ||
-                    col.isKey === true || col.is_key === true || col.IsKey === true ||
-                    sColName === "ID" || sColName === "CODE" ||
-                    sColName.indexOf("_ID") !== -1 || sColName.indexOf("_CODE") !== -1) {
-                    aKeyIndexes.push(idx);
-                }
-            });
-
-            if (aKeyIndexes.length === 0 && aMeta.length > 0) {
-                aKeyIndexes.push(0);
-            }
-
-            var sCurrentRecordIdx = parseInt(this._record, 10);
-            var oOriginalRow = aAllData[sCurrentRecordIdx];
-
-            var bIsKeyModified = false;
-            var aModifiedKeys = [];
-
-            aKeyIndexes.forEach(function (iKey) {
-                var sNewVal = oDetailModel[iKey] ? String(oDetailModel[iKey].value).trim() : "";
-                var sOldVal = oOriginalRow[iKey] ? String(oOriginalRow[iKey].value).trim() : "";
-
-                if (sNewVal !== sOldVal) {
-                    bIsKeyModified = true;
-                    aModifiedKeys.push(aMeta[iKey].fieldname || aMeta[iKey].fieldName);
-                }
-            });
-
-            if (bIsKeyModified) {
-                sap.m.MessageBox.error("Cannot edit Primary Key!\nYou are not allowed to change the value of [" + aModifiedKeys.join(", ") + "].");
-                return;
-            }
-
-            var bIsDuplicate = aAllData.some(function (oOldRow, idx) {
-                if (idx === sCurrentRecordIdx) return false;
-
-                return aKeyIndexes.every(function (iKey) {
-                    var sNewVal = oDetailModel[iKey] ? String(oDetailModel[iKey].value).trim().toUpperCase() : "";
-                    var sOldVal = oOldRow[iKey] ? String(oOldRow[iKey].value).trim().toUpperCase() : "";
-                    return sNewVal === sOldVal && sNewVal !== "";
-                });
-            });
-
-            if (bIsDuplicate) {
-                var sKeyNames = aKeyIndexes.map(i => aMeta[i].fieldname || aMeta[i].fieldName).join(", ");
-                sap.m.MessageBox.error("Duplicate Key Error: The value for [" + sKeyNames + "] already exists in another record!");
-                return;
-            }
-
-            var aPromises = {};
-            Object.keys(oDetailModel).forEach(function (key) {
-                if (!isNaN(key)) {
-                    var oCell = oDetailModel[key];
-                    if (oCell && oCell.fieldname) {
-                        var sDataType = aMeta[key] ? (aMeta[key].datatype || aMeta[key].dataType) : "";
-                        aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, sDataType);
-                    }
-                }
-            });
-
+            // Nhánh dành cho ADMIN/MANAGER: Lưu trực tiếp vào Database gốc
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
-
-                var aFullData = JSON.parse(JSON.stringify(oView.getModel("displayModel").getProperty("/Data")));
-                aFullData[this._record] = oDetailModel;
-
                 SaveToDatabase.onSaveDB(tableName, oView, [oDetailModel]).then(function () {
                     sap.ui.core.BusyIndicator.hide();
-                    sap.m.MessageToast.show("Updated to database successfully!");
-
+                    sap.m.MessageToast.show("Update successful!");
                     oView.getModel("viewModel").setProperty("/isEditMode", false);
                     this._updateDisplayModelAfterSave(oDetailModel);
                 }.bind(this)).catch(function () {
@@ -245,34 +179,56 @@ sap.ui.define([
                 return;
             }
 
+            // Nhánh dành cho CLERK: Gửi yêu cầu phê duyệt
+            var aPromises = {};
+            var aMeta = oView.getModel("displayModel").getProperty("/Meta") || [];
+
+            Object.keys(oDetailModel).forEach(function (key) {
+                if (!isNaN(key)) {
+                    var oCell = oDetailModel[key];
+                    if (oCell && oCell.fieldname) {
+                        var oMetaDef = aMeta[key] || {};
+                        var sDataType = oMetaDef.datatype || oMetaDef.dataType || "";
+                        var sFN = oCell.fieldname.toUpperCase();
+
+                        if (!sDataType || sDataType === "CHAR" || sDataType === "STRING") {
+                            if (sFN.includes("DATE") || sFN === "BEGDA" || sFN === "ENDDA") sDataType = "DATS";
+                        }
+                        // Định dạng lại dữ liệu theo kiểu để gửi lên OData
+                        aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, sDataType);
+                    }
+                }
+            });
+
             var codeData = GetData.encodeFunction(aPromises);
-            var path = "/Data(uuid=" + enUuid + ")";
-
-            var oContext = oModel.bindContext(path).getBoundContext();
-            oContext.setProperty("table_name", tableName);
-            oContext.setProperty("data", codeData);
-
             sap.ui.core.BusyIndicator.show(0);
+
+            if (enUuid && sStatus === "PENDING") {
+                // Sửa bản nháp hiện có trong bảng Pending Requests
+                var path = "/Data(uuid=" + enUuid + ")";
+                var oContext = oModel.bindContext(path).getBoundContext();
+                oContext.setProperty("table_name", tableName);
+                oContext.setProperty("data", codeData);
+            } else {
+                // Tạo một yêu cầu thay đổi mới từ dữ liệu gốc
+                var oListBinding = oModel.bindList("/Data");
+                oListBinding.create({
+                    table_name: tableName,
+                    data: codeData
+                });
+            }
+
             oModel.submitBatch("updateGroup").then(function () {
                 sap.ui.core.BusyIndicator.hide();
-
                 if (oModel.hasPendingChanges()) {
-                    var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
-                    var sErrorMsg = "System validation failed! Request was not sent.";
-                    if (aMessages && aMessages.length > 0) {
-                        var aErrors = aMessages.filter(function (m) { return m.type === "Error"; });
-                        if (aErrors.length > 0) { sErrorMsg = aErrors[aErrors.length - 1].message; }
-                    }
-                    sap.m.MessageBox.error(sErrorMsg);
+                    sap.m.MessageBox.error("System validation failed! Request was not sent.");
                     return;
                 }
-
-                sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
+                sap.m.MessageToast.show("Request sent successfully!");
                 this.onCancelEdit();
-
             }.bind(this)).catch(function (oError) {
                 sap.ui.core.BusyIndicator.hide();
-                sap.m.MessageBox.error("Error updating temporary table: " + (oError.message || "Unknown error"));
+                sap.m.MessageBox.error("Submit failed: " + oError.message);
             });
         },
 
