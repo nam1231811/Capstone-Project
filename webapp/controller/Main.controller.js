@@ -139,11 +139,12 @@ sap.ui.define([
 
             GetData.searchTables(oModel, sSearchName, sSearchDesc).then(function (oPayload) {
                 oTable.setBusy(false);
-
+                console.log(oPayload);
+                
                 if (oPayload && oPayload.status === "MULTIPLE" && oPayload.matches) {
                     var aMatchedTables = oPayload.matches.map(function (m) {
-                        var sDate = m.changeDate || m.change_date;
-                        var sTime = m.changeTime || m.change_time; 
+                        var sDate = m.changeDate;
+                        var sTime = m.changeTime; 
                         var oFullDate = null;
 
                         if (sDate && sDate !== "0000-00-00") {
@@ -192,48 +193,6 @@ sap.ui.define([
             });
         },
 
-        _fetchTableDetails: function(sName) {
-            var oView = this.getView();
-            var oTable = this.byId("dynamicTable");
-            var oModel = oView.getModel();
-            var oBundle = oView.getModel("i18n").getResourceBundle();
-
-            oTable.setBusy(true);
-
-            GetData.loadTableData(oModel, sName).then(function (oPayload) {
-                oTable.setBusy(false);
-
-                var oDisplayModel = oView.getModel("displayModel");
-                if (!oDisplayModel) {
-                    oDisplayModel = new sap.ui.model.json.JSONModel();
-                    oView.setModel(oDisplayModel, "displayModel");
-                }
-                
-                oDisplayModel.setProperty("/Meta", oPayload.metadata);
-                oDisplayModel.setProperty("/Data", oPayload.dataRows);
-
-                var oOverall = oView.getModel("overall");
-                if (oOverall) {
-                    oOverall.setProperty("/tableName", sName || (oPayload.metadata[0] ? oPayload.metadata[0].tableName : ""));
-                    oOverall.setProperty("/count", oPayload.dataRows ? oPayload.dataRows.length : 0);
-                }
-
-                this._updateUniqueTablesList(oPayload);
-
-                sap.m.MessageToast.show(oBundle.getText("msgTableLoaded"));
-
-            }.bind(this)).catch(function (oError) {
-                oTable.setBusy(false);
-                
-                var sErrMsg = oError.message ? oError.message.toLowerCase() : "";
-                if (sErrMsg.includes("not found") || sErrMsg.includes("không tìm thấy") || sErrMsg.includes("không tồn tại") || sErrMsg.includes("does not exist") || sErrMsg.includes("invalid") || sErrMsg.includes("009")) {
-                    sap.m.MessageBox.error(oBundle.getText("msgTableNotFound", [sName]));
-                } else {
-                    sap.m.MessageBox.error(oError.message);
-                }
-            });
-        },
-
         onSuggestionSelect: function(oEvent) {
             var oSelectedItem = oEvent.getParameter("selectedItem");
             if (oSelectedItem) {
@@ -243,7 +202,6 @@ sap.ui.define([
                 this.byId("searchInput").setValue(sTableName);
                 this.byId("searchDescInput").setValue(sDescription);
                 
-                this._fetchTableDetails(sTableName);
             }
         },
 

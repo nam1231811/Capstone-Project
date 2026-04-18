@@ -14,6 +14,9 @@ sap.ui.define([
                 tableName:""
             });
             this.getView().setModel(oViewModel, "view");
+            this.getOwnerComponent().getRouter().getRoute("RouteObjectPage").attachPatternMatched(function() {
+                oViewModel.setProperty("/layout", "OneColumn");
+            }, this);
         },
   
     });
