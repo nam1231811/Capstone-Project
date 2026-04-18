@@ -520,8 +520,8 @@ sap.ui.define([
             var oAuthModel = this.getOwnerComponent().getModel("auth");
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
             var bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
-
-
+            var tableView =this.byId("dataTable");
+            
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
 
@@ -532,13 +532,14 @@ sap.ui.define([
                 SaveToDatabase.onSaveDB(table, oView, sBase64Array).then(function () {
                     sap.ui.core.BusyIndicator.hide();
                     sap.m.MessageToast.show("Updated to database successfully!");
-
-
                     this._refreshData(table);
                     this._onEditToggleButtonPress();
                 }.bind(this)).catch(function (oError) {
+                    tableView.setBusy(false);
                     sap.ui.core.BusyIndicator.hide();
-                });
+                    this._refreshData(table);
+                    this._onEditToggleButtonPress();
+                }.bind(this));
                 return;
             }
 
@@ -554,42 +555,38 @@ sap.ui.define([
             };
 
             var oListBinding = oModel.bindList("/Data");
-            var oContext = oListBinding.create(oFinalPayload);
 
-
-            oContext.created().then(function () {
+            oListBinding.attachEventOnce("createCompleted", function (oEvent) {
+                var bSuccess = oEvent.getParameter("success");
+                var oEventContext = oEvent.getParameter("context");
+            
                 sap.ui.core.BusyIndicator.hide();
-                sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
-
-                this._refreshData(table);
-                this._onEditToggleButtonPress();
-            }.bind(this)).catch(function (oError) {
-                this.byId("dataTable").setBusy(false);
-                sap.ui.core.BusyIndicator.hide();
-
-                if (oContext.isTransient()) {
-                    oContext.delete();
-                }
-
-                var sBackendError = "Unknown backend error occurred.";
-                if (oError) {
-                    sBackendError = oError.message || sBackendError;
-                    if (oError.error && oError.error.message) {
-                        sBackendError = oError.error.message.value || oError.error.message;
+                tableView.setBusy(false);
+            
+                if (bSuccess) {
+                    sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
+                    this._refreshData(table);
+                    this._onEditToggleButtonPress();
+                } else {
+                    if (oEventContext && oEventContext.isTransient()) {
+                        oEventContext.delete(); 
                     }
-                }
+                
+                    var sBackendError = "Unknown backend error occurred.";
+                    var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
 
-                var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
-                if (aMessages && aMessages.length > 0) {
-                    var aErrors = aMessages.filter(function (m) { return m.type === "Error"; });
-                    if (aErrors.length > 0) {
-                        sBackendError = aErrors[aErrors.length - 1].message;
+                    if (aMessages && aMessages.length > 0) {
+                        var aErrors = aMessages.filter(function (m) { return m.type === "Error"; });
+                        if (aErrors.length > 0) {
+                            sBackendError = aErrors[aErrors.length - 1].message;
+                        }
                     }
+                    sap.m.MessageBox.error("Failed to send request:\n\n" + sBackendError);
+                    this._refreshData(table);
+                    this._onEditToggleButtonPress();
                 }
-
-
-                sap.m.MessageBox.error("Failed to send request:\n\n" + sBackendError);
             }.bind(this));
+            var oContext = oListBinding.create(oFinalPayload);
         },
 
 
@@ -740,7 +737,6 @@ sap.ui.define([
                 .then(function (oPayload) {
                     this._processPayload(oPayload);
                     this._displayData();
-                    sap.m.MessageToast.show("Data already update.");
                 }.bind(this))
                 .catch(function (err) {
                     console.error("Refresh Error:", err);
