@@ -38,6 +38,42 @@ sap.ui.define([
             }
         },
 
+        _checkRoleTrue: function (val) {
+            return val === true || val === 'Yes' || val === 'true' || val === 'X';
+        },
+
+        formatterRoleText: function (isAdmin, isManager, isClerk) {
+            if (this._checkRoleTrue(isAdmin)) return 'Admin (Full Access)';
+            if (this._checkRoleTrue(isManager)) return 'Manager';
+            if (this._checkRoleTrue(isClerk)) return 'Clerk';
+            return 'Unassigned';
+        },
+
+        formatterRoleIcon: function (isAdmin, isManager, isClerk) {
+            if (this._checkRoleTrue(isAdmin)) return 'sap-icon://unlocked';
+            if (this._checkRoleTrue(isManager)) return 'sap-icon://manager';
+            if (this._checkRoleTrue(isClerk)) return 'sap-icon://employee';
+            return 'sap-icon://sys-enter-2';
+        },
+
+        formatterRoleState: function (isAdmin, isManager, isClerk) {
+            if (this._checkRoleTrue(isAdmin)) return 'Error';
+            if (this._checkRoleTrue(isManager)) return 'Success';
+            if (this._checkRoleTrue(isClerk)) return 'Warning';
+            return 'Information';
+        },
+
+        formatterAvatarColor: function (isAdmin, isManager, isClerk) {
+            if (this._checkRoleTrue(isAdmin)) return 'Accent2';
+            if (this._checkRoleTrue(isManager)) return 'Accent3';
+            if (this._checkRoleTrue(isClerk)) return 'Accent6';
+            return 'Accent1';
+        },
+
+        formatterEnableDelete: function (isAdmin, isManager, isClerk) {
+            return this._checkRoleTrue(isAdmin) || this._checkRoleTrue(isManager) || this._checkRoleTrue(isClerk);
+        },
+
         onNavBack: function () {
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("RouteHome", {}, true);
@@ -91,9 +127,9 @@ sap.ui.define([
             }
 
             var sCurrentRole = "";
-            if (oRowData.IsAdmin === true || oRowData.IsAdmin === 'true' || oRowData.IsAdmin === 'Yes') sCurrentRole = "Admin";
-            else if (oRowData.IsManager === true || oRowData.IsManager === 'true' || oRowData.IsManager === 'Yes') sCurrentRole = "Manager";
-            else if (oRowData.IsClerk === true || oRowData.IsClerk === 'true' || oRowData.IsClerk === 'Yes') sCurrentRole = "Clerk";
+            if (this._checkRoleTrue(oRowData.IsAdmin)) sCurrentRole = "Admin";
+            else if (this._checkRoleTrue(oRowData.IsManager)) sCurrentRole = "Manager";
+            else if (this._checkRoleTrue(oRowData.IsClerk)) sCurrentRole = "Clerk";
 
             oModel.setProperty("/formData", {
                 isEditMode: true,

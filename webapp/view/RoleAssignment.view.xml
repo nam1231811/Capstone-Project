@@ -86,7 +86,7 @@
                                     <cells>
                                         <HBox alignItems="Center">
                                             <Avatar src="sap-icon://person-placeholder" displaySize="XS" class="sapUiTinyMarginEnd" 
-                                                    backgroundColor="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true') ? 'Accent2' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true') ? 'Accent3' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true') ? 'Accent6' : 'Accent1')) }"/>
+                                                    backgroundColor="{parts: ['IsAdmin', 'IsManager', 'IsClerk'], formatter: '.formatterAvatarColor'}"/>
                                             <VBox justifyContent="Center">
                                                 <Label text="{FullName}" design="Bold" visible="{= ${FullName} ? true : false }" />
                                                 <Label text="{Username}" />
@@ -96,9 +96,9 @@
                                         <Label text="N/A" />
                                         
                                         <ObjectStatus 
-    text="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true' || ${IsAdmin} === 'X') ? 'Admin (Full Access)' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true' || ${IsManager} === 'X') ? 'Manager' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true' || ${IsClerk} === 'X') ? 'Clerk' : 'Unassigned')) }" 
-    icon="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true' || ${IsAdmin} === 'X') ? 'sap-icon://unlocked' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true' || ${IsManager} === 'X') ? 'sap-icon://manager' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true' || ${IsClerk} === 'X') ? 'sap-icon://employee' : 'sap-icon://sys-enter-2')) }"
-    state="{= (${IsAdmin} === true || ${IsAdmin} === 'Yes' || ${IsAdmin} === 'true' || ${IsAdmin} === 'X') ? 'Error' : ((${IsManager} === true || ${IsManager} === 'Yes' || ${IsManager} === 'true' || ${IsManager} === 'X') ? 'Success' : ((${IsClerk} === true || ${IsClerk} === 'Yes' || ${IsClerk} === 'true' || ${IsClerk} === 'X') ? 'Warning' : 'Information')) }" />
+                                            text="{parts: ['IsAdmin', 'IsManager', 'IsClerk'], formatter: '.formatterRoleText'}" 
+                                            icon="{parts: ['IsAdmin', 'IsManager', 'IsClerk'], formatter: '.formatterRoleIcon'}"
+                                            state="{parts: ['IsAdmin', 'IsManager', 'IsClerk'], formatter: '.formatterRoleState'}" />
 
                                         <ObjectStatus 
                                             text="{ValidityText}" 
@@ -106,10 +106,9 @@
                                             class="sapUiTinyMarginTop"/>
                                         
                                         <HBox justifyContent="Center">
-             
                                             <Button icon="sap-icon://edit" type="Transparent" tooltip="Edit Role" press=".onEditRole" class="sapUiTinyMarginEnd"/>     
                                             <Button icon="sap-icon://delete" type="Transparent" tooltip="Revoke Role" press=".onRevokeRole" 
-                                                    enabled="{= ${IsAdmin} === true || ${IsAdmin} === 'true' || ${IsManager} === true || ${IsManager} === 'true' || ${IsClerk} === true || ${IsClerk} === 'true' ? true : false }"/>
+                                                    enabled="{parts: ['IsAdmin', 'IsManager', 'IsClerk'], formatter: '.formatterEnableDelete'}"/>
                                         </HBox>
                                     </cells>
                                 </ColumnListItem>

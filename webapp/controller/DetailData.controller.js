@@ -89,14 +89,12 @@ sap.ui.define([
                         var iLength = parseInt(oMetaDef.leng || oMetaDef.length || 0, 10);
                         var sFN = oCell.fieldname.toUpperCase();
 
-                        // Bộ não tiên đoán: Chỉ dự phòng cho trường Ngày tháng nếu API trả về thiếu
                         if (!sDataType || sDataType === "CHAR" || sDataType === "STRING") {
                             if (sFN.includes("DATE") || sFN === "BEGDA" || sFN === "ENDDA") {
                                 sDataType = "DATS";
                             }
                         }
 
-                        // Gọi Validator kiểm tra (Nếu LEVEL là NUMC, nhập "Level 2" sẽ báo lỗi tại đây)
                         var oVal = GridValidator.checkCellFormat(oCell.value, sDataType, iLength || 255);
 
                         if (!oVal.valid) {
@@ -111,7 +109,6 @@ sap.ui.define([
                 }
             });
 
-            // Kiểm tra logic ngày bắt đầu phải nhỏ hơn ngày kết thúc
             var sStartDate = "", sEndDate = "";
             var oStartCell = null, oEndCell = null;
 
@@ -149,23 +146,19 @@ sap.ui.define([
             var oDetailModel = oView.getModel("detailRecord").getProperty("/Data");
             var tableName = this._tableName;
 
-            // 1. Chạy Validation trước
             if (this._validateDetailForm()) {
                 sap.m.MessageBox.error("Please correct the red fields before saving!");
                 return;
             }
 
-            // 2. Kiểm tra quyền
             var oAuthModel = this.getOwnerComponent().getModel("auth");
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
             var bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
             var sStatus = oView.getModel("detailRecord").getProperty("/status");
 
-            // Lấy thông tin UUID đầu tiên (nếu có)
             var oFirstCell = Object.values(oDetailModel).find(c => c && typeof c === 'object' && c.uuid);
             var enUuid = oFirstCell ? oFirstCell.uuid : "";
 
-            // Nhánh dành cho ADMIN/MANAGER: Lưu trực tiếp vào Database gốc
             if (bIsManager || bIsAdmin) {
                 sap.ui.core.BusyIndicator.show(0);
                 SaveToDatabase.onSaveDB(tableName, oView, [oDetailModel]).then(function () {
@@ -179,7 +172,6 @@ sap.ui.define([
                 return;
             }
 
-            // Nhánh dành cho CLERK: Gửi yêu cầu phê duyệt
             var aPromises = {};
             var aMeta = oView.getModel("displayModel").getProperty("/Meta") || [];
 
@@ -194,7 +186,6 @@ sap.ui.define([
                         if (!sDataType || sDataType === "CHAR" || sDataType === "STRING") {
                             if (sFN.includes("DATE") || sFN === "BEGDA" || sFN === "ENDDA") sDataType = "DATS";
                         }
-                        // Định dạng lại dữ liệu theo kiểu để gửi lên OData
                         aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, sDataType);
                     }
                 }
@@ -203,19 +194,18 @@ sap.ui.define([
             var codeData = GetData.encodeFunction(aPromises);
             sap.ui.core.BusyIndicator.show(0);
 
-            if (enUuid && sStatus === "PENDING") {
-                // Sửa bản nháp hiện có trong bảng Pending Requests
+            if (enUuid) {
                 var path = "/Data(uuid=" + enUuid + ")";
                 var oContext = oModel.bindContext(path).getBoundContext();
                 oContext.setProperty("table_name", tableName);
                 oContext.setProperty("data", codeData);
             } else {
-                // Tạo một yêu cầu thay đổi mới từ dữ liệu gốc
-                var oListBinding = oModel.bindList("/Data");
-                oListBinding.create({
-                    table_name: tableName,
-                    data: codeData
-                });
+                // var oListBinding = oModel.bindList("/Data");
+                // oListBinding.create({
+                //     table_name: tableName,
+                //     data: codeData
+                // });
+                console.log(sStatus);
             }
 
             oModel.submitBatch("updateGroup").then(function () {
@@ -224,7 +214,7 @@ sap.ui.define([
                     sap.m.MessageBox.error("System validation failed! Request was not sent.");
                     return;
                 }
-                sap.m.MessageToast.show("Request sent successfully!");
+                sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval");
                 this.onCancelEdit();
             }.bind(this)).catch(function (oError) {
                 sap.ui.core.BusyIndicator.hide();
