@@ -83,6 +83,11 @@
                             </columns>
                             <items>
                                 <ColumnListItem>
+                                <customData>
+                                        <core:CustomData key="force1" value="{IsAdmin}" />
+                                        <core:CustomData key="force2" value="{IsManager}" />
+                                        <core:CustomData key="force3" value="{IsClerk}" />
+                                    </customData>
                                     <cells>
                                         <HBox alignItems="Center">
                                             <Avatar src="sap-icon://person-placeholder" displaySize="XS" class="sapUiTinyMarginEnd" 

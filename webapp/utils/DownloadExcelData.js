@@ -1,5 +1,5 @@
 sap.ui.define([
-    "sap/ui/export/Spreadsheet",  
+    "sap/ui/export/Spreadsheet",
     "sap/m/MessageToast"
 ], function (Spreadsheet, MessageToast) {
     "use strict";
@@ -39,8 +39,8 @@ sap.ui.define([
                     }
                 },
                 dataSource: aData,
-                fileName: sTableName + ".xlsx", // Tên file tự động theo tên bảng
-                worker: false 
+                fileName: sTableName + ".xlsx",
+                worker: false
             };
 
             // 4. Kích hoạt tải xuống
@@ -54,7 +54,7 @@ sap.ui.define([
                     MessageToast.show("Có lỗi xảy ra khi xuất file!");
                 })
                 .finally(function () {
-                    oSheet.destroy(); // Dọn dẹp bộ nhớ trình duyệt sau khi tải xong
+                    oSheet.destroy();
                 });
         }
     };

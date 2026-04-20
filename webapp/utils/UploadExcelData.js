@@ -60,30 +60,21 @@ sap.ui.define([
             });
         },
 
-        // --- HÀM 2: VẼ MÀN HÌNH POPUP CHỈNH SỬA & VALIDATE ---
         _openPreviewDialog: function (sTableName, aData) {
             var oView = this.getView();
             var oDisplayModel = oView.getModel("displayModel");
             var aMeta = oDisplayModel ? oDisplayModel.getProperty("/Meta") : [];
 
-            // LẤY DỮ LIỆU DATABASE HIỆN TẠI ĐỂ CHECK TRÙNG LẶP DB (CHỐNG GHI ĐÈ)
             var aOldData = oDisplayModel ? oDisplayModel.getProperty("/Data") : [];
 
-            // 1. CHUẨN BỊ MÔ HÌNH DỮ LIỆU JSON
             var oJSONModel = new sap.ui.model.json.JSONModel(aData);
 
-            // ====================================================================
-            // GỌI "BỘ NÃO" GRID VALIDATOR TỪ FILE TIỆN ÍCH DÙNG CHUNG
-            // ====================================================================
             var _performFullGridValidation = function () {
                 var aCurrentData = oJSONModel.getData();
-                // Truyền aOldData vào để check trùng với Database
                 var aCleanedData = GridValidator.performLiveValidation(aCurrentData, aMeta, aOldData);
                 oJSONModel.setData(aCleanedData);
             };
-            // ====================================================================
 
-            // 2. TẠO CỘT VỚI INPUT ĐỘNG
             var oTable = new sap.ui.table.Table({
                 selectionMode: "None",
                 visibleRowCount: aData.length,
@@ -101,11 +92,11 @@ sap.ui.define([
                             label: new sap.m.Label({ text: sLabelText, design: "Bold" }),
                             template: new sap.m.Input({
                                 value: "{" + sUpperKey + "}",
-                                valueState: "{_state_" + sUpperKey + "}", // Đỏ hay Bình thường
-                                valueStateText: "{_msg_" + sUpperKey + "}", // Câu báo lỗi
+                                valueState: "{_state_" + sUpperKey + "}",
+                                valueStateText: "{_msg_" + sUpperKey + "}",
 
                                 change: function (oEvent) {
-                                    // BẮT SỰ KIỆN KHI NGƯỜI DÙNG SỬA DỮ LIỆU TẠI Ô NÀY
+
                                     _performFullGridValidation();
                                 }
                             }),
@@ -116,11 +107,9 @@ sap.ui.define([
                 });
             }
 
-            // Bind dữ liệu vào Table
             oTable.setModel(oJSONModel);
             oTable.bindRows("/");
 
-            // 3. THỰC HIỆN QUÉT LỖI LẦN ĐẦU TIÊN (Khi vừa mở Popup)
             _performFullGridValidation();
 
             var oScrollContainer = new sap.m.ScrollContainer({
@@ -131,7 +120,6 @@ sap.ui.define([
                 content: [oTable]
             });
 
-            // 4. TẠO DIALOG CHỐT HẠ
             var oDialog = new sap.m.Dialog({
                 title: "Check data before uploading - Table " + sTableName + " (" + aData.length + " line)",
                 contentWidth: "1200px",
@@ -149,15 +137,12 @@ sap.ui.define([
                             var bHasError = false;
                             var aCleanData = [];
 
-                            // Quét lại lần cuối xem còn ô nào đỏ không
                             aCurrentData.forEach(function (oRow) {
                                 var oCleanRow = {};
                                 for (var key in oRow) {
-                                    // Kiểm tra xem ô ID có bị Error không
                                     if (key.startsWith("_state_") && oRow[key] === "Error") {
                                         bHasError = true;
                                     }
-                                    // Loại bỏ các cột phụ trợ UI trước khi gửi xuống DB
                                     if (!key.startsWith("_state_") && !key.startsWith("_msg_")) {
                                         oCleanRow[key] = oRow[key];
                                     }
@@ -165,13 +150,11 @@ sap.ui.define([
                                 aCleanData.push(oCleanRow);
                             });
 
-                            // CHẶN KHÔNG CHO UPLOAD NẾU CÒN LỖI (VÍ DỤ ID TRÙNG)
                             if (bHasError) {
                                 MessageBox.error("Please correct the faulty cells (highlighted in red) before uploading!");
                                 return;
                             }
 
-                            // Nếu sạch lỗi: Mã hóa Base64 cái JSON này rồi Gửi đi!
                             var sNewJsonString = JSON.stringify(aCleanData);
                             var sNewBase64String = btoa(unescape(encodeURIComponent(sNewJsonString)));
 
@@ -191,19 +174,16 @@ sap.ui.define([
             oDialog.open();
         },
 
-        // --- HÀM 3: GỌI ACTION UPLOAD XUỐNG DB ---
         _sendExcelToBackend: function (sTableName, sBase64String) {
             var oView = this.getView();
             var oModel = oView.getModel();
 
-            // 1. LẤY QUYỀN TỪ AUTH MODEL (Giống y hệt ObjectPage)
             var oAuthModel = this.getOwnerComponent().getModel("auth");
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
             var bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
 
             BusyIndicator.show(0);
 
-            // 2. RẼ NHÁNH ĐƯỜNG DẪN API DỰA TRÊN QUYỀN
             var sActionPath = "";
             if (bIsManager || bIsAdmin) {
                 sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
@@ -213,28 +193,22 @@ sap.ui.define([
 
             var oActionContext = oModel.bindContext(sActionPath);
 
-            // 3. TRUYỀN THAM SỐ TƯƠNG ỨNG VỚI TỪNG API
             oActionContext.setParameter("table_name", sTableName.toUpperCase());
 
             if (bIsManager || bIsAdmin) {
-                // API saveToDatabase nhận biến tên là json_data
                 oActionContext.setParameter("json_data", sBase64String);
             } else {
-                // API uploadExcel nhận biến tên là file_content
                 oActionContext.setParameter("file_content", sBase64String);
             }
 
-            // 4. THỰC THI GỬI REQUEST
             oActionContext.execute().then(function () {
                 BusyIndicator.hide();
 
-                // Báo Toast Message tùy theo luồng
                 var sSuccessMsg = (bIsManager || bIsAdmin)
                     ? "Data saved directly to Physical Database!"
                     : "Excel Uploaded successfully! Waiting for approval.";
                 MessageToast.show(sSuccessMsg);
 
-                // Load lại bảng
                 if (typeof this._refreshData === "function") {
                     this._refreshData(sTableName);
                 }

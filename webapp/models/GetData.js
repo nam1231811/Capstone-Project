@@ -63,12 +63,10 @@ sap.ui.define([
             }.bind(this));
         },
 
-        // --- HÀM GIẢI MÃ UTF-8 CHUẨN ---
         decodeFunction: function (object) {
             try {
                 if (object && object.json_string) {
                     var sBase64 = object.json_string;
-                    // Dùng escape và decodeURIComponent để khôi phục tiếng Việt
                     var sDecodedJson = decodeURIComponent(escape(window.atob(sBase64)));
                     return JSON.parse(sDecodedJson);
                 }
@@ -78,7 +76,6 @@ sap.ui.define([
             }
         },
 
-        // --- HÀM MÃ HÓA UTF-8 CHUẨN ---
         encodeFunction: function (oPayload) {
             try {
                 if (oPayload) {

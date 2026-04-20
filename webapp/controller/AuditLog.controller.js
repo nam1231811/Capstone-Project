@@ -127,8 +127,7 @@ sap.ui.define([
 
             var sUpperTableName = sTableName.trim().toUpperCase();
 
-            // 1. KIỂM TRA BẢNG CÓ TỒN TẠI KHÔNG TRƯỚC KHI TÌM LOG
-            var oMainODataModel = this.getOwnerComponent().getModel(); // Lấy model chính chứa TableLookup
+            var oMainODataModel = this.getOwnerComponent().getModel();
             var oLookupBinding = oMainODataModel.bindList("/TableLookup");
 
             this.byId("auditMasterTable").setBusy(true);
@@ -136,7 +135,6 @@ sap.ui.define([
             oLookupBinding.filter(new sap.ui.model.Filter("TableName", sap.ui.model.FilterOperator.EQ, sUpperTableName));
             oLookupBinding.requestContexts(0, 1).then(function (aLookupContexts) {
 
-                // Nếu mảng aLookupContexts rỗng -> Tên bảng không tồn tại trong hệ thống
                 if (aLookupContexts.length === 0) {
                     this.byId("auditMasterTable").setBusy(false);
                     oLocalModel.setProperty("/mainLogs", []);
@@ -145,7 +143,6 @@ sap.ui.define([
                     return;
                 }
 
-                // 2. NẾU BẢNG TỒN TẠI -> TIẾP TỤC GỌI API LẤY AUDIT LOG
                 var oListBinding = oODataModel.bindList("/AuditLog");
                 oListBinding.filter(new sap.ui.model.Filter("TableName", sap.ui.model.FilterOperator.EQ, sUpperTableName));
 
@@ -203,7 +200,6 @@ sap.ui.define([
                     });
                     oLocalModel.setProperty("/mainLogs", aMainLogs);
 
-                    // Cập nhật Filter Data
                     var aUniqueUsers = [];
                     var oUserMap = {};
                     aMainLogs.forEach(function (oLog) {
@@ -427,10 +423,8 @@ sap.ui.define([
             var sTableName = this.byId("auditSearchInput").getValue();
             var sRowId = oLocalModel.getProperty("/selectedRowId");
 
-            // LẤY TÊN HIỂN THỊ ĐẸP ĐỂ SHOW LÊN POPUP
             var sDisplayKey = oLocalModel.getProperty("/selectedDisplayKey") || ("ID: " + sRowId);
 
-            // SỬA CÂU THÔNG BÁO Ở ĐÂY
             var sMessage = "You are about to revert the record [" + sDisplayKey + "] to the state at: " + sTime + ".\n\n" +
                 "Are you sure you want to create this Request?";
 
