@@ -7,7 +7,7 @@ sap.ui.define([
     "sap/m/MessageToast",
     "zapp/models/GetData",
     "zapp/utils/DataFormatter",
-    "zapp/utils/GridValidator" // <-- IMPORT GRIDVALIDATOR VÀO ĐÂY
+    "zapp/utils/GridValidator"
 ], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData, DataFormatter, GridValidator) {
     "use strict";
 
@@ -398,6 +398,9 @@ sap.ui.define([
 
                 var aUpdatedFields = oRowData.fields.map(function (d) {
                     var sOldValue = "N/A";
+                    if (oRowData.action === "CREATE") {
+                        sOldValue = "N/A";
+                    }
                     if (oOldRow) {
                         var oOldJson = {};
                         try { oOldJson = JSON.parse(oOldRow.data || "{}"); } catch (e) { }
@@ -419,10 +422,17 @@ sap.ui.define([
                     if (isNaN(iLength)) iLength = 0;
 
                     // Tiên đoán kiểu nếu API trả Meta lỗi/rỗng
-                    var sFN = String(d.field).toUpperCase();
-                    if (!sDataType || sDataType.toUpperCase() === "CHAR" || sDataType.toUpperCase() === "STRING") {
-                        if (sFN.includes("DATE") || sFN === "BEGDA" || sFN === "ENDDA") sDataType = "DATS";
-                        else if (sFN === "ID" || sFN.includes("_ID") || sFN.includes("SALARY") || sFN.includes("AMOUNT") || sFN.includes("PRICE") || sFN.includes("PHONE") || sFN.includes("NUM")) sDataType = "NUMC";
+                    var oMetaDef = aMeta.find(function (m) {
+                        var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
+                        return sName.toUpperCase() === (d.field || "").toUpperCase();
+                    }) || {};
+
+                    var sDataType = oMetaDef.datatype || oMetaDef.dataType || oMetaDef.DATATYPE || oMetaDef.type || "";
+                    var iLength = parseInt(oMetaDef.leng || oMetaDef.length || oMetaDef.LENG || oMetaDef.LENGTH || oMetaDef.maxLength || oMetaDef.MaxLength || 0, 10);
+                    if (isNaN(iLength)) iLength = 0;
+
+                    if (!sDataType || sDataType.trim() === "") {
+                        sDataType = "CHAR";
                     }
 
                     return {
@@ -450,9 +460,6 @@ sap.ui.define([
             }.bind(this));
         },
 
-        // ========================================================================
-        // HÀM FAKE ROW: "Đóng gói" danh sách dọc thành hàng ngang cho GridValidator
-        // ========================================================================
         _validateDialogFields: function () {
             var oModel = this.getView().getModel("myreq");
             var oCurrentReq = oModel.getProperty("/currentDetail");

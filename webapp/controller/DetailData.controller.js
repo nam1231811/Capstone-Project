@@ -299,7 +299,7 @@ sap.ui.define([
                         this._cleanUpAfterDelete(aCells[0].row_id, bIsClerk);
                     }.bind(this)).catch(function (oError) {
                         sap.ui.core.BusyIndicator.hide();
-                        sap.m.MessageBox.error("Something is wrong, try another time");
+                        sap.m.MessageBox.error("This record is pending for approval.");
                         oView.setBusy(false);
                         console.error(oError);
                     });

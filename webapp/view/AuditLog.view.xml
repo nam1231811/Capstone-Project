@@ -84,9 +84,12 @@
                         <items>
                             <ColumnListItem>
                                 <cells>
-                                    <Text text="{audit>field}" />
-                                    <Text text="{audit>oldValue}" />
-                                    <ObjectStatus text="{audit>newValue}" state="{= ${audit>oldValue} !== '-' ? 'Success' : 'None' }" />
+                            <Text text="{audit>field}" />
+                            <Text text="{audit>oldValue}" />
+                                <ObjectStatus 
+                                    text="{audit>newValue}" 
+                                    state="{= ${audit>/selectedNodeAction} === 'CREATE' ? 'Success' : (${audit>/selectedNodeAction} === 'DELETE' ? 'Error' : (${audit>isChanged} ? 'Warning' : 'Success')) }" 
+                                    icon="{= ${audit>/selectedNodeAction} === 'CREATE' ? 'sap-icon://sys-enter-2' : (${audit>/selectedNodeAction} === 'DELETE' ? 'sap-icon://delete' : (${audit>isChanged} ? 'sap-icon://edit' : 'sap-icon://sys-enter-2')) }" />
                                 </cells>
                             </ColumnListItem>
                         </items>
