@@ -385,13 +385,27 @@ sap.ui.define([
                 var sOldVal = oOld.hasOwnProperty(sKey) ? String(oOld[sKey]) : "-";
                 var sNewVal = oNew.hasOwnProperty(sKey) ? String(oNew[sKey]) : "-";
 
-                if (sOldVal !== sNewVal) {
-                    aChanges.push({
-                        field: sKey,
-                        oldValue: sOldVal,
-                        newValue: sNewVal
-                    });
+                if (sAction === 'CREATE') {
+                    sOldVal = "N/A";
+                } else if (sAction === 'DELETE') {
+                    sNewVal = "N/A";
+                } else if (sAction === 'UPDATE') {
+                    if (!oNew.hasOwnProperty(sKey) && oOld.hasOwnProperty(sKey)) {
+                        sNewVal = sOldVal;
+                    }
                 }
+
+                // BỔ SUNG 2: Đánh dấu cờ xem trường này CÓ BỊ THAY ĐỔI HAY KHÔNG
+                var bIsChanged = (sOldVal !== sNewVal);
+
+                // BỎ LỆNH IF (sOldVal !== sNewVal) ĐỂ PUSH TOÀN BỘ CÁC TRƯỜNG VÀO BẢNG
+                aChanges.push({
+                    field: sKey,
+                    oldValue: sOldVal,
+                    newValue: sNewVal,
+                    isChanged: bIsChanged // Truyền cờ này ra View để đổi màu Icon
+                });
+
             });
 
             oLocalModel.setProperty("/selectedNodeChanges", aChanges);
