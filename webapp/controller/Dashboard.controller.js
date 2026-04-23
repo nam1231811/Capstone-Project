@@ -406,7 +406,6 @@ sap.ui.define([
                     }
 
                     var iValidCount = 0, iEmptyCount = 0;
-
                     parsedRows.forEach(function(parsedRow) {
                         aAllColumns.forEach(function(colName) {
                             var val = parsedRow[colName];
@@ -420,7 +419,6 @@ sap.ui.define([
                             if (isEmpty) { iEmptyCount++; } else { iValidCount++; }
                         });
                     });
-
                     if (iValidCount === 0 && iEmptyCount === 0) {
                         this.onResetPieChart();
                     } else {
@@ -441,7 +439,6 @@ sap.ui.define([
                         } else {
                             sColor = "Error";
                         }
-
                         oModel.setProperty("/qualityPercentage", iPercentage);
                         oModel.setProperty("/qualityColor", sColor);
                     }

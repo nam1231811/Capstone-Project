@@ -25,7 +25,6 @@ sap.ui.define([
         },
 
         onNavToApp: function () {
-            // Chặn ngay từ cửa nếu không có role
             if (!this._checkHasRole()) return;
 
             var oRouter = this.getOwnerComponent().getRouter();
@@ -33,7 +32,6 @@ sap.ui.define([
         },
 
         onNavToMyRequests: function () {
-            // Chặn ngay từ cửa nếu không có role
             if (!this._checkHasRole()) return;
 
             var oRouter = this.getOwnerComponent().getRouter();

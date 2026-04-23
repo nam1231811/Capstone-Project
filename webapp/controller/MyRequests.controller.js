@@ -408,7 +408,6 @@ sap.ui.define([
 
                     var bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase());
 
-                    // --- TRÍCH XUẤT METADATA ĐỂ GRIDVALIDATOR DÙNG ---
                     var oMetaDef = aMeta.find(function (m) {
                         var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
                         return sName.toUpperCase() === (d.field || "").toUpperCase();
@@ -418,7 +417,6 @@ sap.ui.define([
                     var iLength = parseInt(oMetaDef.leng || oMetaDef.length || oMetaDef.LENG || oMetaDef.LENGTH || oMetaDef.maxLength || oMetaDef.MaxLength || 0, 10);
                     if (isNaN(iLength)) iLength = 0;
 
-                    // Tiên đoán kiểu nếu API trả Meta lỗi/rỗng
                     var sFN = String(d.field).toUpperCase();
                     if (!sDataType || sDataType.toUpperCase() === "CHAR" || sDataType.toUpperCase() === "STRING") {
                         if (sFN.includes("DATE") || sFN === "BEGDA" || sFN === "ENDDA") sDataType = "DATS";
@@ -440,7 +438,6 @@ sap.ui.define([
                 oModel.setProperty("/currentDetail/fields", aUpdatedFields);
                 oModel.setProperty("/isTableBusy", false);
 
-                // Quét lỗi 1 lần ngay khi mở Dialog
                 this._validateDialogFields();
 
             }.bind(this)).catch(function (e) {
@@ -519,7 +516,6 @@ sap.ui.define([
             var oODataModel = this.getOwnerComponent().getModel();
             var that = this;
 
-            // CHỐT CHẶN: Ép chạy GridValidator một lần cuối trước khi Submit
             var bHasError = this._validateDialogFields();
 
             if (bHasError) {
@@ -532,7 +528,6 @@ sap.ui.define([
                 if (oCurrentReq.action === "DELETE") {
                     oNewPayload[item.field] = item.oldData;
                 } else {
-                    // Gọi DataFormatter để chuẩn bị data gửi Backend
                     oNewPayload[item.field] = DataFormatter.formatValueByType(item.value, item.datatype);
                 }
             });

@@ -154,7 +154,6 @@ sap.ui.define([
             var oAuthModel = this.getOwnerComponent().getModel("auth");
             var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
             var bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
-            var sStatus = oView.getModel("detailRecord").getProperty("/status");
 
             var oFirstCell = Object.values(oDetailModel).find(c => c && typeof c === 'object' && c.uuid);
             var enUuid = oFirstCell ? oFirstCell.uuid : "";
@@ -199,15 +198,7 @@ sap.ui.define([
                 var oContext = oModel.bindContext(path).getBoundContext();
                 oContext.setProperty("table_name", tableName);
                 oContext.setProperty("data", codeData);
-            } else {
-                // var oListBinding = oModel.bindList("/Data");
-                // oListBinding.create({
-                //     table_name: tableName,
-                //     data: codeData
-                // });
-                console.log(sStatus);
-            }
-
+            } 
             oModel.submitBatch("updateGroup").then(function () {
                 sap.ui.core.BusyIndicator.hide();
                 if (oModel.hasPendingChanges()) {
@@ -281,7 +272,6 @@ sap.ui.define([
                     if (bIsClerk) {
                         sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.deleteActiveRecord(...)";
                     }
-
                     var aPromises = {};
                     var aCells = Object.values(oDataRaw);
                     aCells.forEach(oCell => {

@@ -398,19 +398,12 @@ sap.ui.define([
         onAdd: function () {
             var footer = this._onEditToggleButtonPress();
             var oModel = this.getView().getModel("displayModel");
-
-
             var aData = oModel.getProperty("/Data") ? oModel.getProperty("/Data").slice() : [];
-
-
             if (footer) {
                 return;
             }
-
-
             var aMeta = oModel.getProperty("/Meta");
             var oNewRow = {};
-
             aMeta.forEach(function (colMeta, iIndex) {
                 var bHasVH = (colMeta.hasValueHelp === true || colMeta.hasValueHelp === "X" || colMeta.has_value_help === true || colMeta.has_value_help === "X");
 
@@ -429,13 +422,10 @@ sap.ui.define([
                 };
             }.bind(this));
 
-
             aData.unshift(oNewRow);
             oModel.setProperty("/Data", aData);
 
-
             oModel.refresh(true);
-
 
             var oOverallModel = this.getView().getModel("overall");
             if (oOverallModel) {
@@ -443,7 +433,6 @@ sap.ui.define([
                 var minRec = aData.length < 10 ? aData.length : 10;
                 oOverallModel.setProperty("/minRecord", minRec > 0 ? minRec : 1);
             }
-
 
             var oTable = this.byId("dataTable");
             if (oTable) {
@@ -531,7 +520,7 @@ sap.ui.define([
 
                 SaveToDatabase.onSaveDB(table, oView, sBase64Array).then(function () {
                     sap.ui.core.BusyIndicator.hide();
-                    sap.m.MessageToast.show("Updated to database successfully!");
+                    sap.m.MessageToast.show("Created in database successfully!");
                     this._refreshData(table);
                     this._onEditToggleButtonPress();
                 }.bind(this)).catch(function (oError) {
@@ -545,7 +534,6 @@ sap.ui.define([
 
 
             sap.ui.core.BusyIndicator.show(0);
-
 
             var sSingleBase64 = GetData.encodeFunction(oSingleRowData);
 
