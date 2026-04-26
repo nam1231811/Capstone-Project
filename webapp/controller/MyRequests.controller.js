@@ -158,6 +158,11 @@ sap.ui.define([
                     Object.keys(oParsedOld).forEach(k => { if (!aAllKeys.includes(k)) aAllKeys.push(k); });
 
                     aAllKeys.forEach(function (key) {
+
+                        if (String(key).toUpperCase() === "MANDT") {
+                            return;
+                        }
+
                         var sOldVal = "-";
                         if (sActionText !== "CREATE") {
                             sOldVal = oParsedOld[key] !== undefined ? String(oParsedOld[key]) : "Loading...";
@@ -193,29 +198,6 @@ sap.ui.define([
                     return b.rawDataDate - a.rawDataDate;
                 });
 
-                var aUniqueList = [];
-                var oSeenSignatures = {};
-
-                aList.forEach(function (item) {
-                    var sRecordId = "";
-
-                    var oIdField = item.fields.find(f => f.field.indexOf("ID") !== -1 || f.field.indexOf("CODE") !== -1 || f.field === "UUID");
-                    if (oIdField) {
-                        sRecordId = (oIdField.oldData !== "-" && oIdField.oldData !== "N/A") ? oIdField.oldData : oIdField.value;
-                    } else if (item.fields.length > 0) {
-                        sRecordId = item.fields[0].value;
-                    }
-
-                    var sSignature = item.tableName + "_" + item.action + "_" + sRecordId;
-
-                    if (!oSeenSignatures[sSignature]) {
-                        oSeenSignatures[sSignature] = true;
-                        aUniqueList.push(item);
-                    }
-                });
-
-                aList = aUniqueList;
-
                 aList.forEach(function (item, index) {
                     item.indexNo = index + 1;
                 });
@@ -246,7 +228,7 @@ sap.ui.define([
             var oModel = this.getView().getModel("myreq");
 
             var oClone = Object.assign({}, oRowData);
-            var bNeedsFetch = (oRowData.action === "UPDATE" || oRowData.action === "CREATE");
+            var bNeedsFetch = (oRowData.status === "PENDING" || oRowData.status === "REJECTED") && (oRowData.action === "UPDATE" || oRowData.action === "CREATE");
 
             if (bNeedsFetch) {
                 oClone.fields = [];
@@ -310,7 +292,6 @@ sap.ui.define([
                                                             valueLiveUpdate: true,
                                                             visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }",
                                                             editable: "{= ${myreq>isKey} !== true }",
-                                                            // BINDING ĐỂ HIỂN THỊ LỖI
                                                             valueState: "{myreq>valueState}",
                                                             valueStateText: "{myreq>valueStateText}",
                                                             change: this.onDialogInputChange.bind(this)
@@ -411,7 +392,7 @@ sap.ui.define([
 
                     var bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase());
 
-                    // --- TRÍCH XUẤT METADATA ĐỂ GRIDVALIDATOR DÙNG ---
+                    // EXTRACT METADATA FOR GRIDVALIDATOR
                     var oMetaDef = aMeta.find(function (m) {
                         var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
                         return sName.toUpperCase() === (d.field || "").toUpperCase();
@@ -421,7 +402,7 @@ sap.ui.define([
                     var iLength = parseInt(oMetaDef.leng || oMetaDef.length || oMetaDef.LENG || oMetaDef.LENGTH || oMetaDef.maxLength || oMetaDef.MaxLength || 0, 10);
                     if (isNaN(iLength)) iLength = 0;
 
-                    // Tiên đoán kiểu nếu API trả Meta lỗi/rỗng
+                    // Predict type if the API returns Meta empty.
                     var oMetaDef = aMeta.find(function (m) {
                         var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
                         return sName.toUpperCase() === (d.field || "").toUpperCase();
@@ -450,7 +431,6 @@ sap.ui.define([
                 oModel.setProperty("/currentDetail/fields", aUpdatedFields);
                 oModel.setProperty("/isTableBusy", false);
 
-                // Quét lỗi 1 lần ngay khi mở Dialog
                 this._validateDialogFields();
 
             }.bind(this)).catch(function (e) {
@@ -465,7 +445,6 @@ sap.ui.define([
             var oCurrentReq = oModel.getProperty("/currentDetail");
             if (!oCurrentReq || !oCurrentReq.fields || oCurrentReq.action === "DELETE") return false;
 
-            // 1. Tạo Meta ảo và Row giả lập
             var aFakeMeta = [];
             var oFakeRow = {};
 
@@ -479,16 +458,16 @@ sap.ui.define([
                 oFakeRow[idx] = {
                     fieldname: f.field,
                     value: f.value,
-                    isEditable: !f.isKey, // Các trường khóa chính (Read-only) không cần Validator quét format
-                    isNew: (idx === 0)    // Mẹo để lừa GridValidator đây là ObjectPage
+                    isEditable: !f.isKey,
+                    isNew: (idx === 0)
                 };
             });
 
-            // 2. Chuyển thẳng cho "Bộ não" GridValidator xử lý (Bản nguyên gốc 100%)
+            // 2. Send it to the GridValidator 
             var aValidatedData = GridValidator.performLiveValidation([oFakeRow], aFakeMeta, []);
             var oResultRow = aValidatedData[0];
 
-            // 3. Rút kết quả lỗi (_state, _msg) đập ngược lại vào mảng dọc
+            // 3. Extract the error result
             var bHasError = false;
             oCurrentReq.fields.forEach(function (f, idx) {
                 var oCell = oResultRow[idx];
@@ -507,15 +486,14 @@ sap.ui.define([
             return bHasError;
         },
 
-        // Gọi ngay khi user vừa gõ xong (click chuột ra ngoài/nhấn Tab)
+        // Call it immediately after the user finishes typing 
         onDialogInputChange: function (oEvent) {
             var oInput = oEvent.getSource();
             var sValue = oEvent.getParameter("value");
             var sPath = oInput.getBindingContext("myreq").getPath();
 
-            // Cập nhật giá trị vào model tức thì
+            // Update the model value instantly.
             this.getView().getModel("myreq").setProperty(sPath + "/value", sValue);
-            // Gọi GridValidator
             this._validateDialogFields();
         },
 
@@ -526,7 +504,6 @@ sap.ui.define([
             var oODataModel = this.getOwnerComponent().getModel();
             var that = this;
 
-            // CHỐT CHẶN: Ép chạy GridValidator một lần cuối trước khi Submit
             var bHasError = this._validateDialogFields();
 
             if (bHasError) {
@@ -539,7 +516,7 @@ sap.ui.define([
                 if (oCurrentReq.action === "DELETE") {
                     oNewPayload[item.field] = item.oldData;
                 } else {
-                    // Gọi DataFormatter để chuẩn bị data gửi Backend
+                    // DataFormatter to prepate send Backend
                     oNewPayload[item.field] = DataFormatter.formatValueByType(item.value, item.datatype);
                 }
             });
