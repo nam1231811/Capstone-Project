@@ -204,7 +204,8 @@ sap.ui.define([
 
                 oMyReqModel.setProperty("/list", aList);
                 oView.setBusy(false);
-                this.onStatusFilterSelect();
+
+                this._applyFilters();
 
             }.bind(this)).catch(function (e) {
                 oView.setBusy(false);
@@ -212,14 +213,29 @@ sap.ui.define([
             });
         },
 
-        onStatusFilterSelect: function () {
-            var sKey = this.byId("statusFilterBar").getSelectedKey();
-            var oBinding = this.byId("myRequestsTable").getBinding("items");
-            if (sKey === "ALL") {
-                oBinding.filter([]);
-            } else {
-                oBinding.filter([new Filter("status", FilterOperator.EQ, sKey)]);
+        _applyFilters: function () {
+            var sStatusKey = this.byId("statusFilterBar").getSelectedKey();
+            var sSearchQuery = this.byId("searchTable").getValue();
+            var aFilters = [];
+
+            if (sStatusKey !== "ALL") {
+                aFilters.push(new Filter("status", FilterOperator.EQ, sStatusKey));
             }
+
+            if (sSearchQuery && sSearchQuery.trim() !== "") {
+                aFilters.push(new Filter("tableName", FilterOperator.Contains, sSearchQuery.trim().toUpperCase()));
+            }
+
+            var oBinding = this.byId("myRequestsTable").getBinding("items");
+            oBinding.filter(aFilters);
+        },
+
+        onStatusFilterSelect: function () {
+            this._applyFilters();
+        },
+
+        onSearchTable: function () {
+            this._applyFilters();
         },
 
         onOpenDetailDialog: function (oEvent) {
@@ -274,6 +290,7 @@ sap.ui.define([
                                 }).addStyleClass("sapUiSmallMargin"),
 
                                 new sap.m.Table({
+                                    alternateRowColors: true,
                                     busy: "{myreq>/isTableBusy}",
                                     busyIndicatorDelay: 0,
                                     backgroundDesign: "Solid",
@@ -392,17 +409,6 @@ sap.ui.define([
 
                     var bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase());
 
-                    // EXTRACT METADATA FOR GRIDVALIDATOR
-                    var oMetaDef = aMeta.find(function (m) {
-                        var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
-                        return sName.toUpperCase() === (d.field || "").toUpperCase();
-                    }) || {};
-
-                    var sDataType = oMetaDef.datatype || oMetaDef.dataType || oMetaDef.DATATYPE || oMetaDef.type || "";
-                    var iLength = parseInt(oMetaDef.leng || oMetaDef.length || oMetaDef.LENG || oMetaDef.LENGTH || oMetaDef.maxLength || oMetaDef.MaxLength || 0, 10);
-                    if (isNaN(iLength)) iLength = 0;
-
-                    // Predict type if the API returns Meta empty.
                     var oMetaDef = aMeta.find(function (m) {
                         var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
                         return sName.toUpperCase() === (d.field || "").toUpperCase();
@@ -463,11 +469,9 @@ sap.ui.define([
                 };
             });
 
-            // 2. Send it to the GridValidator 
             var aValidatedData = GridValidator.performLiveValidation([oFakeRow], aFakeMeta, []);
             var oResultRow = aValidatedData[0];
 
-            // 3. Extract the error result
             var bHasError = false;
             oCurrentReq.fields.forEach(function (f, idx) {
                 var oCell = oResultRow[idx];
@@ -486,13 +490,11 @@ sap.ui.define([
             return bHasError;
         },
 
-        // Call it immediately after the user finishes typing 
         onDialogInputChange: function (oEvent) {
             var oInput = oEvent.getSource();
             var sValue = oEvent.getParameter("value");
             var sPath = oInput.getBindingContext("myreq").getPath();
 
-            // Update the model value instantly.
             this.getView().getModel("myreq").setProperty(sPath + "/value", sValue);
             this._validateDialogFields();
         },
@@ -516,7 +518,6 @@ sap.ui.define([
                 if (oCurrentReq.action === "DELETE") {
                     oNewPayload[item.field] = item.oldData;
                 } else {
-                    // DataFormatter to prepate send Backend
                     oNewPayload[item.field] = DataFormatter.formatValueByType(item.value, item.datatype);
                 }
             });
