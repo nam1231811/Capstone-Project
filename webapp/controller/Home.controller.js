@@ -59,7 +59,7 @@ sap.ui.define([
             var bIsManager = oAuthModel.getProperty("/isManager");
 
             if (!bIsAdmin && !bIsManager) {
-                sap.m.MessageBox.warning("Approval function is only available for Managers and Admins!\nYou do not have permission to access!", {
+                MessageBox.warning("Approval function is only available for Managers and Admins!\nYou do not have permission to access!", {
                     title: "Access Denied"
                 });
                 return;
@@ -89,7 +89,7 @@ sap.ui.define([
             var bIsAdmin = oAuthModel.getProperty("/isAdmin");
 
             if (!bIsAdmin) {
-                sap.m.MessageBox.warning("Role Assignment function is only available for Admins!\nYou do not have permission to access!", {
+                MessageBox.warning("Role Assignment function is only available for Admins!\nYou do not have permission to access!", {
                     title: "Access Denied"
                 });
                 return;

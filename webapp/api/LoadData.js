@@ -64,30 +64,5 @@ sap.ui.define([
                 });
             }.bind(this));
         },
-
-        decodeFunction: function (object) {
-            try {
-                if (object && object.json_string) {
-                    var sBase64 = object.json_string;
-                    var sDecodedJson = decodeURIComponent(escape(window.atob(sBase64)));
-                    return JSON.parse(sDecodedJson);
-                }
-            } catch (e) {
-                console.error("GetData [decodeFunction]", e);
-                throw new Error("Decode error: " + e.message);
-            }
-        },
-
-        encodeFunction: function (oPayload) {
-            try {
-                if (oPayload) {
-                    var sJsonString = JSON.stringify(oPayload);
-                    return window.btoa(unescape(encodeURIComponent(sJsonString)));
-                }
-            } catch (e) {
-                console.error("Error [encodeFunction]", e);
-                throw e;
-            }
-        }
     };
 });

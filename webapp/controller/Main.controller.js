@@ -4,8 +4,9 @@ sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/m/MessageToast",
-    "zapp/models/GetData"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, GetData) {
+    "zapp/api/LoadData",
+    "sap/m/MessageBox"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, LoadData, MessageBox) {
     "use strict";
 
     return Controller.extend("zapp.controller.Main", {
@@ -137,9 +138,8 @@ sap.ui.define([
                 sSearchDesc = "*" + sSearchDesc + "*";
             }
 
-            GetData.searchTables(oModel, sSearchName, sSearchDesc).then(function (oPayload) {
+            LoadData.searchTables(oModel, sSearchName, sSearchDesc).then(function (oPayload) {
                 oTable.setBusy(false);
-                console.log(oPayload);
                 
                 if (oPayload && oPayload.status === "MULTIPLE" && oPayload.matches) {
                     var aMatchedTables = oPayload.matches.map(function (m) {
@@ -177,18 +177,17 @@ sap.ui.define([
                         oDisplayModel.setProperty("/Data", null);
                     }
 
-                    sap.m.MessageToast.show(oBundle.getText("msgFoundTables", [aMatchedTables.length]));
+                    MessageToast.show(oBundle.getText("msgFoundTables", [aMatchedTables.length]));
                 } else {
-                    sap.m.MessageBox.information(oBundle.getText("msgNoMatchingTables"));
+                    MessageBox.information(oBundle.getText("msgNoMatchingTables"));
                 }
             }.bind(this)).catch(function (oError) {
                 oTable.setBusy(false);
-                
                 var sErrMsg = oError.message ? oError.message.toLowerCase() : "";
                 if (sErrMsg.includes("not found") || sErrMsg.includes("không tìm thấy") || sErrMsg.includes("không tồn tại") || sErrMsg.includes("does not exist") || sErrMsg.includes("009") || sErrMsg.includes("007")) {
-                    sap.m.MessageBox.warning(oBundle.getText("msgTableNotFound", [sName || sDesc]));
+                    MessageBox.warning(oBundle.getText("msgTableNotFound", [sName || sDesc]));
                 } else {
-                    sap.m.MessageBox.error(oError.message);
+                    MessageBox.error(oError.message);
                 }
             });
         },
@@ -238,7 +237,9 @@ sap.ui.define([
             var oFirstRow = (oPayload.dataRows && oPayload.dataRows.length > 0) ? oPayload.dataRows[0] : {};
 
             var parseAbapDate = function(sDate) {
-                if (!sDate) return new Date();
+                if (!sDate) {
+                    return new Date()
+                };
                 var s = sDate.toString().split(".")[0];
                 if (s.length >= 14) {
                     return new Date(Date.UTC(
@@ -264,7 +265,10 @@ sap.ui.define([
             var oRealDataModel = this.getView().getModel("realData");
             var aUniqueTables = oRealDataModel.getProperty("/UniqueTables") || [];
 
-            var iIndex = aUniqueTables.findIndex(function(t) { return t.table_name === oNewTable.table_name; });
+            var iIndex = aUniqueTables.findIndex(function(t) { 
+                return t.table_name === oNewTable.table_name; 
+            });
+
             if (iIndex !== -1) {
                 aUniqueTables[iIndex] = oNewTable;
             } else {
@@ -325,7 +329,9 @@ sap.ui.define([
             var oTable = this.byId("dynamicTable");
             var aColumns = oTable.getColumns();
             var aColStates = aColumns.map(function(col) {
-                return { visible: col.getVisible() };
+                return { 
+                    visible: col.getVisible() 
+                };
             });
             window.localStorage.setItem("myAppTableConfig_UI", JSON.stringify(aColStates));
         },
