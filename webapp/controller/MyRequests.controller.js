@@ -409,19 +409,6 @@ sap.ui.define([
 
                     var bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase());
 
-<<<<<<< HEAD
-                    var oMetaDef = aMeta.find(function (m) {
-                        var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
-                        return sName.toUpperCase() === (d.field || "").toUpperCase();
-                    }) || {};
-
-                    var sDataType = oMetaDef.datatype || oMetaDef.dataType || oMetaDef.DATATYPE || oMetaDef.type || "";
-                    var iLength = parseInt(oMetaDef.leng || oMetaDef.length || oMetaDef.LENG || oMetaDef.LENGTH || oMetaDef.maxLength || oMetaDef.MaxLength || 0, 10);
-                    if (isNaN(iLength)) iLength = 0;
-
-                    // Tiên đoán kiểu nếu API trả Meta lỗi/rỗng
-=======
->>>>>>> e9d2de69292dcae63d8e586e6724d52f49a179ae
                     var oMetaDef = aMeta.find(function (m) {
                         var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
                         return sName.toUpperCase() === (d.field || "").toUpperCase();
