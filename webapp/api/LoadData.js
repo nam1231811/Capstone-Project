@@ -1,5 +1,6 @@
 sap.ui.define([
-], function () {
+    "zapp/utils/DataFormatter"
+], function (DataFormatter) {
     "use strict";
     const SEARCH_TABLE_ACTION =   "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.SearchTables(...)";
     const LOAD_TABLE_ACTION   =   "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.LoadTable(...)";
@@ -17,7 +18,7 @@ sap.ui.define([
                     var oResult = oActionContext.getBoundContext().getObject();
                     if (oResult && oResult.json_string) {
                         try {
-                            var oPayload = this.decodeFunction(oResult);
+                            var oPayload = DataFormatter.decodeFunction(oResult);
                             resolve(oPayload);
                         } catch (e) {
                             reject(new Error("Error decoding JSON from Backend: " + e.message));
@@ -47,7 +48,7 @@ sap.ui.define([
                     var oResult = oActionContext.getBoundContext().getObject();
                     if (oResult && oResult.json_string) {
                         try {
-                            var oPayload = this.decodeFunction(oResult);
+                            var oPayload = DataFormatter.decodeFunction(oResult);
                             resolve(oPayload);
                         } catch (e) {
                             reject(new Error("Error decoding JSON from Backend: " + e.message));
