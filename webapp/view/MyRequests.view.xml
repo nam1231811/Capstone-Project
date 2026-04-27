@@ -33,7 +33,17 @@
                             <SegmentedButtonItem key="APPROVED" text="Approved" icon="sap-icon://accept" />
                         </items>
                     </SegmentedButton>
+                    
                     <ToolbarSpacer />
+                    
+                    <SearchField 
+                        id="searchTable" 
+                        placeholder="Search table..." 
+                        width="250px" 
+                        search=".onSearchTable" 
+                        liveChange=".onSearchTable"
+                        class="sapUiTinyMarginEnd" />
+                        
                     <Button icon="sap-icon://refresh" text="Refresh" press=".onRefreshList" type="Emphasized"/>
                 </OverflowToolbar>
 

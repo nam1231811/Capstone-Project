@@ -158,6 +158,11 @@ sap.ui.define([
                     Object.keys(oParsedOld).forEach(k => { if (!aAllKeys.includes(k)) aAllKeys.push(k); });
 
                     aAllKeys.forEach(function (key) {
+
+                        if (String(key).toUpperCase() === "MANDT") {
+                            return;
+                        }
+
                         var sOldVal = "-";
                         if (sActionText !== "CREATE") {
                             sOldVal = oParsedOld[key] !== undefined ? String(oParsedOld[key]) : "Loading...";
@@ -193,36 +198,14 @@ sap.ui.define([
                     return b.rawDataDate - a.rawDataDate;
                 });
 
-                var aUniqueList = [];
-                var oSeenSignatures = {};
-
-                aList.forEach(function (item) {
-                    var sRecordId = "";
-
-                    var oIdField = item.fields.find(f => f.field.indexOf("ID") !== -1 || f.field.indexOf("CODE") !== -1 || f.field === "UUID");
-                    if (oIdField) {
-                        sRecordId = (oIdField.oldData !== "-" && oIdField.oldData !== "N/A") ? oIdField.oldData : oIdField.value;
-                    } else if (item.fields.length > 0) {
-                        sRecordId = item.fields[0].value;
-                    }
-
-                    var sSignature = item.tableName + "_" + item.action + "_" + sRecordId;
-
-                    if (!oSeenSignatures[sSignature]) {
-                        oSeenSignatures[sSignature] = true;
-                        aUniqueList.push(item);
-                    }
-                });
-
-                aList = aUniqueList;
-
                 aList.forEach(function (item, index) {
                     item.indexNo = index + 1;
                 });
 
                 oMyReqModel.setProperty("/list", aList);
                 oView.setBusy(false);
-                this.onStatusFilterSelect();
+
+                this._applyFilters();
 
             }.bind(this)).catch(function (e) {
                 oView.setBusy(false);
@@ -230,14 +213,29 @@ sap.ui.define([
             });
         },
 
-        onStatusFilterSelect: function () {
-            var sKey = this.byId("statusFilterBar").getSelectedKey();
-            var oBinding = this.byId("myRequestsTable").getBinding("items");
-            if (sKey === "ALL") {
-                oBinding.filter([]);
-            } else {
-                oBinding.filter([new Filter("status", FilterOperator.EQ, sKey)]);
+        _applyFilters: function () {
+            var sStatusKey = this.byId("statusFilterBar").getSelectedKey();
+            var sSearchQuery = this.byId("searchTable").getValue();
+            var aFilters = [];
+
+            if (sStatusKey !== "ALL") {
+                aFilters.push(new Filter("status", FilterOperator.EQ, sStatusKey));
             }
+
+            if (sSearchQuery && sSearchQuery.trim() !== "") {
+                aFilters.push(new Filter("tableName", FilterOperator.Contains, sSearchQuery.trim().toUpperCase()));
+            }
+
+            var oBinding = this.byId("myRequestsTable").getBinding("items");
+            oBinding.filter(aFilters);
+        },
+
+        onStatusFilterSelect: function () {
+            this._applyFilters();
+        },
+
+        onSearchTable: function () {
+            this._applyFilters();
         },
 
         onOpenDetailDialog: function (oEvent) {
@@ -246,7 +244,7 @@ sap.ui.define([
             var oModel = this.getView().getModel("myreq");
 
             var oClone = Object.assign({}, oRowData);
-            var bNeedsFetch = (oRowData.action === "UPDATE" || oRowData.action === "CREATE");
+            var bNeedsFetch = (oRowData.status === "PENDING" || oRowData.status === "REJECTED") && (oRowData.action === "UPDATE" || oRowData.action === "CREATE");
 
             if (bNeedsFetch) {
                 oClone.fields = [];
@@ -292,6 +290,7 @@ sap.ui.define([
                                 }).addStyleClass("sapUiSmallMargin"),
 
                                 new sap.m.Table({
+                                    alternateRowColors: true,
                                     busy: "{myreq>/isTableBusy}",
                                     busyIndicatorDelay: 0,
                                     backgroundDesign: "Solid",
@@ -310,7 +309,6 @@ sap.ui.define([
                                                             valueLiveUpdate: true,
                                                             visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }",
                                                             editable: "{= ${myreq>isKey} !== true }",
-                                                            // BINDING ĐỂ HIỂN THỊ LỖI
                                                             valueState: "{myreq>valueState}",
                                                             valueStateText: "{myreq>valueStateText}",
                                                             change: this.onDialogInputChange.bind(this)
@@ -411,6 +409,7 @@ sap.ui.define([
 
                     var bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase());
 
+<<<<<<< HEAD
                     var oMetaDef = aMeta.find(function (m) {
                         var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
                         return sName.toUpperCase() === (d.field || "").toUpperCase();
@@ -421,6 +420,8 @@ sap.ui.define([
                     if (isNaN(iLength)) iLength = 0;
 
                     // Tiên đoán kiểu nếu API trả Meta lỗi/rỗng
+=======
+>>>>>>> e9d2de69292dcae63d8e586e6724d52f49a179ae
                     var oMetaDef = aMeta.find(function (m) {
                         var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
                         return sName.toUpperCase() === (d.field || "").toUpperCase();
@@ -463,7 +464,6 @@ sap.ui.define([
             var oCurrentReq = oModel.getProperty("/currentDetail");
             if (!oCurrentReq || !oCurrentReq.fields || oCurrentReq.action === "DELETE") return false;
 
-            // 1. Tạo Meta ảo và Row giả lập
             var aFakeMeta = [];
             var oFakeRow = {};
 
@@ -477,16 +477,14 @@ sap.ui.define([
                 oFakeRow[idx] = {
                     fieldname: f.field,
                     value: f.value,
-                    isEditable: !f.isKey, // Các trường khóa chính (Read-only) không cần Validator quét format
-                    isNew: (idx === 0)    // Mẹo để lừa GridValidator đây là ObjectPage
+                    isEditable: !f.isKey,
+                    isNew: (idx === 0)
                 };
             });
 
-            // 2. Chuyển thẳng cho "Bộ não" GridValidator xử lý (Bản nguyên gốc 100%)
             var aValidatedData = GridValidator.performLiveValidation([oFakeRow], aFakeMeta, []);
             var oResultRow = aValidatedData[0];
 
-            // 3. Rút kết quả lỗi (_state, _msg) đập ngược lại vào mảng dọc
             var bHasError = false;
             oCurrentReq.fields.forEach(function (f, idx) {
                 var oCell = oResultRow[idx];
@@ -505,15 +503,12 @@ sap.ui.define([
             return bHasError;
         },
 
-        // Gọi ngay khi user vừa gõ xong (click chuột ra ngoài/nhấn Tab)
         onDialogInputChange: function (oEvent) {
             var oInput = oEvent.getSource();
             var sValue = oEvent.getParameter("value");
             var sPath = oInput.getBindingContext("myreq").getPath();
 
-            // Cập nhật giá trị vào model tức thì
             this.getView().getModel("myreq").setProperty(sPath + "/value", sValue);
-            // Gọi GridValidator
             this._validateDialogFields();
         },
 
