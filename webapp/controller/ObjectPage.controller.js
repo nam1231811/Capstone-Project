@@ -10,10 +10,11 @@ sap.ui.define([
     "zapp/utils/UploadExcelData",
     "zapp/utils/DownloadExcelData",
     "zapp/api/SaveToDatabase",
-    "zapp/utils/GridValidator"
+    "zapp/utils/GridValidator",
+    "zapp/api/LoadData",
 ], function (
     Controller, fioriLibrary, SearchData, FilterData, SortData, PersonalizationData,
-    DataFormatter, GetData, UploadExcelData, DownloadExcelData, SaveToDatabase, GridValidator
+    DataFormatter, GetData, UploadExcelData, DownloadExcelData, SaveToDatabase, GridValidator, LoadData
 ) {
     "use strict";
 
@@ -23,13 +24,11 @@ sap.ui.define([
         _oDataRaw: [],
         _sRecentlySavedKey: null,
 
-
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
             this.oRouter = oOwnerComponent.getRouter();
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
         },
-
 
         _onObjectMatched: function (oEvent) {
             var oDisplayModel = this.getView().getModel("displayModel");
@@ -46,11 +45,9 @@ sap.ui.define([
                 return;
             }
 
-
             if (!state) {
                 return;
             }
-
 
             if (oTable) {
                 oTable.setBusy(true)
@@ -59,25 +56,24 @@ sap.ui.define([
             oDisplayModel.setProperty("/CurrentTable", sNewTableName);
             oDisplayModel.setProperty("/searchQuery", "");
 
-
-            GetData.loadTableData(oModel, sNewTableName, "", sLang).then(function (oPayload) {
+            LoadData.loadTableData(oModel, sNewTableName, "", sLang).then(function (oPayload) {
                 this._processPayload(oPayload);
                 this._displayData();
             }.bind(this)).catch(function (err) {
                 console.error("Load Meta/Data Error:", err);
                 sap.m.MessageBox.error("No data found for the selected table.");
-            })
-                .finally(function () {
-                    if (oTable) oTable.setBusy(false);
-                });
+            }).finally(function () {
+                if (oTable) {
+                    oTable.setBusy(false)
+                };
+            });
         },
-
 
         _processPayload: function (oPayload) {
             var aRawMeta = oPayload.metadata || [];
             var oUniqueMap = new Map();
-
-
+            console.log(aRawMeta);
+            
             aRawMeta.forEach(item => {
                 var sFieldName = item.fieldname;
                 if (sFieldName && !oUniqueMap.has(sFieldName)) {
@@ -86,80 +82,59 @@ sap.ui.define([
                     oUniqueMap.set(sFieldName, item);
                 }
             });
-
-
             var aBaseMeta = Array.from(oUniqueMap.values());
-
-
             var aUiMeta = JSON.parse(JSON.stringify(aBaseMeta));
             aUiMeta.sort(function (a, b) {
-                var posA = parseInt(a.fieldPos || a.field_pos, 10) || 0;
-                var posB = parseInt(b.fieldPos || b.field_pos, 10) || 0;
+                var posA = parseInt(a.field_pos, 10) || 0;
+                var posB = parseInt(b.field_pos, 10) || 0;
                 return posA - posB;
             });
-
-
             var aTableMeta = JSON.parse(JSON.stringify(aBaseMeta));
             aTableMeta.sort(function (a, b) {
                 var checkIsKey = function (col) {
-                    var sColName = (col.fieldname || col.fieldName || "").toUpperCase();
-                    return (col.keyflag === "X" || col.keyFlag === "X" ||
-                        col.isKey === true || col.is_key === true || col.IsKey === true ||
-                        sColName === "ID" || sColName === "CODE" ||
-                        sColName.indexOf("_ID") !== -1 || sColName.indexOf("_CODE") !== -1);
+                    var sColName = (col.fieldname || "").toUpperCase();
+                    return (col.keyflag === "X"  ||
+                        sColName === "ID" || 
+                        sColName === "CODE" ||
+                        sColName.indexOf("_ID") !== -1 || 
+                        sColName.indexOf("_CODE") !== -1);
                 };
-
-
                 var aIsKey = checkIsKey(a);
                 var bIsKey = checkIsKey(b);
-
-
                 if (aIsKey && !bIsKey) return -1;
                 if (!aIsKey && bIsKey) return 1;
-
-
-                var posA = parseInt(a.fieldPos || a.field_pos, 10) || 0;
-                var posB = parseInt(b.fieldPos || b.field_pos, 10) || 0;
+                var posA = parseInt(a.field_pos, 10) || 0;
+                var posB = parseInt(b.field_pos, 10) || 0;
                 return posA - posB;
             });
-
-
             this._oMetaRaw = aTableMeta;
-            this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname || prop.fieldName);
-
+            this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname);
 
             var sActualTableName = this._oMetaRaw[0]?.tableName || "Unknown";
             var sActualTableDesc = this._oMetaRaw[0]?.tableDescription || "No description available";
             var iColCount = this._oMetaRaw.length;
 
-
             this.getView().getModel("view")?.setProperty("/tableName", sActualTableName);
             this.getView().getModel("overall")?.setProperty("/tableName", sActualTableName);
             this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);
             this.getView().getModel("overall")?.setProperty("/colCount", iColCount);
-
-
             this.getView().getModel("displayModel").setProperty("/Meta", aTableMeta);
             this.getView().getModel("displayModel").setProperty("/UiMeta", aUiMeta);
             this.getView().getModel("displayModel").setProperty("/Data", oPayload.dataRows);
 
-
             var aRawData = oPayload.dataRows || this.getView().getModel("displayModel").getProperty("/Data") || [];
             var aFormattedData = [];
 
-
             aRawData.forEach(function (rowObj, rowIndex) {
                 var oNewRow = {};
-
                 var oActualData = {};
                 if (rowObj.data) {
                     try {
                         oActualData = JSON.parse(rowObj.data);
                     } catch (e) {
-                        console.error("Lỗi parse JSON ở dòng " + rowIndex, e);
+                        console.error("Error parse json" + rowIndex, e);
                     }
                 }
-
 
                 var sRowUuid = rowObj.uuid || "";
 
@@ -179,7 +154,7 @@ sap.ui.define([
                         }
                     }
 
-                    var bHasVH = (colMeta.hasValueHelp === true || colMeta.hasValueHelp === "X" || colMeta.has_value_help === true || colMeta.has_value_help === "X");
+                    var bHasVH = (colMeta.hasValueHelp === "X");
 
                     oNewRow[iIndex] = {
                         value: sValue,
@@ -200,29 +175,22 @@ sap.ui.define([
                         changedAt: DataFormatter.formatDateTime(rowObj.changedAt)
                     };
                 });
-
-
                 aFormattedData.push(oNewRow);
             }.bind(this));
 
-
             var sRecentKey = this._sRecentlySavedKey;
-
 
             aFormattedData.sort(function (a, b) {
                 var valA = a[0] ? String(a[0].value).trim() : "";
                 var valB = b[0] ? String(b[0].value).trim() : "";
-
 
                 if (sRecentKey) {
                     if (valA === sRecentKey) return -1;
                     if (valB === sRecentKey) return 1;
                 }
 
-
                 var numA = parseFloat(valA);
                 var numB = parseFloat(valB);
-
 
                 if (!isNaN(numA) && !isNaN(numB)) {
                     return numB - numA;
@@ -231,9 +199,7 @@ sap.ui.define([
                 }
             });
 
-
             this._oDataRaw = aFormattedData;
-
 
             var minRec = this._oDataRaw.length < 10 ? this._oDataRaw.length : 10;
             var oOverallModel = this.getView().getModel("overall");
@@ -242,58 +208,52 @@ sap.ui.define([
                 oOverallModel.setProperty("/count", this._oDataRaw.length);
             }
 
-
             this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
         },
 
-
         _displayData: function () {
-            var oTable = this.byId("dataTable") || this.byId("TablePage");
-
+            var oTable = this.byId("dataTable");
             oTable.destroyColumns();
             oTable.bindAggregation("columns", {
                 path: "displayModel>/Meta",
                 factory: this.createDynamicColumn.bind(this)
             });
-
-
             oTable.bindRows("displayModel>/Data");
             oTable.detachColumnSelect(this.onColumnSelect, this);
             oTable.attachColumnSelect(this.onColumnSelect, this);
         },
 
-
         createDynamicColumn: function (sId, oContext) {
             var oMeta = oContext.getObject();
             var sPath = oContext.getPath();
             var iIndex = parseInt(sPath.split("/").pop(), 10);
-
-
             var sColName = (oMeta && oMeta.fieldname) ? oMeta.fieldname : "unknown_col";
             var sBaseId = "col_" + sColName + "_" + iIndex;
-
-
             var oExistingCol = this.getView().byId(sBaseId);
+
             if (oExistingCol) {
                 oExistingCol.destroy();
             }
 
-
             var sStableId = this.getView().createId(sBaseId);
-            var sTableName = this.getView().getModel("overall").getProperty("/tableName") || "DefaultTable";
+            var sTableName = this.getView().getModel("overall").getProperty("/tableName");
             var sStorageKey = "myApp_" + sTableName + "_GridPerso";
             var sSavedData = window.localStorage.getItem(sStorageKey);
-
-
             var bVisibleDefault = (iIndex < 10);
+
             if (sSavedData) {
                 try {
                     var aSavedCols = JSON.parse(sSavedData);
-                    var oMatch = aSavedCols.find(function (c) { return c.index === iIndex; });
+                    var oMatch = aSavedCols.find(function (c) { 
+                        return c.index === iIndex; 
+                    });
+
                     if (oMatch) {
                         bVisibleDefault = oMatch.visible;
                     }
-                } catch (e) { }
+                } catch (e) {
+
+                }
             }
 
 
@@ -350,7 +310,7 @@ sap.ui.define([
 
                                 this._validateLiveGrid();
                             }.bind(this)
-                        }).data("tableName", oMeta.table_name || oMeta.tableName || "")
+                        }).data("tableName", oMeta.tableName || "")
                             .data("fieldName", oMeta.fieldname || "")
                     ]
                 })
@@ -364,36 +324,29 @@ sap.ui.define([
             return oColumn;
         },
 
-
         onPersonalization: function () {
             PersonalizationData.onPersonalization.call(this);
         },
-
 
         onColumnSelect: function (oEvent) {
             SortData.onColumnSelect.call(this, oEvent);
         },
 
-
         onSortColumnDirect: function (bDescending, iColIndex, bMultiSort, bGroup) {
             SortData.onSortColumnDirect.call(this, bDescending, iColIndex, bMultiSort, bGroup);
         },
-
 
         onSearch: function (oEvent) {
             SearchData.onSearch.call(this, oEvent);
         },
 
-
         onFilter: function () {
             FilterData.onFilter.call(this);
         },
 
-
         onFilterConfirm: function (oEvent) {
             FilterData.onFilterConfirm.call(this, oEvent);
         },
-
 
         onAdd: function () {
             var footer = this._onEditToggleButtonPress();
@@ -439,7 +392,6 @@ sap.ui.define([
                 oTable.setFirstVisibleRow(0);
             }
         },
-
 
         onSave: function () {
             var oTable = this.byId("dataTable");
@@ -501,7 +453,6 @@ sap.ui.define([
                 sap.m.MessageBox.error("No valid data to save.");
             }
         },
-
 
         _sendToBackend: function (table, oSingleRowData) {
             var oView = this.getView();
@@ -577,13 +528,11 @@ sap.ui.define([
             var oContext = oListBinding.create(oFinalPayload);
         },
 
-
         _onEditToggleButtonPress: function () {
             var oObjectPage = this.getView().byId("TableContent"),
                 bCurrentShowFooterState = oObjectPage.getShowFooter(),
                 oModel = this.getView().getModel("displayModel"),
                 aData = oModel.getProperty("/Data") || [];
-
 
             oObjectPage.setShowFooter(!bCurrentShowFooterState);
             if (bCurrentShowFooterState) {
@@ -594,7 +543,6 @@ sap.ui.define([
             }
             return bCurrentShowFooterState
         },
-
 
         onMedataPress: function (oEvent) {
             var oFCL = this.oView.getParent().getParent();
@@ -613,16 +561,7 @@ sap.ui.define([
             }
         },
 
-
         onListItemPress: function (oEvent) {
-            var oRowContext = oEvent.getParameter("rowContext");
-
-
-            if (!oRowContext) {
-                return;
-            }
-
-
             var oFCL = this.oView.getParent().getParent();
             if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.TwoColumnsMidExpanded);
@@ -640,28 +579,23 @@ sap.ui.define([
             }
         },
 
-
         onUploadExcelPress: function (oEvent) {
             UploadExcelData.onUploadExcelPress.call(this, oEvent);
         },
 
-
         onDownloadExcelPress: function () {
             DownloadExcelData.onDownloadExcelPress(this);
         },
-
 
         onDynamicValueHelp: function (oEvent) {
             var oInput = oEvent.getSource();
             var sTableName = oInput.data("tableName");
             var sFieldName = oInput.data("fieldName");
 
-
             if (!sTableName || !sFieldName) {
                 console.error("Missing Metadata for Value Help");
                 return;
             }
-
 
             if (!this._oDynamicVHDialog) {
                 this._oDynamicVHDialog = new sap.m.SelectDialog({
@@ -671,12 +605,10 @@ sap.ui.define([
                 this.getView().addDependent(this._oDynamicVHDialog);
             }
 
-
             var aFilters = [
                 new sap.ui.model.Filter("TableName", "EQ", sTableName),
                 new sap.ui.model.Filter("FieldName", "EQ", sFieldName)
             ];
-
 
             this._oDynamicVHDialog.bindAggregation("items", {
                 path: "/DynamicVHSet",
@@ -688,26 +620,19 @@ sap.ui.define([
                 filters: aFilters
             });
 
-
             this._oDynamicVHDialog.data("targetInput", oInput);
             this._oDynamicVHDialog.open();
         },
-
 
         onValueHelpConfirm: function (oEvent) {
             var oSelectedItem = oEvent.getParameter("selectedItem");
             if (oSelectedItem) {
                 var oInput = oEvent.getSource().data("targetInput");
                 var sSelectedKey = oSelectedItem.getTitle();
-
-
                 oInput.setValue(sSelectedKey);
-
-
                 oInput.fireChange({ value: sSelectedKey });
             }
         },
-
 
         _refreshData: function (sTableName) {
             var oTable = this.byId("dataTable") || this.byId("TablePage");
@@ -715,11 +640,9 @@ sap.ui.define([
             var oSettingsModel = this.getView().getModel("settingsModel");
             var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
 
-
             if (oTable) {
                 oTable.setBusy(true);
             }
-
 
             GetData.loadTableData(oModel, sTableName, "", sLang)
                 .then(function (oPayload) {
@@ -735,7 +658,6 @@ sap.ui.define([
                     }
                 });
         },
-
 
         _validateLiveGrid: function () {
             var oModel = this.getView().getModel("displayModel");
