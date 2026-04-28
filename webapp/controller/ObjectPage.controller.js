@@ -22,13 +22,23 @@ sap.ui.define([
         _oFieldName: [],
         _oDataRaw: [],
         _sRecentlySavedKey: null,
+        onSearch: function (oEvent) {
+            SearchData.onSearch.call(this, oEvent);
+        },
 
+        onFilter: function () {
+            FilterData.onFilter.call(this);
+        },
+
+        onFilterConfirm: function (oEvent) {
+            FilterData.onFilterConfirm.call(this, oEvent);
+        },
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
             this.oRouter = oOwnerComponent.getRouter();
             this.oRouter.getRoute("RouteObjectPage").attachPatternMatched(this._onObjectMatched, this);
         },
-
+        
         _onObjectMatched: function (oEvent) {
             var oDisplayModel = this.getView().getModel("displayModel");
             var sNewTableName = oEvent.getParameter("arguments").tableName || "";
@@ -38,7 +48,6 @@ sap.ui.define([
             var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
             var oTable = this.byId("TablePage") || this.byId("dataTable");
             var state = oEvent.getParameter("arguments").newTable || false;
-
 
             if (sCurrentTableName === sNewTableName && oDisplayModel.getProperty("/Meta")?.length > 0) {
                 return;
@@ -333,18 +342,6 @@ sap.ui.define([
 
         onSortColumnDirect: function (bDescending, iColIndex, bMultiSort, bGroup) {
             SortData.onSortColumnDirect.call(this, bDescending, iColIndex, bMultiSort, bGroup);
-        },
-
-        onSearch: function (oEvent) {
-            SearchData.onSearch.call(this, oEvent);
-        },
-
-        onFilter: function () {
-            FilterData.onFilter.call(this);
-        },
-
-        onFilterConfirm: function (oEvent) {
-            FilterData.onFilterConfirm.call(this, oEvent);
         },
 
         onAdd: function () {

@@ -6,8 +6,9 @@ sap.ui.define([
     "sap/m/MessageToast",
     "zapp/api/LoadData",
     "sap/m/MessageBox",
-    "zapp/utils/DataFormatter"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, LoadData, MessageBox, DataFormatter) {
+    "zapp/utils/DataFormatter",
+    "zapp/utils/ValueHelp"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, LoadData, MessageBox, DataFormatter, ValueHelp) {
     "use strict";
 
     return Controller.extend("zapp.controller.Main", {
@@ -35,81 +36,13 @@ sap.ui.define([
         },
 
         onValueHelpRequest: function (oEvent) {
-            var oView = this.getView();
-            var oBundle = oView.getModel("i18n").getResourceBundle();
-
-            if (!this._pValueHelpDialog) {
-                this._pValueHelpDialog = new sap.m.TableSelectDialog({
-                    title: oBundle.getText("listTableTitle"), 
-                    busyIndicatorDelay: 0, 
-                    noDataText: oBundle.getText("noDataText"), 
-                    contentWidth: "50%",
-                    growing: true,                           
-                    growingThreshold: 20,                    
-
-                    search: function (oEvt) {
-                        var sValue = oEvt.getParameter("value");
-                        var oFilter = new Filter({
-                            filters: [
-                                new Filter("TableName", FilterOperator.Contains, sValue),
-                                new Filter("Description", FilterOperator.Contains, sValue)
-                            ],
-                            and: false
-                        });
-                        oEvt.getSource().getBinding("items").filter([oFilter]);
-                    },
-                    
-                    confirm: function (oEvt) {
-                        var oSelectedItem = oEvt.getParameter("selectedItem");
-                        if (oSelectedItem) {
-                            var sName = oSelectedItem.getCells()[0].getTitle(); 
-                            var sDesc = oSelectedItem.getCells()[1].getText();  
-                            this.byId("searchInput").setValue(sName);
-                            this.byId("searchDescInput").setValue(sDesc);
-                            this.onSearch(); 
-                        }
-                    }.bind(this),
-                    
-                    columns: [
-                        new sap.m.Column({ 
-                            header: new sap.m.Label({ text: oBundle.getText("tableName"), design: "Bold" }) 
-                        }),
-                        new sap.m.Column({ 
-                            header: new sap.m.Label({ text: oBundle.getText("tableDesc"), design: "Bold" }),
-                            minScreenWidth: "Tablet", 
-                            demandPopin: true         
-                        })
-                    ]
-                });
-
-                oView.addDependent(this._pValueHelpDialog);
-
-                this._pValueHelpDialog.bindAggregation("items", {
-                    path: "/TableLookup", 
-                    template: new sap.m.ColumnListItem({
-                        type: "Active", 
-                        cells: [
-                            new sap.m.ObjectIdentifier({ 
-                                title: "{TableName}",
-                            }),
-                            new sap.m.Text({ 
-                                text: "{Description}", 
-                                wrapping: true 
-                            })
-                        ]
-                    })
-                });
-            }
-
-            var oBinding = this._pValueHelpDialog.getBinding("items");
-            if (oBinding) {
-                oBinding.filter([]);
-            }
-            if (this._pValueHelpDialog._oSearchField) {
-                this._pValueHelpDialog._oSearchField.setValue("");
-            }
-
-            this._pValueHelpDialog.open();
+            ValueHelp.openTableValueHelp(this, {
+                inputId: "searchInput",
+                descInputId: "searchDescInput",
+                callback: (sName, sDesc) => { 
+                    this.onSearch();
+                }
+            })
         },
 
         onSearch: function () {
