@@ -210,7 +210,6 @@ sap.ui.define([
                         }
                     });
                     oLocalModel.setProperty("/uniqueUsers", aUniqueUsers);
-
                     var aUniqueActions = [];
                     var oActionMap = {};
                     aMainLogs.forEach(function (oLog) {
@@ -224,18 +223,15 @@ sap.ui.define([
 
                     this.byId("auditMasterTable").setBusy(false);
 
-                    // Nếu bảng tồn tại nhưng chưa có Log nào
                     if (aMainLogs.length === 0) {
                         sap.m.MessageToast.show("No audit logs found for table: " + sUpperTableName);
                     } else {
                         sap.m.MessageToast.show("Loaded audit log for table: " + sUpperTableName);
                     }
-
                 }.bind(this)).catch(function (oError) {
                     this.byId("auditMasterTable").setBusy(false);
                     sap.m.MessageBox.error("Error occurred while loading audit log data: " + oError.message);
                 }.bind(this));
-
             }.bind(this)).catch(function (oLookupError) {
                 this.byId("auditMasterTable").setBusy(false);
                 sap.m.MessageBox.error("System error when validating table name!");
@@ -256,7 +252,6 @@ sap.ui.define([
             var sRowId = oRowData.rowId;
             oLocalModel.setProperty("/selectedRowId", sRowId);
 
-            // BỔ SUNG: Lưu lại tên hiển thị đẹp (Ví dụ: COURSE_ID: VOV131) vào model
             oLocalModel.setProperty("/selectedDisplayKey", oRowData.displayKey);
 
             var sClickedLogUuid = oRowData.logUuid;

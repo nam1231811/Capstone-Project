@@ -4,8 +4,10 @@ sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/m/MessageToast",
-    "zapp/models/GetData"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, GetData) {
+    "zapp/api/LoadData",
+    "sap/m/MessageBox",
+    "zapp/utils/DataFormatter"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, LoadData, MessageBox, DataFormatter) {
     "use strict";
 
     return Controller.extend("zapp.controller.Main", {
@@ -137,14 +139,13 @@ sap.ui.define([
                 sSearchDesc = "*" + sSearchDesc + "*";
             }
 
-            GetData.searchTables(oModel, sSearchName, sSearchDesc).then(function (oPayload) {
+            LoadData.searchTables(oModel, sSearchName, sSearchDesc).then(function (oPayload) {
                 oTable.setBusy(false);
-                console.log(oPayload);
                 
                 if (oPayload && oPayload.status === "MULTIPLE" && oPayload.matches) {
-                    var aMatchedTables = oPayload.matches.map(function (m) {
-                        var sDate = m.changeDate;
-                        var sTime = m.changeTime; 
+                    var aMatchedTables = oPayload.matches.map(function (match) {
+                        var sDate = match.changeDate;
+                        var sTime = match.changeTime; 
                         var oFullDate = null;
 
                         if (sDate && sDate !== "0000-00-00") {
@@ -161,11 +162,11 @@ sap.ui.define([
                         }
 
                         return {
-                            table_name: m.tableName || m.table_name,
-                            table_description: m.tableDescription || m.table_description,
-                            user_name: m.userName || m.user_name || "Unknown",
+                            table_name: match.tableName || match.table_name,
+                            table_description: match.tableDescription || match.table_description,
+                            user_name: match.userName || match.user_name || "Unknown",
                             change_at: oFullDate,
-                            field_count: m.fieldCount || m.field_count || 0
+                            field_count: match.fieldCount || match.field_count || 0
                         };
                     });
 
@@ -177,18 +178,17 @@ sap.ui.define([
                         oDisplayModel.setProperty("/Data", null);
                     }
 
-                    sap.m.MessageToast.show(oBundle.getText("msgFoundTables", [aMatchedTables.length]));
+                    MessageToast.show(oBundle.getText("msgFoundTables", [aMatchedTables.length]));
                 } else {
-                    sap.m.MessageBox.information(oBundle.getText("msgNoMatchingTables"));
+                    MessageBox.information(oBundle.getText("msgNoMatchingTables"));
                 }
             }.bind(this)).catch(function (oError) {
                 oTable.setBusy(false);
-                
                 var sErrMsg = oError.message ? oError.message.toLowerCase() : "";
                 if (sErrMsg.includes("not found") || sErrMsg.includes("không tìm thấy") || sErrMsg.includes("không tồn tại") || sErrMsg.includes("does not exist") || sErrMsg.includes("009") || sErrMsg.includes("007")) {
-                    sap.m.MessageBox.warning(oBundle.getText("msgTableNotFound", [sName || sDesc]));
+                    MessageBox.warning(oBundle.getText("msgTableNotFound", [sName || sDesc]));
                 } else {
-                    sap.m.MessageBox.error(oError.message);
+                    MessageBox.error(oError.message);
                 }
             });
         },
@@ -231,57 +231,22 @@ sap.ui.define([
             });
         },
 
-        _updateUniqueTablesList: function(oPayload) {
-            if (!oPayload || !oPayload.metadata || oPayload.metadata.length === 0) return;
-
-            var oMeta = oPayload.metadata[0];
-            var oFirstRow = (oPayload.dataRows && oPayload.dataRows.length > 0) ? oPayload.dataRows[0] : {};
-
-            var parseAbapDate = function(sDate) {
-                if (!sDate) return new Date();
-                var s = sDate.toString().split(".")[0];
-                if (s.length >= 14) {
-                    return new Date(Date.UTC(
-                        parseInt(s.substring(0, 4), 10),   
-                        parseInt(s.substring(4, 6), 10) - 1, 
-                        parseInt(s.substring(6, 8), 10),   
-                        parseInt(s.substring(8, 10), 10),  
-                        parseInt(s.substring(10, 12), 10),
-                        parseInt(s.substring(12, 14), 10)  
-                    ));
-                }
-                return new Date(sDate);
-            };
-
-            var oNewTable = {
-                table_name: oMeta.tableName || oMeta.table_name,
-                table_description: oMeta.tableDescription || oMeta.table_description,
-                user_name: oFirstRow.changedBy || oFirstRow.createdBy || oFirstRow.user_name || "Unknown",
-                change_at: parseAbapDate(oFirstRow.changedAt || oFirstRow.createdAt),
-                field_count: oPayload.metadata.length
-            };
-
-            var oRealDataModel = this.getView().getModel("realData");
-            var aUniqueTables = oRealDataModel.getProperty("/UniqueTables") || [];
-
-            var iIndex = aUniqueTables.findIndex(function(t) { return t.table_name === oNewTable.table_name; });
-            if (iIndex !== -1) {
-                aUniqueTables[iIndex] = oNewTable;
-            } else {
-                aUniqueTables.push(oNewTable);
-            }
-
-            oRealDataModel.setProperty("/UniqueTables", aUniqueTables);
-        },
-
         onOpenSettings: function () {
             if (!this._oLangDialog) {
                 var oBundle = this.getView().getModel("i18n").getResourceBundle();
                 this._oLangDialog = new sap.m.SelectDialog({
                     title: oBundle.getText("language"),
                     items: [
-                        new sap.m.StandardListItem({ title: "English", description: "EN", type: "Active" }),
-                        new sap.m.StandardListItem({ title: "Tiếng Việt", description: "VI", type: "Active" })
+                        new sap.m.StandardListItem({ 
+                            title: "English", 
+                            description: "EN", 
+                            type: "Active" 
+                        }),
+                        new sap.m.StandardListItem({ 
+                            title: "Tiếng Việt", 
+                            description: "VI", 
+                            type: "Active" 
+                        })
                     ],
                     confirm: function (oEvent) {
                         var sLangCode = oEvent.getParameter("selectedItem").getDescription();
@@ -289,12 +254,11 @@ sap.ui.define([
                         this.getView().getModel("settingsModel").setProperty("/selectedLanguage", sBackendLang);
                         var sUiLang = (sLangCode === "VI") ? "vi" : "en";
                         sap.ui.getCore().getConfiguration().setLanguage(sUiLang);
-                        
                         var oTableInput = this.byId("searchInput");
                         var oDescInput = this.byId("searchDescInput");
                         var sName = oTableInput ? oTableInput.getValue().trim() : "";
                         var sDesc = oDescInput ? oDescInput.getValue().trim() : "";
-
+                        
                         if (sName || sDesc) {
                             this.onSearch();
                         }
@@ -325,7 +289,9 @@ sap.ui.define([
             var oTable = this.byId("dynamicTable");
             var aColumns = oTable.getColumns();
             var aColStates = aColumns.map(function(col) {
-                return { visible: col.getVisible() };
+                return { 
+                    visible: col.getVisible() 
+                };
             });
             window.localStorage.setItem("myAppTableConfig_UI", JSON.stringify(aColStates));
         },

@@ -4,10 +4,10 @@ sap.ui.define([
     "sap/ui/model/Filter",           
     "sap/ui/model/FilterOperator",
     "sap/ui/core/ResizeHandler",
-    "zapp/models/GetData",
     "zapp/api/DashboardApi",
-    "zapp/utils/DataFormatter"
-], function (Controller, JSONModel, Filter, FilterOperator, ResizeHandler, GetData, DashboardApi, DataFormatter) {
+    "zapp/utils/DataFormatter",
+    "zapp/api/LoadData"
+], function (Controller, JSONModel, Filter, FilterOperator, ResizeHandler, DashboardApi, DataFormatter, LoadData) {
     "use strict";
 
     return Controller.extend("zapp.controller.Dashboard", {
@@ -236,7 +236,7 @@ sap.ui.define([
                     var oMainODataModel = this.getOwnerComponent().getModel(); 
 
                     var aPromises = aUniqueTableNames.map(function(sTableName) {
-                        return GetData.loadTableData(oMainODataModel, sTableName, "", "E")
+                        return LoadData.loadTableData(oMainODataModel, sTableName, "", "E")
                             .then(function(oPayload) {
                                 var oMeta = (oPayload.metadata && oPayload.metadata.length > 0) ? oPayload.metadata[0] : {};
                                 return {
@@ -376,7 +376,7 @@ sap.ui.define([
 
             if (oCard) { oCard.setBusy(true); }
 
-            GetData.loadTableData(oODataModel, sQuery.toUpperCase(), "", "E")
+            LoadData.loadTableData(oODataModel, sQuery.toUpperCase(), "", "E")
                 .then(function(oPayload) {
                     var aDataRows = oPayload.dataRows;
                     if (!aDataRows || aDataRows.length === 0) {
@@ -406,7 +406,6 @@ sap.ui.define([
                     }
 
                     var iValidCount = 0, iEmptyCount = 0;
-
                     parsedRows.forEach(function(parsedRow) {
                         aAllColumns.forEach(function(colName) {
                             var val = parsedRow[colName];
@@ -420,7 +419,6 @@ sap.ui.define([
                             if (isEmpty) { iEmptyCount++; } else { iValidCount++; }
                         });
                     });
-
                     if (iValidCount === 0 && iEmptyCount === 0) {
                         this.onResetPieChart();
                     } else {
@@ -441,7 +439,6 @@ sap.ui.define([
                         } else {
                             sColor = "Error";
                         }
-
                         oModel.setProperty("/qualityPercentage", iPercentage);
                         oModel.setProperty("/qualityColor", sColor);
                     }

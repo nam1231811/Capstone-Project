@@ -1,11 +1,14 @@
 sap.ui.define([
-], function () {
+    "zapp/utils/DataFormatter"
+], function (DataFormatter) {
     "use strict";
+    const SEARCH_TABLE_ACTION =   "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.SearchTables(...)";
+    const LOAD_TABLE_ACTION   =   "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.LoadTable(...)";
 
     return {
         searchTables: function (oModel, sSearchName, sSearchDesc) {
             return new Promise(function (resolve, reject) {
-                var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.SearchTables(...)";
+                var sActionPath = SEARCH_TABLE_ACTION;
                 var oActionContext = oModel.bindContext(sActionPath);
 
                 oActionContext.setParameter("table_name", sSearchName || "");
@@ -15,7 +18,7 @@ sap.ui.define([
                     var oResult = oActionContext.getBoundContext().getObject();
                     if (oResult && oResult.json_string) {
                         try {
-                            var oPayload = this.decodeFunction(oResult);
+                            var oPayload = DataFormatter.decodeFunction(oResult);
                             resolve(oPayload);
                         } catch (e) {
                             reject(new Error("Error decoding JSON from Backend: " + e.message));
@@ -35,7 +38,7 @@ sap.ui.define([
 
         loadTableData: function (oModel, sTableName) {
             return new Promise(function (resolve, reject) {
-                var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.LoadTable(...)";
+                var sActionPath = LOAD_TABLE_ACTION;
                 var oActionContext = oModel.bindContext(sActionPath);
 
                 oActionContext.setParameter("table_name", sTableName);
@@ -45,7 +48,7 @@ sap.ui.define([
                     var oResult = oActionContext.getBoundContext().getObject();
                     if (oResult && oResult.json_string) {
                         try {
-                            var oPayload = this.decodeFunction(oResult);
+                            var oPayload = DataFormatter.decodeFunction(oResult);
                             resolve(oPayload);
                         } catch (e) {
                             reject(new Error("Error decoding JSON from Backend: " + e.message));
@@ -62,31 +65,5 @@ sap.ui.define([
                 });
             }.bind(this));
         },
-
-        decodeFunction: function (object) {
-            try {
-                if (object && object.json_string) {
-                    var sBase64 = object.json_string;
-                    var sDecodedJson = decodeURIComponent(escape(window.atob(sBase64)));
-                    return JSON.parse(sDecodedJson);
-                }
-            } catch (e) {
-                console.error("GetData [decodeFunction]", e);
-                throw new Error("Lỗi decode json từ be: " + e.message);
-            }
-        },
-
-        encodeFunction: function (oPayload) {
-            try {
-                if (oPayload) {
-                    var sJsonString = JSON.stringify(oPayload);
-                    // Dùng encodeURIComponent và unescape để bảo toàn tiếng Việt trước khi Base64
-                    return window.btoa(unescape(encodeURIComponent(sJsonString)));
-                }
-            } catch (e) {
-                console.error("Error [encodeFunction]", e);
-                throw e;
-            }
-        }
     };
 });
