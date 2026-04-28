@@ -196,7 +196,10 @@ sap.ui.define([
 
             if (enUuid) {
                 var path = "/Data(uuid=" + enUuid + ")";
-                var oContext = oModel.bindContext(path).getBoundContext();
+
+                var oContextBinding = oModel.bindContext(path, null, { $$updateGroupId: "updateGroup" });
+                var oContext = oContextBinding.getBoundContext();
+
                 oContext.setProperty("table_name", tableName);
                 oContext.setProperty("data", codeData);
             } else {
@@ -208,17 +211,37 @@ sap.ui.define([
                 console.log(sStatus);
             }
 
+            // Clear any old error messages 
+            sap.ui.getCore().getMessageManager().removeAllMessages();
+
             oModel.submitBatch("updateGroup").then(function () {
                 sap.ui.core.BusyIndicator.hide();
-                if (oModel.hasPendingChanges()) {
-                    sap.m.MessageBox.error("System validation failed! Request was not sent.");
+
+                // Check if the MessageManager Backend returns any errors.
+                var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
+                var bHasBackendError = aMessages.some(function (msg) {
+                    return msg.type === sap.ui.core.MessageType.Error;
+                });
+
+                // If has error from backend or pending changes -> BLOCK 
+                if (bHasBackendError || oModel.hasPendingChanges()) {
+
+                    var sErrorText = "Update failed. Please check the data.";
+                    // Lấy câu chửi "Not authorized..." của Backend ra để hiện lên cho ngầu
+                    if (aMessages.length > 0) {
+                        sErrorText = aMessages[0].message;
+                    }
+
+                    sap.m.MessageBox.error(sErrorText); // Bật popup báo lỗi
                     return;
                 }
+
                 sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval");
                 this.onCancelEdit();
+
             }.bind(this)).catch(function (oError) {
                 sap.ui.core.BusyIndicator.hide();
-                sap.m.MessageBox.error("Submit failed: " + oError.message);
+                sap.m.MessageBox.error("Network/System failed: " + oError.message);
             });
         },
 
@@ -425,11 +448,11 @@ sap.ui.define([
                         var oGraphModel = new sap.ui.model.json.JSONModel(oParsedGraphData);
                         oView.setModel(oGraphModel, "graph");
                     } catch (e) {
-                        console.error("Lỗi parse JSON Impact Analysis: ", e);
+                        console.error("Error parsing JSON Impact Analysis: ", e);
                     }
                 }
             }.bind(this)).catch(function (oError) {
-                console.error("Lỗi gọi Impact Analysis: ", oError);
+                console.error("Error calling Impact Analysis: ", oError);
             });
         },
 

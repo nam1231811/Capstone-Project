@@ -79,7 +79,7 @@
                         <columns>
                             <Column width="30%"><Label text="Field Changed" design="Bold" /></Column>
                             <Column width="35%"><Label text="Old Value" /></Column>
-                            <Column width="35%"><Label text="New Value" /></Column>
+                            <Column width="35%" hAlign="Center"><Label text="New Value" /></Column>
                         </columns>
                         <items>
                             <ColumnListItem>
@@ -239,8 +239,7 @@
                                     <cells>
                                         <VBox height="50px" justifyContent="Center">
                                             <ObjectIdentifier 
-                                                title="{audit>displayKey}" 
-                                                text="{= ${audit>rowId}.substring(0, 8) + '...' }"/>
+                                                title="{audit>displayKey}" />
                                         </VBox>
                             
                                         <VBox height="50px" justifyContent="Center">

@@ -158,6 +158,7 @@ sap.ui.define([
 
                     oLocalModel.setProperty("/allLogs", aAllLogs);
                     var aMainLogs = [];
+                    console.log(aAllLogs);
 
                     aAllLogs.forEach(function (oLog) {
                         if (oLog.Status !== 'P') {
@@ -167,25 +168,6 @@ sap.ui.define([
 
                             var sTime = DataFormatter.formatDateTime(oLog.ApprovedAt || oLog.ChangedAt);
                             var sDisplayKey = oLog.RecordKey;
-                            try {
-                                var sJsonToParse = oLog.NewData ? oLog.NewData : oLog.OldData;
-                                if (sJsonToParse) {
-                                    var oDataObj = JSON.parse(sJsonToParse);
-                                    var aKeys = Object.keys(oDataObj).filter(k => k.toUpperCase() !== 'MANDT');
-                                    var sMainField = aKeys.find(k => {
-                                        var sUpperK = k.toUpperCase();
-                                        return sUpperK === 'ID' ||
-                                            sUpperK === 'CODE' ||
-                                            sUpperK.indexOf('_ID') !== -1 ||
-                                            sUpperK.indexOf('_CODE') !== -1 ||
-                                            sUpperK.indexOf('ID_') !== -1;
-                                    }) || aKeys[0];
-
-                                    if (sMainField && oDataObj[sMainField]) {
-                                        sDisplayKey = sMainField + ": " + oDataObj[sMainField];
-                                    }
-                                }
-                            } catch (e) { }
 
                             aMainLogs.push({
                                 rowId: oLog.RecordKey,
@@ -256,7 +238,6 @@ sap.ui.define([
             var sRowId = oRowData.rowId;
             oLocalModel.setProperty("/selectedRowId", sRowId);
 
-            // BỔ SUNG: Lưu lại tên hiển thị đẹp (Ví dụ: COURSE_ID: VOV131) vào model
             oLocalModel.setProperty("/selectedDisplayKey", oRowData.displayKey);
 
             var sClickedLogUuid = oRowData.logUuid;
@@ -264,7 +245,6 @@ sap.ui.define([
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
             var aTrailLogs = aAllLogs.filter(function (l) { return l.RecordKey === sRowId; });
 
-            // Sắp xếp theo thời gian
             aTrailLogs.sort(function (a, b) {
                 return new Date(a.ChangedAt) - new Date(b.ChangedAt);
             });
@@ -393,22 +373,20 @@ sap.ui.define([
                 if (sAction === 'CREATE') {
                     sOldVal = "N/A";
                 } else if (sAction === 'DELETE') {
-                    sNewVal = "N/A";
+                    sNewVal = "";
                 } else if (sAction === 'UPDATE') {
                     if (!oNew.hasOwnProperty(sKey) && oOld.hasOwnProperty(sKey)) {
                         sNewVal = sOldVal;
                     }
                 }
 
-                // BỔ SUNG 2: Đánh dấu cờ xem trường này CÓ BỊ THAY ĐỔI HAY KHÔNG
                 var bIsChanged = (sOldVal !== sNewVal);
 
-                // BỎ LỆNH IF (sOldVal !== sNewVal) ĐỂ PUSH TOÀN BỘ CÁC TRƯỜNG VÀO BẢNG
                 aChanges.push({
                     field: sKey,
                     oldValue: sOldVal,
                     newValue: sNewVal,
-                    isChanged: bIsChanged // Truyền cờ này ra View để đổi màu Icon
+                    isChanged: bIsChanged
                 });
 
             });
@@ -463,7 +441,7 @@ sap.ui.define([
             var oOriginalLog = aAllLogs.find(function (l) { return l.LogUuid === sLogId; });
 
             if (!oOriginalLog || !oOriginalLog.OldData || oOriginalLog.OldData === "") {
-                sap.m.MessageBox.error("Không có dữ liệu gốc để khôi phục!");
+                sap.m.MessageBox.error("There is no original data to recover!");
                 return;
             }
 
@@ -474,7 +452,7 @@ sap.ui.define([
                 oOldDataObj = JSON.parse(oOriginalLog.OldData);
             } catch (e) {
                 oView.setBusy(false);
-                sap.m.MessageBox.error("Lỗi: Dữ liệu lịch sử bị sai định dạng JSON.");
+                sap.m.MessageBox.error("Error: The audit log data is in an invalid JSON format.");
                 return;
             }
 
@@ -491,7 +469,7 @@ sap.ui.define([
 
             oActionContext.execute().then(function () {
                 oView.setBusy(false);
-                sap.m.MessageToast.show("Khôi phục thành công! Dữ liệu đã được cập nhật thẳng vào Database.");
+                sap.m.MessageToast.show("Recovery successful! Data has been updated.");
 
                 var oDetailDialog = this.byId("detailNodeDialog");
                 if (oDetailDialog) oDetailDialog.close();
@@ -503,7 +481,7 @@ sap.ui.define([
 
             }.bind(this)).catch(function (oError) {
                 oView.setBusy(false);
-                sap.m.MessageBox.error("Lỗi khi ghi đè Database: " + oError.message);
+                sap.m.MessageBox.error("Error when overwriting Database: " + oError.message);
                 console.error(oError);
             }.bind(this));
         },
