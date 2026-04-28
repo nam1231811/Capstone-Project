@@ -5,8 +5,9 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "zapp/utils/DataFormatter"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatter) {
+    "zapp/utils/DataFormatter",
+    "zapp/utils/ValueHelp"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatter, ValueHelp) {
     "use strict";
 
     return Controller.extend("zapp.controller.AuditLog", {
@@ -48,68 +49,15 @@ sap.ui.define([
         },
 
         onValueHelpRequest: function (oEvent) {
-            var oView = this.getView();
-
-            if (!this._pValueHelpDialog) {
-                this._pValueHelpDialog = new sap.m.TableSelectDialog({
-                    title: "List of tables",
-                    busyIndicatorDelay: 0,
-                    noDataText: "No data available",
-                    contentWidth: "50%",
-                    growing: true,
-                    growingThreshold: 20,
-                    search: function (oEvt) {
-                        var sValue = oEvt.getParameter("value");
-                        var oFilter = new Filter({
-                            filters: [
-                                new Filter("TableName", FilterOperator.Contains, sValue),
-                                new Filter("Description", FilterOperator.Contains, sValue)
-                            ],
-                            and: false
-                        });
-                        oEvt.getSource().getBinding("items").filter([oFilter]);
-                    },
-                    confirm: function (oEvt) {
-                        var oSelectedItem = oEvt.getParameter("selectedItem");
-                        if (oSelectedItem) {
-                            var sName = oSelectedItem.getCells()[0].getTitle();
-                            this.byId("auditSearchInput").setValue(sName);
-                            this.onSearchAuditLog(sName);
-                        }
-                    }.bind(this),
-                    columns: [
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Table Name", design: "Bold" }) }),
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Description", design: "Bold" }), demandPopin: true })
-                    ]
-                });
-
-                oView.addDependent(this._pValueHelpDialog);
-
-                this._pValueHelpDialog.bindAggregation("items", {
-                    path: "/TableLookup",
-                    template: new sap.m.ColumnListItem({
-                        type: "Active",
-                        cells: [
-                            new sap.m.ObjectIdentifier({ title: "{TableName}" }),
-                            new sap.m.Text({ text: "{Description}", wrapping: true })
-                        ]
-                    })
-                });
-            }
-
-            var oBinding = this._pValueHelpDialog.getBinding("items");
-            if (oBinding) {
-                oBinding.filter([]);
-            }
-
-            if (this._pValueHelpDialog._oSearchField) {
-                this._pValueHelpDialog._oSearchField.setValue("");
-            }
-
-            this._pValueHelpDialog.open();
+            ValueHelp.openTableValueHelp(this, {
+                inputId: "auditSearchInput",
+                callback: (sName, sDesc) => { 
+                    this.onSearchAuditLog(sName);
+                }
+            })
         },
 
-        onSearchAuditLog: function (vEventOrString) {
+        onSearchAuditLog: function (vEventOrString) { 
             var sTableName = typeof vEventOrString === "string" ? vEventOrString : this.byId("auditSearchInput").getValue();
             var oLocalModel = this.getView().getModel("audit");
             var oODataModel = this.getOwnerComponent().getModel("auditOData");
@@ -192,7 +140,6 @@ sap.ui.define([
                         }
                     });
                     oLocalModel.setProperty("/uniqueUsers", aUniqueUsers);
-
                     var aUniqueActions = [];
                     var oActionMap = {};
                     aMainLogs.forEach(function (oLog) {
@@ -206,18 +153,15 @@ sap.ui.define([
 
                     this.byId("auditMasterTable").setBusy(false);
 
-                    // Nếu bảng tồn tại nhưng chưa có Log nào
                     if (aMainLogs.length === 0) {
                         sap.m.MessageToast.show("No audit logs found for table: " + sUpperTableName);
                     } else {
                         sap.m.MessageToast.show("Loaded audit log for table: " + sUpperTableName);
                     }
-
                 }.bind(this)).catch(function (oError) {
                     this.byId("auditMasterTable").setBusy(false);
                     sap.m.MessageBox.error("Error occurred while loading audit log data: " + oError.message);
                 }.bind(this));
-
             }.bind(this)).catch(function (oLookupError) {
                 this.byId("auditMasterTable").setBusy(false);
                 sap.m.MessageBox.error("System error when validating table name!");

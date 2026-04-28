@@ -1,13 +1,13 @@
 sap.ui.define([
-    "zapp/utils/DataFormatter",
-    "zapp/models/GetData"
-], function (DataFormatter, GetData) {
+    "zapp/utils/DataFormatter"
+], function (DataFormatter) {
     "use strict";
 
     return {
         onSaveDB: function (sTableName, oView, vCustomData) {
             var oModel = oView.getModel();
             var sBase64Data = "";
+            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
 
             if (!sTableName) {
                 sap.m.MessageBox.error("Table is unknown");
@@ -40,10 +40,9 @@ sap.ui.define([
                     dataUpdate.push(aPromises)
                 });
 
-                sBase64Data = GetData.encodeFunction(dataUpdate);
+                sBase64Data = DataFormatter.encodeFunction(dataUpdate);
             }
 
-            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
             var oActionContext = oModel.bindContext(sActionPath);
 
             oActionContext.setParameter("table_name", sTableName);
@@ -61,7 +60,9 @@ sap.ui.define([
                         var oResData = JSON.parse(oResult.json_string);
                         if (oResData.status === "error") {
                             bHasError = true;
-                            if (oResData.message) sBackendErrMsg = oResData.message;
+                            if (oResData.message) {
+                                sBackendErrMsg = oResData.message
+                            };
                         }
                     } catch (e) { }
                 }
@@ -84,7 +85,9 @@ sap.ui.define([
                 if (oError && oError.error && oError.error.message) {
                     sFinalError = oError.error.message.value || oError.error.message;
                 }
-                sap.m.MessageBox.error(sFinalError, { title: "Cannot save data" });
+                sap.m.MessageBox.error(sFinalError, { 
+                    title: "Cannot save data" 
+                });
                 throw new Error(sFinalError);
             });
         }

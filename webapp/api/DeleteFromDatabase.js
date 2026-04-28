@@ -41,13 +41,11 @@ sap.ui.define([], function () {
                 return oResponse.headers.get("X-CSRF-Token");
             });
         },
-
-        
-    onDeleteActive: function (sTableName, oView) {
+     
+        onDeleteActive: function (sTableName, oView) {
             var oModel = oView.getModel();
             var aData = oView.getModel("displayModel").getProperty("/Data") || [];
             var dataUpdate = []
-            
             if (!sTableName) {
                 sap.m.MessageBox.error("Table is unknow");
                 return;
@@ -59,7 +57,6 @@ sap.ui.define([], function () {
                 sap.m.MessageToast.show("No data to update");
                 return;
             }
-
             aData.forEach(oRow => {
                 var aPromises = {};
                 Object.keys(oRow).forEach(key => {
@@ -74,15 +71,11 @@ sap.ui.define([], function () {
                 });
                 dataUpdate.push(aPromises)
             });
-            
             var sBase64Data = GetData.encodeFunction(dataUpdate)
-
             var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
             var oActionContext = oModel.bindContext(sActionPath);
-
             oActionContext.setParameter("table_name", sTableName);
             oActionContext.setParameter("json_data", sBase64Data);
-
             return oActionContext.execute().then(function () {
                 sap.m.MessageToast.show("Already update to database");
             }.bind(this)).catch(function (oError) {

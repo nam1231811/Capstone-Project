@@ -4,10 +4,11 @@ sap.ui.define([
     "sap/ui/model/Filter",           
     "sap/ui/model/FilterOperator",
     "sap/ui/core/ResizeHandler",
-    "zapp/models/GetData",
     "zapp/api/DashboardApi",
-    "zapp/utils/DataFormatter"
-], function (Controller, JSONModel, Filter, FilterOperator, ResizeHandler, GetData, DashboardApi, DataFormatter) {
+    "zapp/utils/DataFormatter",
+    "zapp/api/LoadData",
+    "zapp/utils/ValueHelp"
+], function (Controller, JSONModel, Filter, FilterOperator, ResizeHandler, DashboardApi, DataFormatter, LoadData, ValueHelp) {
     "use strict";
 
     return Controller.extend("zapp.controller.Dashboard", {
@@ -236,7 +237,7 @@ sap.ui.define([
                     var oMainODataModel = this.getOwnerComponent().getModel(); 
 
                     var aPromises = aUniqueTableNames.map(function(sTableName) {
-                        return GetData.loadTableData(oMainODataModel, sTableName, "", "E")
+                        return LoadData.loadTableData(oMainODataModel, sTableName, "", "E")
                             .then(function(oPayload) {
                                 var oMeta = (oPayload.metadata && oPayload.metadata.length > 0) ? oPayload.metadata[0] : {};
                                 return {
@@ -304,63 +305,69 @@ sap.ui.define([
         },
 
         onValueHelpRequest: function (oEvent) {
-            var oView = this.getView();
-            var oBundle = oView.getModel("i18n") ? oView.getModel("i18n").getResourceBundle() : null;
+            // var oView = this.getView();
+            // var oBundle = oView.getModel("i18n") ? oView.getModel("i18n").getResourceBundle() : null;
 
-            if (!this._pValueHelpDialog) {
-                this._pValueHelpDialog = new sap.m.TableSelectDialog({
-                    title: oBundle ? oBundle.getText("listTableTitle") : "List of Tables", 
-                    busyIndicatorDelay: 0, 
-                    noDataText: oBundle ? oBundle.getText("noDataText") : "No data found", 
-                    contentWidth: "50%",
-                    growing: true,                           
-                    growingThreshold: 20,                    
+            // if (!this._pValueHelpDialog) {
+            //     this._pValueHelpDialog = new sap.m.TableSelectDialog({
+            //         title: oBundle ? oBundle.getText("listTableTitle") : "List of Tables", 
+            //         busyIndicatorDelay: 0, 
+            //         noDataText: oBundle ? oBundle.getText("noDataText") : "No data found", 
+            //         contentWidth: "50%",
+            //         growing: true,                           
+            //         growingThreshold: 20,                    
 
-                    search: function (oEvt) {
-                        var sValue = oEvt.getParameter("value");
-                        var oFilter = new Filter({
-                            filters: [
-                                new Filter("TableName", FilterOperator.Contains, sValue),
-                                new Filter("Description", FilterOperator.Contains, sValue)
-                            ],
-                            and: false
-                        });
-                        oEvt.getSource().getBinding("items").filter([oFilter]);
-                    },
+            //         search: function (oEvt) {
+            //             var sValue = oEvt.getParameter("value");
+            //             var oFilter = new Filter({
+            //                 filters: [
+            //                     new Filter("TableName", FilterOperator.Contains, sValue),
+            //                     new Filter("Description", FilterOperator.Contains, sValue)
+            //                 ],
+            //                 and: false
+            //             });
+            //             oEvt.getSource().getBinding("items").filter([oFilter]);
+            //         },
                     
-                    confirm: function (oEvt) {
-                        var oSelectedItem = oEvt.getParameter("selectedItem");
-                        if (oSelectedItem) {
-                            var sName = oSelectedItem.getCells()[0].getTitle(); 
-                            this.byId("searchTableInput").setValue(sName);
-                            this.onSearchTableQuality(sName); 
-                        }
-                    }.bind(this),
+            //         confirm: function (oEvt) {
+            //             var oSelectedItem = oEvt.getParameter("selectedItem");
+            //             if (oSelectedItem) {
+            //                 var sName = oSelectedItem.getCells()[0].getTitle(); 
+            //                 this.byId("searchTableInput").setValue(sName);
+            //                 this.onSearchTableQuality(sName); 
+            //             }
+            //         }.bind(this),
                     
-                    columns: [
-                        new sap.m.Column({ header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableName") : "Table Name", design: "Bold" }) }),
-                        new sap.m.Column({ header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableDesc") : "Table Description", design: "Bold" }), minScreenWidth: "Tablet", demandPopin: true })
-                    ]
-                });
+            //         columns: [
+            //             new sap.m.Column({ header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableName") : "Table Name", design: "Bold" }) }),
+            //             new sap.m.Column({ header: new sap.m.Label({ text: oBundle ? oBundle.getText("tableDesc") : "Table Description", design: "Bold" }), minScreenWidth: "Tablet", demandPopin: true })
+            //         ]
+            //     });
 
-                oView.addDependent(this._pValueHelpDialog);
-                this._pValueHelpDialog.bindAggregation("items", {
-                    path: "/TableLookup", 
-                    template: new sap.m.ColumnListItem({
-                        type: "Active", 
-                        cells: [
-                            new sap.m.ObjectIdentifier({ title: "{TableName}" }),
-                            new sap.m.Text({ text: "{Description}", wrapping: true })
-                        ]
-                    })
-                });
-            }
+            //     oView.addDependent(this._pValueHelpDialog);
+            //     this._pValueHelpDialog.bindAggregation("items", {
+            //         path: "/TableLookup", 
+            //         template: new sap.m.ColumnListItem({
+            //             type: "Active", 
+            //             cells: [
+            //                 new sap.m.ObjectIdentifier({ title: "{TableName}" }),
+            //                 new sap.m.Text({ text: "{Description}", wrapping: true })
+            //             ]
+            //         })
+            //     });
+            // }
 
-            var oBinding = this._pValueHelpDialog.getBinding("items");
-            if (oBinding) { oBinding.filter([]); }
-            if (this._pValueHelpDialog._oSearchField) { this._pValueHelpDialog._oSearchField.setValue(""); }
+            // var oBinding = this._pValueHelpDialog.getBinding("items");
+            // if (oBinding) { oBinding.filter([]); }
+            // if (this._pValueHelpDialog._oSearchField) { this._pValueHelpDialog._oSearchField.setValue(""); }
 
-            this._pValueHelpDialog.open();
+            // this._pValueHelpDialog.open();
+            ValueHelp.openTableValueHelp(this, {
+                inputId: "searchTableInput",
+                callback: (sName, sDesc) => { 
+                    this.onSearchTableQuality(sName);
+                }
+            })
         },
 
         onSearchTableQuality: function(vQuery) {
@@ -376,7 +383,7 @@ sap.ui.define([
 
             if (oCard) { oCard.setBusy(true); }
 
-            GetData.loadTableData(oODataModel, sQuery.toUpperCase(), "", "E")
+            LoadData.loadTableData(oODataModel, sQuery.toUpperCase(), "", "E")
                 .then(function(oPayload) {
                     var aDataRows = oPayload.dataRows;
                     if (!aDataRows || aDataRows.length === 0) {
@@ -406,7 +413,6 @@ sap.ui.define([
                     }
 
                     var iValidCount = 0, iEmptyCount = 0;
-
                     parsedRows.forEach(function(parsedRow) {
                         aAllColumns.forEach(function(colName) {
                             var val = parsedRow[colName];
@@ -420,7 +426,6 @@ sap.ui.define([
                             if (isEmpty) { iEmptyCount++; } else { iValidCount++; }
                         });
                     });
-
                     if (iValidCount === 0 && iEmptyCount === 0) {
                         this.onResetPieChart();
                     } else {
@@ -441,7 +446,6 @@ sap.ui.define([
                         } else {
                             sColor = "Error";
                         }
-
                         oModel.setProperty("/qualityPercentage", iPercentage);
                         oModel.setProperty("/qualityColor", sColor);
                     }
