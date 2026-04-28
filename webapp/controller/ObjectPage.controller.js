@@ -6,7 +6,6 @@ sap.ui.define([
     "zapp/utils/SortData",
     "zapp/utils/PersonalizationData",
     "zapp/utils/DataFormatter",
-    "zapp/models/GetData",
     "zapp/utils/UploadExcelData",
     "zapp/utils/DownloadExcelData",
     "zapp/api/SaveToDatabase",
@@ -14,7 +13,7 @@ sap.ui.define([
     "zapp/api/LoadData",
 ], function (
     Controller, fioriLibrary, SearchData, FilterData, SortData, PersonalizationData,
-    DataFormatter, GetData, UploadExcelData, DownloadExcelData, SaveToDatabase, GridValidator, LoadData
+    DataFormatter, UploadExcelData, DownloadExcelData, SaveToDatabase, GridValidator, LoadData
 ) {
     "use strict";
 
@@ -466,7 +465,7 @@ sap.ui.define([
                 sap.ui.core.BusyIndicator.show(0);
 
 
-                var sBase64Array = GetData.encodeFunction([oSingleRowData]);
+                var sBase64Array = DataFormatter.encodeFunction([oSingleRowData]);
 
 
                 SaveToDatabase.onSaveDB(table, oView, sBase64Array).then(function () {
@@ -486,7 +485,7 @@ sap.ui.define([
 
             sap.ui.core.BusyIndicator.show(0);
 
-            var sSingleBase64 = GetData.encodeFunction(oSingleRowData);
+            var sSingleBase64 = DataFormatter.encodeFunction(oSingleRowData);
 
             var oFinalPayload = {
                 "table_name": table,
@@ -644,7 +643,7 @@ sap.ui.define([
                 oTable.setBusy(true);
             }
 
-            GetData.loadTableData(oModel, sTableName, "", sLang)
+            LoadData.loadTableData(oModel, sTableName, "", sLang)
                 .then(function (oPayload) {
                     this._processPayload(oPayload);
                     this._displayData();

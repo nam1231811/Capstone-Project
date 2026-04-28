@@ -5,9 +5,8 @@ sap.ui.define([
     "zapp/api/DeleteFromDatabase",
     "zapp/api/SaveToDatabase",
     "zapp/utils/DataFormatter",
-    "zapp/models/GetData",
     "zapp/utils/GridValidator"
-], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase, DataFormatter, GetData, GridValidator) {
+], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase, DataFormatter, GridValidator) {
     "use strict";
 
     return Controller.extend("zapp.controller.DetailData", {
@@ -190,7 +189,7 @@ sap.ui.define([
                 }
             });
 
-            var codeData = GetData.encodeFunction(aPromises);
+            var codeData = DataFormatter.encodeFunction(aPromises);
             sap.ui.core.BusyIndicator.show(0);
 
             if (enUuid) {
@@ -279,7 +278,7 @@ sap.ui.define([
                             aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                         }
                     });
-                    var sBase64Data = GetData.encodeFunction(aPromises);
+                    var sBase64Data = DataFormatter.encodeFunction(aPromises);
                     var oActionContext = oModel.bindContext(sActionPath);
                     oActionContext.setParameter("table_name", tableName);
                     oActionContext.setParameter("data", sBase64Data);
