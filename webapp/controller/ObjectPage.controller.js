@@ -78,145 +78,191 @@ sap.ui.define([
         },
 
         _processPayload: function (oPayload) {
+            // var aRawMeta = oPayload.metadata || [];
+            // var oUniqueMap = new Map();
+            // console.log(aRawMeta);
+            
+            // aRawMeta.forEach(item => {
+            //     var sFieldName = item.fieldname;
+            //     if (sFieldName && !oUniqueMap.has(sFieldName)) {
+            //         item.field_pos = item.fieldPos;
+            //         item.scrtext_m = item.scrTextM;
+            //         oUniqueMap.set(sFieldName, item);
+            //     }
+            // });
+            // var aBaseMeta = Array.from(oUniqueMap.values());
+            // var aUiMeta = JSON.parse(JSON.stringify(aBaseMeta));
+            // aUiMeta.sort(function (a, b) {
+            //     var posA = parseInt(a.field_pos, 10) || 0;
+            //     var posB = parseInt(b.field_pos, 10) || 0;
+            //     return posA - posB;
+            // });
+            // var aTableMeta = JSON.parse(JSON.stringify(aBaseMeta));
+            // aTableMeta.sort(function (a, b) {
+            //     var checkIsKey = function (col) {
+            //         var sColName = (col.fieldname || "").toUpperCase();
+            //         return (col.keyflag === "X"  ||
+            //             sColName === "ID" || 
+            //             sColName === "CODE" ||
+            //             sColName.indexOf("_ID") !== -1 || 
+            //             sColName.indexOf("_CODE") !== -1);
+            //     };
+            //     var aIsKey = checkIsKey(a);
+            //     var bIsKey = checkIsKey(b);
+            //     if (aIsKey && !bIsKey) return -1;
+            //     if (!aIsKey && bIsKey) return 1;
+            //     var posA = parseInt(a.field_pos, 10) || 0;
+            //     var posB = parseInt(b.field_pos, 10) || 0;
+            //     return posA - posB;
+            // });
+            // this._oMetaRaw = aTableMeta;
+            // this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname);
+
+            // var sActualTableName = this._oMetaRaw[0]?.tableName || "Unknown";
+            // var sActualTableDesc = this._oMetaRaw[0]?.tableDescription || "No description available";
+            // var iColCount = this._oMetaRaw.length;
+
+            // this.getView().getModel("view")?.setProperty("/tableName", sActualTableName);
+            // this.getView().getModel("overall")?.setProperty("/tableName", sActualTableName);
+            // this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);
+            // this.getView().getModel("overall")?.setProperty("/colCount", iColCount);
+            // this.getView().getModel("displayModel").setProperty("/Meta", aTableMeta);
+            // this.getView().getModel("displayModel").setProperty("/UiMeta", aUiMeta);
+            // this.getView().getModel("displayModel").setProperty("/Data", oPayload.dataRows);
+
+            // var aRawData = oPayload.dataRows || this.getView().getModel("displayModel").getProperty("/Data") || [];
+            // var aFormattedData = [];
+
+            // aRawData.forEach(function (rowObj, rowIndex) {
+            //     var oNewRow = {};
+            //     var oActualData = {};
+            //     if (rowObj.data) {
+            //         try {
+            //             oActualData = JSON.parse(rowObj.data);
+            //         } catch (e) {
+            //             console.error("Error parse json" + rowIndex, e);
+            //         }
+            //     }
+
+            //     var sRowUuid = rowObj.uuid || "";
+
+            //     this._oMetaRaw.forEach(function (colMeta, iIndex) {
+            //         var sFieldName = colMeta.fieldname;
+            //         var key = false;
+            //         if (colMeta.keyflag === 'X') {
+            //             key = true;
+            //         }
+            //         var sValue = "";
+            //         if (oActualData[sFieldName] !== undefined) {
+            //             sValue = oActualData[sFieldName];
+            //         } else {
+            //             var sMatchingKey = Object.keys(oActualData).find(k => k.toUpperCase() === sFieldName.toUpperCase());
+            //             if (sMatchingKey) {
+            //                 sValue = oActualData[sMatchingKey];
+            //             }
+            //         }
+
+            //         var bHasVH = (colMeta.hasValueHelp === "X");
+
+            //         oNewRow[iIndex] = {
+            //             value: sValue,
+            //             isEditable: false,
+            //             isNew: false,
+            //             fieldname: sFieldName,
+            //             table_name: colMeta.tableName,
+            //             has_value_help: bHasVH,
+            //             field_pos: colMeta.field_pos,
+            //             datatype: colMeta.datatype,
+            //             row_id: rowObj.rowId || rowObj.row_id || (rowIndex + 1).toString(),
+            //             uuid: sRowUuid,
+            //             length: colMeta.leng,
+            //             keyFlag: key,
+            //             createdBy: rowObj.createdBy,
+            //             createdAt: DataFormatter.formatDateTime(rowObj.createdAt),
+            //             changedBy: rowObj.changedBy,
+            //             changedAt: DataFormatter.formatDateTime(rowObj.changedAt)
+            //         };
+            //     });
+            //     aFormattedData.push(oNewRow);
+            // }.bind(this));
+
+            // var sRecentKey = this._sRecentlySavedKey;
+
+            // aFormattedData.sort(function (a, b) {
+            //     var valA = a[0] ? String(a[0].value).trim() : "";
+            //     var valB = b[0] ? String(b[0].value).trim() : "";
+
+            //     if (sRecentKey) {
+            //         if (valA === sRecentKey) return -1;
+            //         if (valB === sRecentKey) return 1;
+            //     }
+
+            //     var numA = parseFloat(valA);
+            //     var numB = parseFloat(valB);
+
+            //     if (!isNaN(numA) && !isNaN(numB)) {
+            //         return numB - numA;
+            //     } else {
+            //         return String(valB).localeCompare(String(valA));
+            //     }
+            // });
+
+            // this._oDataRaw = aFormattedData;
+
+            // var minRec = this._oDataRaw.length < 10 ? this._oDataRaw.length : 10;
+            // var oOverallModel = this.getView().getModel("overall");
+            // if (oOverallModel) {
+            //     oOverallModel.setProperty("/minRecord", minRec);
+            //     oOverallModel.setProperty("/count", this._oDataRaw.length);
+            // }
+
+            // this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
+            var oView = this.getView();
+            var oDisplayModel = oView.getModel("displayModel");
+            var oOverallModel = oView.getModel("overall");
             var aRawMeta = oPayload.metadata || [];
             var oUniqueMap = new Map();
-            console.log(aRawMeta);
-            
             aRawMeta.forEach(item => {
-                var sFieldName = item.fieldname;
-                if (sFieldName && !oUniqueMap.has(sFieldName)) {
+                if (item.fieldname && !oUniqueMap.has(item.fieldname)) {
                     item.field_pos = item.fieldPos;
                     item.scrtext_m = item.scrTextM;
-                    oUniqueMap.set(sFieldName, item);
+                    oUniqueMap.set(item.fieldname, item);
                 }
             });
+
             var aBaseMeta = Array.from(oUniqueMap.values());
             var aUiMeta = JSON.parse(JSON.stringify(aBaseMeta));
-            aUiMeta.sort(function (a, b) {
-                var posA = parseInt(a.field_pos, 10) || 0;
-                var posB = parseInt(b.field_pos, 10) || 0;
-                return posA - posB;
-            });
+            aUiMeta.sort((a, b) => (parseInt(a.field_pos, 10) || 0) - (parseInt(b.field_pos, 10) || 0));
+
             var aTableMeta = JSON.parse(JSON.stringify(aBaseMeta));
-            aTableMeta.sort(function (a, b) {
-                var checkIsKey = function (col) {
-                    var sColName = (col.fieldname || "").toUpperCase();
-                    return (col.keyflag === "X"  ||
-                        sColName === "ID" || 
-                        sColName === "CODE" ||
-                        sColName.indexOf("_ID") !== -1 || 
-                        sColName.indexOf("_CODE") !== -1);
-                };
-                var aIsKey = checkIsKey(a);
-                var bIsKey = checkIsKey(b);
-                if (aIsKey && !bIsKey) return -1;
-                if (!aIsKey && bIsKey) return 1;
-                var posA = parseInt(a.field_pos, 10) || 0;
-                var posB = parseInt(b.field_pos, 10) || 0;
-                return posA - posB;
+            var checkIsKey = col => {
+                var sCol = (col.fieldname || "").toUpperCase();
+                return col.keyflag === "X" || ["ID", "CODE"].includes(sCol) || sCol.includes("_ID") || sCol.includes("_CODE");
+            };
+
+            aTableMeta.sort((a, b) => {
+                var aIsKey = checkIsKey(a), 
+                    bIsKey = checkIsKey(b);
+                if (aIsKey !== bIsKey) return aIsKey ? -1 : 1; 
+                return (parseInt(a.field_pos, 10) || 0) - (parseInt(b.field_pos, 10) || 0);
             });
+
             this._oMetaRaw = aTableMeta;
-            this._oFieldName = this._oMetaRaw.map(prop => prop.fieldname);
+            this._oFieldName = aTableMeta.map(prop => prop.fieldname);
 
-            var sActualTableName = this._oMetaRaw[0]?.tableName || "Unknown";
-            var sActualTableDesc = this._oMetaRaw[0]?.tableDescription || "No description available";
-            var iColCount = this._oMetaRaw.length;
-
-            this.getView().getModel("view")?.setProperty("/tableName", sActualTableName);
-            this.getView().getModel("overall")?.setProperty("/tableName", sActualTableName);
-            this.getView().getModel("overall")?.setProperty("/tableDesc", sActualTableDesc);
-            this.getView().getModel("overall")?.setProperty("/colCount", iColCount);
-            this.getView().getModel("displayModel").setProperty("/Meta", aTableMeta);
-            this.getView().getModel("displayModel").setProperty("/UiMeta", aUiMeta);
-            this.getView().getModel("displayModel").setProperty("/Data", oPayload.dataRows);
-
-            var aRawData = oPayload.dataRows || this.getView().getModel("displayModel").getProperty("/Data") || [];
-            var aFormattedData = [];
-
-            aRawData.forEach(function (rowObj, rowIndex) {
-                var oNewRow = {};
-                var oActualData = {};
-                if (rowObj.data) {
-                    try {
-                        oActualData = JSON.parse(rowObj.data);
-                    } catch (e) {
-                        console.error("Error parse json" + rowIndex, e);
-                    }
-                }
-
-                var sRowUuid = rowObj.uuid || "";
-
-                this._oMetaRaw.forEach(function (colMeta, iIndex) {
-                    var sFieldName = colMeta.fieldname;
-                    var key = false;
-                    if (colMeta.keyflag === 'X') {
-                        key = true;
-                    }
-                    var sValue = "";
-                    if (oActualData[sFieldName] !== undefined) {
-                        sValue = oActualData[sFieldName];
-                    } else {
-                        var sMatchingKey = Object.keys(oActualData).find(k => k.toUpperCase() === sFieldName.toUpperCase());
-                        if (sMatchingKey) {
-                            sValue = oActualData[sMatchingKey];
-                        }
-                    }
-
-                    var bHasVH = (colMeta.hasValueHelp === "X");
-
-                    oNewRow[iIndex] = {
-                        value: sValue,
-                        isEditable: false,
-                        isNew: false,
-                        fieldname: sFieldName,
-                        table_name: colMeta.tableName,
-                        has_value_help: bHasVH,
-                        field_pos: colMeta.field_pos,
-                        datatype: colMeta.datatype,
-                        row_id: rowObj.rowId || rowObj.row_id || (rowIndex + 1).toString(),
-                        uuid: sRowUuid,
-                        length: colMeta.leng,
-                        keyFlag: key,
-                        createdBy: rowObj.createdBy,
-                        createdAt: DataFormatter.formatDateTime(rowObj.createdAt),
-                        changedBy: rowObj.changedBy,
-                        changedAt: DataFormatter.formatDateTime(rowObj.changedAt)
-                    };
-                });
-                aFormattedData.push(oNewRow);
-            }.bind(this));
-
-            var sRecentKey = this._sRecentlySavedKey;
-
-            aFormattedData.sort(function (a, b) {
-                var valA = a[0] ? String(a[0].value).trim() : "";
-                var valB = b[0] ? String(b[0].value).trim() : "";
-
-                if (sRecentKey) {
-                    if (valA === sRecentKey) return -1;
-                    if (valB === sRecentKey) return 1;
-                }
-
-                var numA = parseFloat(valA);
-                var numB = parseFloat(valB);
-
-                if (!isNaN(numA) && !isNaN(numB)) {
-                    return numB - numA;
-                } else {
-                    return String(valB).localeCompare(String(valA));
-                }
-            });
-
-            this._oDataRaw = aFormattedData;
-
-            var minRec = this._oDataRaw.length < 10 ? this._oDataRaw.length : 10;
-            var oOverallModel = this.getView().getModel("overall");
+            var oFirstMeta = aTableMeta[0] || {};
+            var sActualTableName = oFirstMeta.tableName || "Unknown";
+            var sActualTableDesc = oFirstMeta.tableDescription || "No description available";
+                
+            oView.getModel("view")?.setProperty("/tableName", sActualTableName);
             if (oOverallModel) {
-                oOverallModel.setProperty("/minRecord", minRec);
-                oOverallModel.setProperty("/count", this._oDataRaw.length);
+                oOverallModel.setProperty("/tableName", sActualTableName);
+                oOverallModel.setProperty("/tableDesc", sActualTableDesc);
+                oOverallModel.setProperty("/colCount", aTableMeta.length);
             }
-
-            this.getView().getModel("displayModel").setProperty("/Data", this._oDataRaw);
+            
+            oDisplayModel?.setProperty("/Meta", aTableMeta);
+            oDisplayModel?.setProperty("/UiMeta", aUiMeta);
         },
 
         _displayData: function () {

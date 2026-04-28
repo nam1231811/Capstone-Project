@@ -1,7 +1,6 @@
 sap.ui.define([
-    "zapp/utils/DataFormatter",
-    "zapp/models/GetData"
-], function (DataFormatter, GetData) {
+    "zapp/utils/DataFormatter"
+], function (DataFormatter) {
     "use strict";
 
     return {
@@ -41,7 +40,7 @@ sap.ui.define([
                     dataUpdate.push(aPromises)
                 });
 
-                sBase64Data = GetData.encodeFunction(dataUpdate);
+                sBase64Data = DataFormatter.encodeFunction(dataUpdate);
             }
 
             var oActionContext = oModel.bindContext(sActionPath);
