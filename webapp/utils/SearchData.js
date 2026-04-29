@@ -1,56 +1,57 @@
 sap.ui.define([
-    "sap/ui/model/Filter",
+    "sap/ui/model/Filter"
 ], function (Filter) {
     "use strict";
 
     return {
         onSearch: function (oEvent) {
-            var sQuery = oEvent.getParameter("query");
-            if (sQuery === undefined) {
-                sQuery = oEvent.getParameter("newValue");
-            }
+            var oView = this.getView(),
+                oDisplayModel = oView.getModel("displayModel"),
+                oOverallModel = oView.getModel("overall"),
+                oTable = this.byId("dataTable"),
+                oBinding = oTable ? oTable.getBinding("rows") : null,
+                sQuery = oEvent.getParameter("query") !== undefined ? oEvent.getParameter("query") : oEvent.getParameter("newValue"),
+                iFilteredLength, 
+                iNewVisibleRows;
+
             sQuery = sQuery ? sQuery.toString().toLowerCase().trim() : "";
 
-            this.getView().getModel("displayModel").setProperty("/searchQuery", sQuery);
+            if (oDisplayModel) {
+                oDisplayModel.setProperty("/searchQuery", sQuery);
+            }
 
-            var oTable = this.byId("dataTable");
-            var oBinding = oTable.getBinding("rows");
             if (!oBinding) return;
 
             if (!sQuery) {
                 oBinding.filter([]);
             } else {
-                var oFilter = new Filter({
+                oBinding.filter([new Filter({
                     path: "",
                     test: function (oRow) {
                         if (!oRow || typeof oRow !== "object") return false;
-                        
-                        var aCells = Object.keys(oRow).map(function(key) { return oRow[key]; });
-                        
-                        return aCells.some(function (oCell) {
-                            return oCell && oCell.value !== undefined && oCell.value !== null && 
-                                   oCell.value.toString().toLowerCase().includes(sQuery);
-                        });
+
+                        for (var sKey in oRow) {
+                            var oCell = oRow[sKey];
+                            if (oCell && oCell.value !== undefined && oCell.value !== null && 
+                                oCell.value.toString().toLowerCase().includes(sQuery)) {
+                                return true;
+                            }
+                        }
+                        return false;
                     }
-                });
-                oBinding.filter([oFilter]);
+                })]);
             }
 
-            var iFilteredLength = oBinding.getLength();
-            var iNewVisibleRows = iFilteredLength === 0 ? 1 : (iFilteredLength < 10 ? iFilteredLength : 10);
+            iFilteredLength = oBinding.getLength();
+            iNewVisibleRows = iFilteredLength === 0 ? 1 : (iFilteredLength < 10 ? iFilteredLength : 10);
             
-            var oOverallModel = this.getView().getModel("overall");
             if (oOverallModel) {
                 oOverallModel.setProperty("/count", iFilteredLength);
-
                 oOverallModel.setProperty("/minRecord", iNewVisibleRows);
             }
 
-            var oDisplayModel = this.getView().getModel("displayModel");
             if (oDisplayModel) {
                 oDisplayModel.setProperty("/visibleRowCount", iNewVisibleRows);
-                oDisplayModel.setProperty("/hasMore", iFilteredLength > iNewVisibleRows);
-                oDisplayModel.setProperty("/hasLess", false);
             }
 
             if (oTable) {
