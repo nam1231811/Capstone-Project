@@ -1,87 +1,58 @@
-sap.ui.define([], function () {
+sap.ui.define([
+    "sap/m/MessageBox",
+    "zapp/utils/DataFormatter"
+], function (MessageBox, DataFormatter) {
     "use strict";
-
+    const DELETE_CLERK_PATH = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.deleteActiveRecord(...)";
+    const DELETE_ADMIN_PATH = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.deleteFromDatabase(...)";
     return {
-        postDelete: function (tableName, data, sUuid) {
-            var sBaseUrl = "/sap/opu/odata4/sap/zsb_dynamic_meta/srvd/sap/zsd_dynamic_meta/0001";            
-            
-            return this._getCsrfToken().then(function(sCsrfToken) {
-                var sDeleteUrl = sBaseUrl 
-                    + "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.deleteActiveRecord";
-
-                return fetch(sDeleteUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-Token": sCsrfToken,
-                    },
-                    body: JSON.stringify({
-                        "table_name": tableName,
-                        "data": data
-                    })
-                }).then(function(oResponse) {
-                    if (oResponse.ok) {
-                        return true;
-                    }
-                    
-                    throw new Error("HTTP " + oResponse.status + " - Lỗi xóa dữ liệu từ Backend!");
-                });
-            }.bind(this));
+        onDeleteFromDatabase: function (sTableName, oView, vCustomData) {
+            var sActionPath = DELETE_ADMIN_PATH;
+            return this._executeDelete(sActionPath, sTableName, oView, vCustomData);
         },
 
-        _getCsrfToken: function() {
-            var sBaseUrl = "/sap/opu/odata4/sap/zsb_dynamic_meta/srvd/sap/zsd_dynamic_meta/0001";
-            return fetch(sBaseUrl + "/", {
-                method: "HEAD",
-                headers: { "X-CSRF-Token": "Fetch" }
-            }).then(oResponse => {
-                if (!oResponse.ok) {
-                    throw new Error("Cannot fetch CSRF Token");
-                }
-                return oResponse.headers.get("X-CSRF-Token");
-            });
+        onDeleteActiveRecord: function (sTableName, oView, vCustomData) {
+            var sActionPath = DELETE_CLERK_PATH;
+            return this._executeDelete(sActionPath, sTableName, oView, vCustomData);
         },
-     
-        onDeleteActive: function (sTableName, oView) {
+
+        _executeDelete: function (sActionPath, sTableName, oView, vCustomData) {
             var oModel = oView.getModel();
-            var aData = oView.getModel("displayModel").getProperty("/Data") || [];
-            var dataUpdate = []
+
             if (!sTableName) {
-                sap.m.MessageBox.error("Table is unknow");
-                return;
+                MessageBox.error("Table is unknown");
+                return Promise.reject(new Error("Table is unknown"));
             }
-        
-            var aDataToSave = oView.getModel("displayModel").getProperty("/Data");
-        
-            if (!aDataToSave || aDataToSave.length === 0) {
-                sap.m.MessageToast.show("No data to update");
-                return;
+
+            if (!vCustomData || vCustomData.length === 0) {
+                return Promise.reject(new Error("No data to delete"));
             }
-            aData.forEach(oRow => {
-                var aPromises = {};
-                Object.keys(oRow).forEach(key => {
-                    if (!isNaN(key)) {
-                        var oCell = oRow[key];
-                        if (oCell && oCell.fieldname) {
-                            aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
-                        } else {
-                            console.warn("On Save" + key + "error");
-                        }
-                    }
-                });
-                dataUpdate.push(aPromises)
+
+            var aPromises = {};
+            var aCells = Object.values(vCustomData);
+            
+            aCells.forEach(function(oCell) {
+                if (oCell && oCell.fieldname) {
+                    aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
+                }
             });
-            var sBase64Data = GetData.encodeFunction(dataUpdate)
-            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
+
+            var sBase64Data = DataFormatter.encodeFunction(aPromises);
             var oActionContext = oModel.bindContext(sActionPath);
+            
             oActionContext.setParameter("table_name", sTableName);
-            oActionContext.setParameter("json_data", sBase64Data);
+            oActionContext.setParameter("data", sBase64Data);
+
+            sap.ui.getCore().getMessageManager().removeAllMessages();
+
             return oActionContext.execute().then(function () {
-                sap.m.MessageToast.show("Already update to database");
-            }.bind(this)).catch(function (oError) {
-                sap.ui.core.BusyIndicator.hide();
-                sap.m.MessageBox.error("Something is wrong, try another time: " + (oError.message || "Xem Console"));
-                console.error(oError);
+                return aCells;
+            }).catch(function (oError) {
+                var sFinalError = oError.message || "This record is pending for approval.";
+                if (oError && oError.error && oError.error.message) {
+                    sFinalError = oError.error.message.value || oError.error.message;
+                }
+                throw new Error(sFinalError);
             });
         }
     };

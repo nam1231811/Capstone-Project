@@ -62,7 +62,7 @@ return Controller.extend("zapp.controller.Metadata", {
                     newTable: false
                 }, true);
             } else {
-                console.error("Không tìm thấy đối tượng FCL với ID 'fcl'");
+                console.error("Not found Flexible Column Layout");
             }
         }
     });
