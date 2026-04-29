@@ -80,7 +80,7 @@
                         subheader="Analytics &amp; Reports" 
                         press=".onNavToDashboard">
                         <TileContent>
-                            <ImageContent src="sap-icon://bpi-metrics"/> 
+                            <ImageContent src="sap-icon://bar-chart"/> 
                         </TileContent>
                     </GenericTile>
 

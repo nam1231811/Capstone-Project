@@ -5,8 +5,10 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/m/MessageToast",
     "zapp/api/LoadData",
-    "sap/m/MessageBox"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, LoadData, MessageBox) {
+    "sap/m/MessageBox",
+    "zapp/utils/DataFormatter",
+    "zapp/utils/ValueHelp"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, LoadData, MessageBox, DataFormatter, ValueHelp) {
     "use strict";
 
     return Controller.extend("zapp.controller.Main", {
@@ -34,81 +36,13 @@ sap.ui.define([
         },
 
         onValueHelpRequest: function (oEvent) {
-            var oView = this.getView();
-            var oBundle = oView.getModel("i18n").getResourceBundle();
-
-            if (!this._pValueHelpDialog) {
-                this._pValueHelpDialog = new sap.m.TableSelectDialog({
-                    title: oBundle.getText("listTableTitle"), 
-                    busyIndicatorDelay: 0, 
-                    noDataText: oBundle.getText("noDataText"), 
-                    contentWidth: "50%",
-                    growing: true,                           
-                    growingThreshold: 20,                    
-
-                    search: function (oEvt) {
-                        var sValue = oEvt.getParameter("value");
-                        var oFilter = new Filter({
-                            filters: [
-                                new Filter("TableName", FilterOperator.Contains, sValue),
-                                new Filter("Description", FilterOperator.Contains, sValue)
-                            ],
-                            and: false
-                        });
-                        oEvt.getSource().getBinding("items").filter([oFilter]);
-                    },
-                    
-                    confirm: function (oEvt) {
-                        var oSelectedItem = oEvt.getParameter("selectedItem");
-                        if (oSelectedItem) {
-                            var sName = oSelectedItem.getCells()[0].getTitle(); 
-                            var sDesc = oSelectedItem.getCells()[1].getText();  
-                            this.byId("searchInput").setValue(sName);
-                            this.byId("searchDescInput").setValue(sDesc);
-                            this.onSearch(); 
-                        }
-                    }.bind(this),
-                    
-                    columns: [
-                        new sap.m.Column({ 
-                            header: new sap.m.Label({ text: oBundle.getText("tableName"), design: "Bold" }) 
-                        }),
-                        new sap.m.Column({ 
-                            header: new sap.m.Label({ text: oBundle.getText("tableDesc"), design: "Bold" }),
-                            minScreenWidth: "Tablet", 
-                            demandPopin: true         
-                        })
-                    ]
-                });
-
-                oView.addDependent(this._pValueHelpDialog);
-
-                this._pValueHelpDialog.bindAggregation("items", {
-                    path: "/TableLookup", 
-                    template: new sap.m.ColumnListItem({
-                        type: "Active", 
-                        cells: [
-                            new sap.m.ObjectIdentifier({ 
-                                title: "{TableName}",
-                            }),
-                            new sap.m.Text({ 
-                                text: "{Description}", 
-                                wrapping: true 
-                            })
-                        ]
-                    })
-                });
-            }
-
-            var oBinding = this._pValueHelpDialog.getBinding("items");
-            if (oBinding) {
-                oBinding.filter([]);
-            }
-            if (this._pValueHelpDialog._oSearchField) {
-                this._pValueHelpDialog._oSearchField.setValue("");
-            }
-
-            this._pValueHelpDialog.open();
+            ValueHelp.openTableValueHelp(this, {
+                inputId: "searchInput",
+                descInputId: "searchDescInput",
+                callback: (sName, sDesc) => { 
+                    this.onSearch();
+                }
+            })
         },
 
         onSearch: function () {
@@ -142,9 +76,9 @@ sap.ui.define([
                 oTable.setBusy(false);
                 
                 if (oPayload && oPayload.status === "MULTIPLE" && oPayload.matches) {
-                    var aMatchedTables = oPayload.matches.map(function (m) {
-                        var sDate = m.changeDate;
-                        var sTime = m.changeTime; 
+                    var aMatchedTables = oPayload.matches.map(function (match) {
+                        var sDate = match.changeDate;
+                        var sTime = match.changeTime; 
                         var oFullDate = null;
 
                         if (sDate && sDate !== "0000-00-00") {
@@ -161,11 +95,11 @@ sap.ui.define([
                         }
 
                         return {
-                            table_name: m.tableName || m.table_name,
-                            table_description: m.tableDescription || m.table_description,
-                            user_name: m.userName || m.user_name || "Unknown",
+                            table_name: match.tableName || match.table_name,
+                            table_description: match.tableDescription || match.table_description,
+                            user_name: match.userName || match.user_name || "Unknown",
                             change_at: oFullDate,
-                            field_count: m.fieldCount || m.field_count || 0
+                            field_count: match.fieldCount || match.field_count || 0
                         };
                     });
 
@@ -230,62 +164,22 @@ sap.ui.define([
             });
         },
 
-        _updateUniqueTablesList: function(oPayload) {
-            if (!oPayload || !oPayload.metadata || oPayload.metadata.length === 0) return;
-
-            var oMeta = oPayload.metadata[0];
-            var oFirstRow = (oPayload.dataRows && oPayload.dataRows.length > 0) ? oPayload.dataRows[0] : {};
-
-            var parseAbapDate = function(sDate) {
-                if (!sDate) {
-                    return new Date()
-                };
-                var s = sDate.toString().split(".")[0];
-                if (s.length >= 14) {
-                    return new Date(Date.UTC(
-                        parseInt(s.substring(0, 4), 10),   
-                        parseInt(s.substring(4, 6), 10) - 1, 
-                        parseInt(s.substring(6, 8), 10),   
-                        parseInt(s.substring(8, 10), 10),  
-                        parseInt(s.substring(10, 12), 10),
-                        parseInt(s.substring(12, 14), 10)  
-                    ));
-                }
-                return new Date(sDate);
-            };
-
-            var oNewTable = {
-                table_name: oMeta.tableName || oMeta.table_name,
-                table_description: oMeta.tableDescription || oMeta.table_description,
-                user_name: oFirstRow.changedBy || oFirstRow.createdBy || oFirstRow.user_name || "Unknown",
-                change_at: parseAbapDate(oFirstRow.changedAt || oFirstRow.createdAt),
-                field_count: oPayload.metadata.length
-            };
-
-            var oRealDataModel = this.getView().getModel("realData");
-            var aUniqueTables = oRealDataModel.getProperty("/UniqueTables") || [];
-
-            var iIndex = aUniqueTables.findIndex(function(t) { 
-                return t.table_name === oNewTable.table_name; 
-            });
-
-            if (iIndex !== -1) {
-                aUniqueTables[iIndex] = oNewTable;
-            } else {
-                aUniqueTables.push(oNewTable);
-            }
-
-            oRealDataModel.setProperty("/UniqueTables", aUniqueTables);
-        },
-
         onOpenSettings: function () {
             if (!this._oLangDialog) {
                 var oBundle = this.getView().getModel("i18n").getResourceBundle();
                 this._oLangDialog = new sap.m.SelectDialog({
                     title: oBundle.getText("language"),
                     items: [
-                        new sap.m.StandardListItem({ title: "English", description: "EN", type: "Active" }),
-                        new sap.m.StandardListItem({ title: "Tiếng Việt", description: "VI", type: "Active" })
+                        new sap.m.StandardListItem({ 
+                            title: "English", 
+                            description: "EN", 
+                            type: "Active" 
+                        }),
+                        new sap.m.StandardListItem({ 
+                            title: "Tiếng Việt", 
+                            description: "VI", 
+                            type: "Active" 
+                        })
                     ],
                     confirm: function (oEvent) {
                         var sLangCode = oEvent.getParameter("selectedItem").getDescription();
@@ -293,12 +187,11 @@ sap.ui.define([
                         this.getView().getModel("settingsModel").setProperty("/selectedLanguage", sBackendLang);
                         var sUiLang = (sLangCode === "VI") ? "vi" : "en";
                         sap.ui.getCore().getConfiguration().setLanguage(sUiLang);
-                        
                         var oTableInput = this.byId("searchInput");
                         var oDescInput = this.byId("searchDescInput");
                         var sName = oTableInput ? oTableInput.getValue().trim() : "";
                         var sDesc = oDescInput ? oDescInput.getValue().trim() : "";
-
+                        
                         if (sName || sDesc) {
                             this.onSearch();
                         }

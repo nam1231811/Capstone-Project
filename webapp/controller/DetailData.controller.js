@@ -5,9 +5,8 @@ sap.ui.define([
     "zapp/api/DeleteFromDatabase",
     "zapp/api/SaveToDatabase",
     "zapp/utils/DataFormatter",
-    "zapp/models/GetData",
     "zapp/utils/GridValidator"
-], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase, DataFormatter, GetData, GridValidator) {
+], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase, DataFormatter, GridValidator) {
     "use strict";
 
     return Controller.extend("zapp.controller.DetailData", {
@@ -190,26 +189,46 @@ sap.ui.define([
                 }
             });
 
-            var codeData = GetData.encodeFunction(aPromises);
+            var codeData = DataFormatter.encodeFunction(aPromises);
             sap.ui.core.BusyIndicator.show(0);
 
             if (enUuid) {
                 var path = "/Data(uuid=" + enUuid + ")";
-                var oContext = oModel.bindContext(path).getBoundContext();
+
+                var oContextBinding = oModel.bindContext(path, null, { $$updateGroupId: "updateGroup" });
+                var oContext = oContextBinding.getBoundContext();
+
                 oContext.setProperty("table_name", tableName);
                 oContext.setProperty("data", codeData);
             } 
             oModel.submitBatch("updateGroup").then(function () {
                 sap.ui.core.BusyIndicator.hide();
-                if (oModel.hasPendingChanges()) {
-                    sap.m.MessageBox.error("System validation failed! Request was not sent.");
+
+                // Check if the MessageManager Backend returns any errors.
+                var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
+                var bHasBackendError = aMessages.some(function (msg) {
+                    return msg.type === sap.ui.core.MessageType.Error;
+                });
+
+                // If has error from backend or pending changes -> BLOCK 
+                if (bHasBackendError || oModel.hasPendingChanges()) {
+
+                    var sErrorText = "Update failed. Please check the data.";
+                    // Lấy câu chửi "Not authorized..." của Backend ra để hiện lên cho ngầu
+                    if (aMessages.length > 0) {
+                        sErrorText = aMessages[0].message;
+                    }
+
+                    sap.m.MessageBox.error(sErrorText); // Bật popup báo lỗi
                     return;
                 }
+
                 sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval");
                 this.onCancelEdit();
+
             }.bind(this)).catch(function (oError) {
                 sap.ui.core.BusyIndicator.hide();
-                sap.m.MessageBox.error("Submit failed: " + oError.message);
+                sap.m.MessageBox.error("Network/System failed: " + oError.message);
             });
         },
 
@@ -279,7 +298,7 @@ sap.ui.define([
                             aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
                         }
                     });
-                    var sBase64Data = GetData.encodeFunction(aPromises);
+                    var sBase64Data = DataFormatter.encodeFunction(aPromises);
                     var oActionContext = oModel.bindContext(sActionPath);
                     oActionContext.setParameter("table_name", tableName);
                     oActionContext.setParameter("data", sBase64Data);
@@ -415,11 +434,11 @@ sap.ui.define([
                         var oGraphModel = new sap.ui.model.json.JSONModel(oParsedGraphData);
                         oView.setModel(oGraphModel, "graph");
                     } catch (e) {
-                        console.error("Lỗi parse JSON Impact Analysis: ", e);
+                        console.error("Error parsing JSON Impact Analysis: ", e);
                     }
                 }
             }.bind(this)).catch(function (oError) {
-                console.error("Lỗi gọi Impact Analysis: ", oError);
+                console.error("Error calling Impact Analysis: ", oError);
             });
         },
 

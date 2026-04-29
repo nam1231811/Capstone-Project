@@ -5,8 +5,9 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "zapp/utils/DataFormatter"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatter) {
+    "zapp/utils/DataFormatter",
+    "zapp/utils/ValueHelp"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatter, ValueHelp) {
     "use strict";
 
     return Controller.extend("zapp.controller.AuditLog", {
@@ -48,68 +49,15 @@ sap.ui.define([
         },
 
         onValueHelpRequest: function (oEvent) {
-            var oView = this.getView();
-
-            if (!this._pValueHelpDialog) {
-                this._pValueHelpDialog = new sap.m.TableSelectDialog({
-                    title: "List of tables",
-                    busyIndicatorDelay: 0,
-                    noDataText: "No data available",
-                    contentWidth: "50%",
-                    growing: true,
-                    growingThreshold: 20,
-                    search: function (oEvt) {
-                        var sValue = oEvt.getParameter("value");
-                        var oFilter = new Filter({
-                            filters: [
-                                new Filter("TableName", FilterOperator.Contains, sValue),
-                                new Filter("Description", FilterOperator.Contains, sValue)
-                            ],
-                            and: false
-                        });
-                        oEvt.getSource().getBinding("items").filter([oFilter]);
-                    },
-                    confirm: function (oEvt) {
-                        var oSelectedItem = oEvt.getParameter("selectedItem");
-                        if (oSelectedItem) {
-                            var sName = oSelectedItem.getCells()[0].getTitle();
-                            this.byId("auditSearchInput").setValue(sName);
-                            this.onSearchAuditLog(sName);
-                        }
-                    }.bind(this),
-                    columns: [
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Table Name", design: "Bold" }) }),
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Description", design: "Bold" }), demandPopin: true })
-                    ]
-                });
-
-                oView.addDependent(this._pValueHelpDialog);
-
-                this._pValueHelpDialog.bindAggregation("items", {
-                    path: "/TableLookup",
-                    template: new sap.m.ColumnListItem({
-                        type: "Active",
-                        cells: [
-                            new sap.m.ObjectIdentifier({ title: "{TableName}" }),
-                            new sap.m.Text({ text: "{Description}", wrapping: true })
-                        ]
-                    })
-                });
-            }
-
-            var oBinding = this._pValueHelpDialog.getBinding("items");
-            if (oBinding) {
-                oBinding.filter([]);
-            }
-
-            if (this._pValueHelpDialog._oSearchField) {
-                this._pValueHelpDialog._oSearchField.setValue("");
-            }
-
-            this._pValueHelpDialog.open();
+            ValueHelp.openTableValueHelp(this, {
+                inputId: "auditSearchInput",
+                callback: (sName, sDesc) => { 
+                    this.onSearchAuditLog(sName);
+                }
+            })
         },
 
-        onSearchAuditLog: function (vEventOrString) {
+        onSearchAuditLog: function (vEventOrString) { 
             var sTableName = typeof vEventOrString === "string" ? vEventOrString : this.byId("auditSearchInput").getValue();
             var oLocalModel = this.getView().getModel("audit");
             var oODataModel = this.getOwnerComponent().getModel("auditOData");
@@ -158,34 +106,19 @@ sap.ui.define([
 
                     oLocalModel.setProperty("/allLogs", aAllLogs);
                     var aMainLogs = [];
-
                     aAllLogs.forEach(function (oLog) {
-                        if (oLog.Status !== 'P') {
+                        if (!(oLog.Status === 'R' || oLog.Status === 'P')) {
                             var sAction = "UPDATE";
-                            if (oLog.Action === 'C') sAction = "CREATE";
-                            if (oLog.Action === 'D') sAction = "DELETE";
+                            if (oLog.Action === 'C') {
+                                sAction = "CREATE"
+                            };
+                            
+                            if (oLog.Action === 'D') {
+                                sAction = "DELETE"
+                            };
 
                             var sTime = DataFormatter.formatDateTime(oLog.ApprovedAt || oLog.ChangedAt);
                             var sDisplayKey = oLog.RecordKey;
-                            try {
-                                var sJsonToParse = oLog.NewData ? oLog.NewData : oLog.OldData;
-                                if (sJsonToParse) {
-                                    var oDataObj = JSON.parse(sJsonToParse);
-                                    var aKeys = Object.keys(oDataObj).filter(k => k.toUpperCase() !== 'MANDT');
-                                    var sMainField = aKeys.find(k => {
-                                        var sUpperK = k.toUpperCase();
-                                        return sUpperK === 'ID' ||
-                                            sUpperK === 'CODE' ||
-                                            sUpperK.indexOf('_ID') !== -1 ||
-                                            sUpperK.indexOf('_CODE') !== -1 ||
-                                            sUpperK.indexOf('ID_') !== -1;
-                                    }) || aKeys[0];
-
-                                    if (sMainField && oDataObj[sMainField]) {
-                                        sDisplayKey = sMainField + ": " + oDataObj[sMainField];
-                                    }
-                                }
-                            } catch (e) { }
 
                             aMainLogs.push({
                                 rowId: oLog.RecordKey,
@@ -242,265 +175,6 @@ sap.ui.define([
         onClearAuditSearch: function () {
             this.byId("auditSearchInput").setValue("");
             this.getView().getModel("audit").setProperty("/mainLogs", []);
-        },
-
-        onViewAuditTrail: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext("audit");
-            var oRowData = oContext.getObject();
-            var oLocalModel = this.getView().getModel("audit");
-
-            var sRowId = oRowData.rowId;
-            oLocalModel.setProperty("/selectedRowId", sRowId);
-
-            oLocalModel.setProperty("/selectedDisplayKey", oRowData.displayKey);
-
-            var sClickedLogUuid = oRowData.logUuid;
-
-            var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
-            var aTrailLogs = aAllLogs.filter(function (l) { return l.RecordKey === sRowId; });
-
-            // Sắp xếp theo thời gian
-            aTrailLogs.sort(function (a, b) {
-                return new Date(a.ChangedAt) - new Date(b.ChangedAt);
-            });
-            var aPhases = [];
-            var aCurrentPhase = [];
-
-            aTrailLogs.forEach(function (oLog) {
-                if (oLog.Status !== 'P') {
-                    aCurrentPhase.push(oLog);
-                    if (oLog.Status === 'A') {
-                        aPhases.push(aCurrentPhase);
-                        aCurrentPhase = [];
-                    }
-                }
-            });
-
-            if (aCurrentPhase.length > 0) {
-                aPhases.push(aCurrentPhase);
-            }
-
-            var aProcessNodes = [];
-            var aProcessLanes = [];
-
-            aPhases.forEach(function (phaseLogs) {
-                phaseLogs.sort(function (a, b) {
-                    return new Date(b.ChangedAt) - new Date(a.ChangedAt);
-                });
-            });
-
-            aPhases.forEach(function (phaseLogs, phaseIndex) {
-                var sLaneId = "lane_" + phaseIndex;
-
-                aProcessLanes.push({
-                    id: sLaneId,
-                    icon: "sap-icon://process",
-                    label: "Phase " + (phaseIndex + 1),
-                    position: phaseIndex
-                });
-
-                phaseLogs.forEach(function (oLog, nodeIndex) {
-                    var sAction = oLog.Action === 'C' ? 'Create' : (oLog.Action === 'U' ? 'Update' : 'Delete');
-                    var sStatus = oLog.Status === 'A' ? 'Approved' : (oLog.Status === 'R' ? 'Rejected' : 'Pending');
-                    var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
-                    var sState = "";
-                    switch (sStatus) {
-                        case 'Approved':
-                            sState = "Positive";
-                            break;
-
-                        case 'Rejected':
-                            sState = "Negative";
-                            break;
-
-                        default:
-                            sState = "Critical";
-                            break;
-                    }
-
-                    var aChildren = [];
-                    if (nodeIndex === 0 && phaseIndex < aPhases.length - 1) {
-
-                        var aNextPhaseLogs = aPhases[phaseIndex + 1];
-
-                        aNextPhaseLogs.forEach(function (oNextLog) {
-                            aChildren.push(oNextLog.LogUuid);
-                        });
-                    }
-                    var bIsTargetNode = (oLog.LogUuid === sClickedLogUuid);
-
-                    aProcessNodes.push({
-                        id: oLog.LogUuid,
-                        lane: sLaneId,
-                        title: "Request for: " + sAction + " Record",
-                        titleAbbreviation: sAction.substring(0, 2).toUpperCase(),
-                        children: aChildren,
-                        state: sState,
-                        status: sStatus,
-                        texts: ["Approved Time: " + sTime, "Changed By: " + oLog.ChangedBy],
-                        isHighlighted: bIsTargetNode,
-                        isFocused: bIsTargetNode
-                    });
-                });
-            });
-
-            oLocalModel.setProperty("/processNodes", aProcessNodes);
-            oLocalModel.setProperty("/processLanes", aProcessLanes);
-
-            var oDialog = this.byId("auditTrailDialog");
-            oDialog.open();
-
-            var oProcessFlow = this.byId("auditProcessFlow");
-            if (oProcessFlow) {
-                oProcessFlow.setZoomLevel("One");
-                oProcessFlow.updateModel();
-            }
-        },
-
-        onNodePress: function (oEvent) {
-            var oParameters = oEvent.getParameters();
-            var sLogId = oParameters.getNodeId();
-            var oLocalModel = this.getView().getModel("audit");
-
-            var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
-            var oSelectedLog = aAllLogs.find(function (l) { return l.LogUuid === sLogId; });
-
-            if (!oSelectedLog) return;
-
-            var sAction = oSelectedLog.Action === 'C' ? 'CREATE' : (oSelectedLog.Action === 'U' ? 'UPDATE' : 'DELETE');
-
-            var sTime = DataFormatter.formatDateTime(oSelectedLog.ChangedAt);
-
-            var aChanges = [];
-            var oOld = {}, oNew = {};
-            try { if (oSelectedLog.OldData) oOld = JSON.parse(oSelectedLog.OldData); } catch (e) { }
-            try { if (oSelectedLog.NewData) oNew = JSON.parse(oSelectedLog.NewData); } catch (e) { }
-
-            var aAllKeys = Object.keys(oOld).concat(Object.keys(oNew));
-            var aUniqueKeys = aAllKeys.filter(function (item, pos) { return aAllKeys.indexOf(item) === pos; });
-
-            aUniqueKeys.forEach(function (sKey) {
-                if (sKey.toUpperCase() === 'MANDT') return;
-
-                var sOldVal = oOld.hasOwnProperty(sKey) ? String(oOld[sKey]) : "-";
-                var sNewVal = oNew.hasOwnProperty(sKey) ? String(oNew[sKey]) : "-";
-
-                if (sAction === 'CREATE') {
-                    sOldVal = "N/A";
-                } else if (sAction === 'DELETE') {
-                    sNewVal = "N/A";
-                } else if (sAction === 'UPDATE') {
-                    if (!oNew.hasOwnProperty(sKey) && oOld.hasOwnProperty(sKey)) {
-                        sNewVal = sOldVal;
-                    }
-                }
-
-                // BỔ SUNG 2: Đánh dấu cờ xem trường này CÓ BỊ THAY ĐỔI HAY KHÔNG
-                var bIsChanged = (sOldVal !== sNewVal);
-
-                // BỎ LỆNH IF (sOldVal !== sNewVal) ĐỂ PUSH TOÀN BỘ CÁC TRƯỜNG VÀO BẢNG
-                aChanges.push({
-                    field: sKey,
-                    oldValue: sOldVal,
-                    newValue: sNewVal,
-                    isChanged: bIsChanged // Truyền cờ này ra View để đổi màu Icon
-                });
-
-            });
-
-            oLocalModel.setProperty("/selectedNodeChanges", aChanges);
-            oLocalModel.setProperty("/selectedNodeAction", sAction);
-            oLocalModel.setProperty("/selectedNodeTime", sTime);
-            oLocalModel.setProperty("/selectedLogUuid", sLogId);
-
-            this.byId("detailNodeDialog").open();
-        },
-
-        onCloseTrailDialog: function () {
-            this.byId("auditTrailDialog").close();
-        },
-
-        onCloseDetailDialog: function () {
-            this.byId("detailNodeDialog").close();
-        },
-
-        onRequestRevert: function () {
-            var oLocalModel = this.getView().getModel("audit");
-            var sLogId = oLocalModel.getProperty("/selectedLogUuid");
-            var sTime = oLocalModel.getProperty("/selectedNodeTime");
-
-            var sTableName = this.byId("auditSearchInput").getValue();
-            var sRowId = oLocalModel.getProperty("/selectedRowId");
-
-            var sDisplayKey = oLocalModel.getProperty("/selectedDisplayKey") || ("ID: " + sRowId);
-
-            var sMessage = "You are about to revert the record [" + sDisplayKey + "] to the state at: " + sTime + ".\n\n" +
-                "Are you sure you want to create this Request?";
-
-            MessageBox.confirm(sMessage, {
-                title: "Confirm Revert Request",
-                icon: MessageBox.Icon.WARNING,
-                actions: [MessageBox.Action.YES, MessageBox.Action.NO],
-                onClose: function (sConfirmAction) {
-                    if (sConfirmAction === MessageBox.Action.YES) {
-                        this._sendRevertRequestToBackend(sTableName, sRowId, sLogId);
-                    }
-                }.bind(this)
-            });
-        },
-
-        _sendRevertRequestToBackend: function (sTableName, sRowId, sLogId) {
-            var oView = this.getView();
-            var oLocalModel = oView.getModel("audit");
-            var oMainModel = oView.getModel();
-
-            var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
-            var oOriginalLog = aAllLogs.find(function (l) { return l.LogUuid === sLogId; });
-
-            if (!oOriginalLog || !oOriginalLog.OldData || oOriginalLog.OldData === "") {
-                sap.m.MessageBox.error("Không có dữ liệu gốc để khôi phục!");
-                return;
-            }
-
-            oView.setBusy(true);
-
-            var oOldDataObj = {};
-            try {
-                oOldDataObj = JSON.parse(oOriginalLog.OldData);
-            } catch (e) {
-                oView.setBusy(false);
-                sap.m.MessageBox.error("Lỗi: Dữ liệu lịch sử bị sai định dạng JSON.");
-                return;
-            }
-
-            var aDataToSave = [oOldDataObj];
-            var sJsonString = JSON.stringify(aDataToSave);
-
-            var sBase64Data = btoa(unescape(encodeURIComponent(sJsonString)));
-
-            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
-            var oActionContext = oMainModel.bindContext(sActionPath);
-
-            oActionContext.setParameter("table_name", sTableName.toUpperCase());
-            oActionContext.setParameter("json_data", sBase64Data);
-
-            oActionContext.execute().then(function () {
-                oView.setBusy(false);
-                sap.m.MessageToast.show("Khôi phục thành công! Dữ liệu đã được cập nhật thẳng vào Database.");
-
-                var oDetailDialog = this.byId("detailNodeDialog");
-                if (oDetailDialog) oDetailDialog.close();
-
-                var oAuditDialog = this.byId("auditTrailDialog");
-                if (oAuditDialog) oAuditDialog.close();
-
-                this.onSearchAuditLog(sTableName);
-
-            }.bind(this)).catch(function (oError) {
-                oView.setBusy(false);
-                sap.m.MessageBox.error("Lỗi khi ghi đè Database: " + oError.message);
-                console.error(oError);
-            }.bind(this));
         },
 
         onOpenDateFilter: function (oEvent) {
@@ -654,6 +328,266 @@ sap.ui.define([
             this._applyCombinedFilters();
 
             sap.m.MessageToast.show("All filters have been cleared.");
+        },
+
+        onViewAuditTrail: function (oEvent) {
+            var oContext = oEvent.getSource().getBindingContext("audit");
+            var oRowData = oContext.getObject();
+            var oLocalModel = this.getView().getModel("audit");
+
+            var sRowId = oRowData.rowId;
+            oLocalModel.setProperty("/selectedRowId", sRowId);
+
+            oLocalModel.setProperty("/selectedDisplayKey", oRowData.displayKey);
+
+            var sClickedLogUuid = oRowData.logUuid;
+
+            var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
+            var aTrailLogs = aAllLogs.filter(function (l) { return l.RecordKey === sRowId; });
+
+            aTrailLogs.sort(function (a, b) {
+                return new Date(a.ChangedAt) - new Date(b.ChangedAt);
+            });
+            var aPhases = [];
+            var aCurrentPhase = [];
+
+            aTrailLogs.forEach(function (oLog) {
+                console.log(oLog);
+                if (oLog.Status !== 'P') {
+                    aCurrentPhase.push(oLog);
+                    if (oLog.Status === 'A') {
+                        aPhases.push(aCurrentPhase);
+                        aCurrentPhase = [];
+                    }
+                }
+            });
+
+            if (aCurrentPhase.length > 0) {
+                aPhases.push(aCurrentPhase);
+            }
+
+            var aProcessNodes = [];
+            var aProcessLanes = [];
+
+            aPhases.forEach(function (phaseLogs) {
+                phaseLogs.sort(function (a, b) {
+                    return new Date(b.ChangedAt) - new Date(a.ChangedAt);
+                });
+            }); 
+            
+            aPhases.forEach(function (phaseLogs, phaseIndex) {
+                var sLaneId = "lane_" + phaseIndex;
+
+                aProcessLanes.push({
+                    id: sLaneId,
+                    icon: "sap-icon://process",
+                    label: "Phase " + (phaseIndex + 1),
+                    position: phaseIndex
+                });
+
+                phaseLogs.forEach(function (oLog, nodeIndex) {
+                    console.log(oLog);
+                    
+                    var sAction = oLog.Action === 'C' ? 'Create' : (oLog.Action === 'U' ? 'Update' : 'Delete');
+                    var sStatus = oLog.Status === 'R' ? 'Rejected' : (oLog.Status === 'P' ? 'Pending' : 'Approved');
+                    var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
+                    var sState = "";
+                    switch (sStatus) {
+                        case 'Approved':
+                            sState = "Positive";
+                            break;
+
+                        case 'Rejected':
+                            sState = "Negative";
+                            break;
+
+                        default:
+                            sState = "Critical";
+                            break;
+                    }
+
+                    var aChildren = [];
+                    if (nodeIndex === 0 && phaseIndex < aPhases.length - 1) {
+
+                        var aNextPhaseLogs = aPhases[phaseIndex + 1];
+
+                        aNextPhaseLogs.forEach(function (oNextLog) {
+                            aChildren.push(oNextLog.LogUuid);
+                        });
+                    }
+                    var bIsTargetNode = (oLog.LogUuid === sClickedLogUuid);
+
+                    aProcessNodes.push({
+                        id: oLog.LogUuid,
+                        lane: sLaneId,
+                        title: "Request for: " + sAction + " Record",
+                        titleAbbreviation: sAction.substring(0, 2).toUpperCase(),
+                        children: aChildren,
+                        state: sState,
+                        status: sStatus,
+                        texts: ["Approved Time: " + sTime, "Changed By: " + oLog.ChangedBy],
+                        isHighlighted: bIsTargetNode,
+                        isFocused: bIsTargetNode
+                    });
+                });
+            });
+            console.log(aProcessNodes);
+            
+            oLocalModel.setProperty("/processNodes", aProcessNodes);
+            oLocalModel.setProperty("/processLanes", aProcessLanes);
+
+            var oDialog = this.byId("auditTrailDialog");
+            oDialog.open();
+
+            var oProcessFlow = this.byId("auditProcessFlow");
+            if (oProcessFlow) {
+                oProcessFlow.setZoomLevel("One");
+                oProcessFlow.updateModel();
+            }
+        },
+
+        onNodePress: function (oEvent) {
+            var oParameters = oEvent.getParameters();
+            var sLogId = oParameters.getNodeId();
+            var oLocalModel = this.getView().getModel("audit");
+
+            var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
+            var oSelectedLog = aAllLogs.find(function (l) { return l.LogUuid === sLogId; });
+
+            if (!oSelectedLog) return;
+
+            var sAction = oSelectedLog.Action === 'C' ? 'CREATE' : (oSelectedLog.Action === 'U' ? 'UPDATE' : 'DELETE');
+
+            var sTime = DataFormatter.formatDateTime(oSelectedLog.ChangedAt);
+
+            var aChanges = [];
+            var oOld = {}, oNew = {};
+            try { if (oSelectedLog.OldData) oOld = JSON.parse(oSelectedLog.OldData); } catch (e) { }
+            try { if (oSelectedLog.NewData) oNew = JSON.parse(oSelectedLog.NewData); } catch (e) { }
+
+            var aAllKeys = Object.keys(oOld).concat(Object.keys(oNew));
+            var aUniqueKeys = aAllKeys.filter(function (item, pos) { return aAllKeys.indexOf(item) === pos; });
+
+            aUniqueKeys.forEach(function (sKey) {
+                if (sKey.toUpperCase() === 'MANDT') return;
+
+                var sOldVal = oOld.hasOwnProperty(sKey) ? String(oOld[sKey]) : "-";
+                var sNewVal = oNew.hasOwnProperty(sKey) ? String(oNew[sKey]) : "-";
+
+                if (sAction === 'CREATE') {
+                    sOldVal = "N/A";
+                } else if (sAction === 'DELETE') {
+                    sNewVal = "";
+                } else if (sAction === 'UPDATE') {
+                    if (!oNew.hasOwnProperty(sKey) && oOld.hasOwnProperty(sKey)) {
+                        sNewVal = sOldVal;
+                    }
+                }
+
+                var bIsChanged = (sOldVal !== sNewVal);
+
+                aChanges.push({
+                    field: sKey,
+                    oldValue: sOldVal,
+                    newValue: sNewVal,
+                    isChanged: bIsChanged
+                });
+
+            });
+
+            oLocalModel.setProperty("/selectedNodeChanges", aChanges);
+            oLocalModel.setProperty("/selectedNodeAction", sAction);
+            oLocalModel.setProperty("/selectedNodeTime", sTime);
+            oLocalModel.setProperty("/selectedLogUuid", sLogId);
+
+            this.byId("detailNodeDialog").open();
+        },
+
+        onCloseTrailDialog: function () {
+            this.byId("auditTrailDialog").close();
+        },
+
+        onCloseDetailDialog: function () {
+            this.byId("detailNodeDialog").close();
+        },
+
+        onRequestRevert: function () {
+            var oLocalModel = this.getView().getModel("audit");
+            var sLogId = oLocalModel.getProperty("/selectedLogUuid");
+            var sTime = oLocalModel.getProperty("/selectedNodeTime");
+
+            var sTableName = this.byId("auditSearchInput").getValue();
+            var sRowId = oLocalModel.getProperty("/selectedRowId");
+
+            var sDisplayKey = oLocalModel.getProperty("/selectedDisplayKey") || ("ID: " + sRowId);
+
+            var sMessage = "You are about to revert the record [" + sDisplayKey + "] to the state at: " + sTime + ".\n\n" +
+                "Are you sure you want to create this Request?";
+
+            MessageBox.confirm(sMessage, {
+                title: "Confirm Revert Request",
+                icon: MessageBox.Icon.WARNING,
+                actions: [MessageBox.Action.YES, MessageBox.Action.NO],
+                onClose: function (sConfirmAction) {
+                    if (sConfirmAction === MessageBox.Action.YES) {
+                        this._sendRevertRequestToBackend(sTableName, sRowId, sLogId);
+                    }
+                }.bind(this)
+            });
+        },
+
+        _sendRevertRequestToBackend: function (sTableName, sRowId, sLogId) {
+            var oView = this.getView();
+            var oLocalModel = oView.getModel("audit");
+            var oMainModel = oView.getModel();
+
+            var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
+            var oOriginalLog = aAllLogs.find(function (l) { return l.LogUuid === sLogId; });
+
+            if (!oOriginalLog || !oOriginalLog.OldData || oOriginalLog.OldData === "") {
+                sap.m.MessageBox.error("There is no original data to recover!");
+                return;
+            }
+
+            oView.setBusy(true);
+
+            var oOldDataObj = {};
+            try {
+                oOldDataObj = JSON.parse(oOriginalLog.OldData);
+            } catch (e) {
+                oView.setBusy(false);
+                sap.m.MessageBox.error("Error: The audit log data is in an invalid JSON format.");
+                return;
+            }
+
+            var aDataToSave = [oOldDataObj];
+            var sJsonString = JSON.stringify(aDataToSave);
+
+            var sBase64Data = btoa(unescape(encodeURIComponent(sJsonString)));
+
+            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
+            var oActionContext = oMainModel.bindContext(sActionPath);
+
+            oActionContext.setParameter("table_name", sTableName.toUpperCase());
+            oActionContext.setParameter("json_data", sBase64Data);
+
+            oActionContext.execute().then(function () {
+                oView.setBusy(false);
+                sap.m.MessageToast.show("Recovery successful! Data has been updated.");
+
+                var oDetailDialog = this.byId("detailNodeDialog");
+                if (oDetailDialog) oDetailDialog.close();
+
+                var oAuditDialog = this.byId("auditTrailDialog");
+                if (oAuditDialog) oAuditDialog.close();
+
+                this.onSearchAuditLog(sTableName);
+
+            }.bind(this)).catch(function (oError) {
+                oView.setBusy(false);
+                sap.m.MessageBox.error("Error when overwriting Database: " + oError.message);
+                console.error(oError);
+            }.bind(this));
         },
     });
 });

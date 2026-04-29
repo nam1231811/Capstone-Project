@@ -5,9 +5,9 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "zapp/models/GetData",
-    "zapp/utils/DataFormatter"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, GetData, DataFormatter) { 
+    "zapp/utils/DataFormatter",
+    "zapp/api/LoadData"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatter, LoadData) { 
     "use strict";
 
     return Controller.extend("zapp.controller.Approval", {
@@ -132,7 +132,7 @@ sap.ui.define([
                 if (sOldDataStr) {
                     try {
                         oParsedOld = (!sOldDataStr.startsWith("{") && !sOldDataStr.startsWith("[")) 
-                                    ? GetData.decodeFunction({ json_string: sOldDataStr }) 
+                                    ? DataFormatter.decodeFunction({ json_string: sOldDataStr }) 
                                     : JSON.parse(sOldDataStr);
                     } catch (e) {}
                 }
@@ -141,7 +141,7 @@ sap.ui.define([
                 if (sNewDataStr) {
                     try {
                         oParsedNew = (!sNewDataStr.startsWith("{") && !sNewDataStr.startsWith("[")) 
-                                    ? GetData.decodeFunction({ json_string: sNewDataStr }) 
+                                    ? DataFormatter.decodeFunction({ json_string: sNewDataStr }) 
                                     : JSON.parse(sNewDataStr);
                     } catch (e) {}
                 }
@@ -337,7 +337,7 @@ sap.ui.define([
             this._oDiffDialog.setBusy(true);
 
             var oODataModel = this.getOwnerComponent().getModel();
-            GetData.loadTableData(oODataModel, oRowData.tableName).then(function(oPayload) {
+            LoadData.loadTableData(oODataModel, oRowData.tableName).then(function(oPayload) {
                 var aMasterData = oPayload.dataRows || oPayload.Data || [];
                 var aMeta = oPayload.metadata || oPayload.Meta || [];
 
