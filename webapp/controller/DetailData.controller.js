@@ -200,22 +200,7 @@ sap.ui.define([
 
                 oContext.setProperty("table_name", tableName);
                 oContext.setProperty("data", codeData);
-<<<<<<< HEAD
-            } else {
-                // var oListBinding = oModel.bindList("/Data");
-                // oListBinding.create({
-                //     table_name: tableName,
-                //     data: codeData
-                // });
-                console.log(sStatus);
-            }
-
-            // Clear any old error messages 
-            sap.ui.getCore().getMessageManager().removeAllMessages();
-
-=======
             } 
->>>>>>> 86a7be2973ea994f9fc78fd8eee50b6ac1b40e8e
             oModel.submitBatch("updateGroup").then(function () {
                 sap.ui.core.BusyIndicator.hide();
 
