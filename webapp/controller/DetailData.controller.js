@@ -5,8 +5,9 @@ sap.ui.define([
     "zapp/api/DeleteFromDatabase",
     "zapp/api/SaveToDatabase",
     "zapp/utils/DataFormatter",
-    "zapp/utils/GridValidator"
-], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase, DataFormatter, GridValidator) {
+    "zapp/utils/GridValidator",
+    "zapp/utils/ValueHelp"
+], function (Controller, JSONModel, fioriLibrary, DeleteFromDatabase, SaveToDatabase, DataFormatter, GridValidator, ValueHelp) {
     "use strict";
 
     return Controller.extend("zapp.controller.DetailData", {
@@ -204,22 +205,19 @@ sap.ui.define([
             oModel.submitBatch("updateGroup").then(function () {
                 sap.ui.core.BusyIndicator.hide();
 
-                // Check if the MessageManager Backend returns any errors.
                 var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
                 var bHasBackendError = aMessages.some(function (msg) {
                     return msg.type === sap.ui.core.MessageType.Error;
                 });
 
-                // If has error from backend or pending changes -> BLOCK 
                 if (bHasBackendError || oModel.hasPendingChanges()) {
 
                     var sErrorText = "Update failed. Please check the data.";
-                    // Lấy câu chửi "Not authorized..." của Backend ra để hiện lên cho ngầu
                     if (aMessages.length > 0) {
                         sErrorText = aMessages[0].message;
                     }
 
-                    sap.m.MessageBox.error(sErrorText); // Bật popup báo lỗi
+                    sap.m.MessageBox.error(sErrorText); 
                     return;
                 }
 
@@ -278,7 +276,6 @@ sap.ui.define([
             var tableName = this.getView().getModel("overall").getProperty("/tableName");
 
             if (oDataRaw.length === 0) return;
-            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.deleteFromDatabase(...)";
             var oAuthModel = this.getOwnerComponent().getModel("auth");
             var bIsClerk = oAuthModel ? oAuthModel.getProperty("/isClerk") : false;
             sap.m.MessageBox.confirm("Do you want to delete this record?", {
@@ -288,24 +285,14 @@ sap.ui.define([
                     }
                     oView.setBusy(true);
 
-                    if (bIsClerk) {
-                        sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.deleteActiveRecord(...)";
-                    }
-                    var aPromises = {};
-                    var aCells = Object.values(oDataRaw);
-                    aCells.forEach(oCell => {
-                        if (oCell && oCell.fieldname) {
-                            aPromises[oCell.fieldname] = DataFormatter.formatValueByType(oCell.value, oCell.datatype);
-                        }
-                    });
-                    var sBase64Data = DataFormatter.encodeFunction(aPromises);
-                    var oActionContext = oModel.bindContext(sActionPath);
-                    oActionContext.setParameter("table_name", tableName);
-                    oActionContext.setParameter("data", sBase64Data);
+                    var pDeleteTask = bIsClerk 
+                        ? DeleteFromDatabase.onDeleteActiveRecord(tableName, oView, oDataRaw)
+                        : DeleteFromDatabase.onDeleteFromDatabase(tableName, oView, oDataRaw);
 
-                    return oActionContext.execute().then(function () {
+                    pDeleteTask.then(function (aCells) {
                         oView.setBusy(false);
-                        this._cleanUpAfterDelete(aCells[0].row_id, bIsClerk);
+                        var sRowId = (aCells && aCells.length > 0) ? aCells[0].row_id : null;
+                        this._cleanUpAfterDelete(sRowId, bIsClerk);
                     }.bind(this)).catch(function (oError) {
                         sap.ui.core.BusyIndicator.hide();
                         sap.m.MessageBox.error("This record is pending for approval.");
@@ -340,51 +327,11 @@ sap.ui.define([
         },
 
         onDynamicValueHelp: function (oEvent) {
-            var oInput = oEvent.getSource();
-            var sTableName = oInput.data("tableName") || oInput.data("table_name");
-            var sFieldName = oInput.data("fieldName") || oInput.data("fieldname");
-
-            if (!sTableName || !sFieldName) {
-                sap.m.MessageToast.show("Cannot find metadata for this field");
-                return;
-            }
-
-            if (!this._oDynamicVHDialog) {
-                this._oDynamicVHDialog = new sap.m.SelectDialog({
-                    title: "Select Value",
-                    confirm: this.onValueHelpConfirm.bind(this)
-                });
-                this.getView().addDependent(this._oDynamicVHDialog);
-            }
-
-            var aFilters = [
-                new sap.ui.model.Filter("TableName", "EQ", sTableName),
-                new sap.ui.model.Filter("FieldName", "EQ", sFieldName)
-            ];
-
-            this._oDynamicVHDialog.bindAggregation("items", {
-                path: "/DynamicVHSet",
-                template: new sap.m.StandardListItem({
-                    title: "{KeyValue}",
-                    description: "{Description}",
-                    info: "{FieldName}"
-                }),
-                filters: aFilters
-            });
-
-            this._oDynamicVHDialog.data("targetInput", oInput);
-            this._oDynamicVHDialog.open();
+          ValueHelp.openFieldValueHelp(this, oEvent);
         },
 
         onValueHelpConfirm: function (oEvent) {
-            var oSelectedItem = oEvent.getParameter("selectedItem");
-            if (oSelectedItem) {
-                var oInput = oEvent.getSource().data("targetInput");
-                var sSelectedKey = oSelectedItem.getTitle();
-
-                oInput.setValue(sSelectedKey);
-                oInput.fireChange({ value: sSelectedKey });
-            }
+            ValueHelp.confirmValueHelp(oEvent);
         },
 
         _loadImpactAnalysisData: function () {
