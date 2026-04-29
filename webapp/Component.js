@@ -48,11 +48,7 @@ sap.ui.define([
                 }
                 if (sCurrentUserId === "DEFAULT_USER") {
                     // 94 manager, 097 admin, 092 clerk
-<<<<<<< HEAD
                     sCurrentUserId = "DEV-097";
-=======
-                    sCurrentUserId = "DEV-094";
->>>>>>> 86a7be2973ea994f9fc78fd8eee50b6ac1b40e8e
                 }
                 sCurrentUserId = sCurrentUserId.toUpperCase();
                 oAuthModel.setProperty("/currentUser", sCurrentUserId);

@@ -106,13 +106,16 @@ sap.ui.define([
 
                     oLocalModel.setProperty("/allLogs", aAllLogs);
                     var aMainLogs = [];
-                    console.log(aAllLogs);
-
                     aAllLogs.forEach(function (oLog) {
-                        if (oLog.Status !== 'P') {
+                        if (!(oLog.Status === 'R' || oLog.Status === 'P')) {
                             var sAction = "UPDATE";
-                            if (oLog.Action === 'C') sAction = "CREATE";
-                            if (oLog.Action === 'D') sAction = "DELETE";
+                            if (oLog.Action === 'C') {
+                                sAction = "CREATE"
+                            };
+                            
+                            if (oLog.Action === 'D') {
+                                sAction = "DELETE"
+                            };
 
                             var sTime = DataFormatter.formatDateTime(oLog.ApprovedAt || oLog.ChangedAt);
                             var sDisplayKey = oLog.RecordKey;
@@ -174,6 +177,159 @@ sap.ui.define([
             this.getView().getModel("audit").setProperty("/mainLogs", []);
         },
 
+        onOpenDateFilter: function (oEvent) {
+            var oButton = oEvent.getSource();
+            var oPopover = this.getView().byId("dateFilterPopover");
+            oPopover.openBy(oButton);
+        },
+
+        onApplyDateFilter: function () {
+            var oDateRange = this.getView().byId("dateRangeFilter");
+            var dStart = oDateRange.getDateValue();
+            var dEnd = oDateRange.getSecondDateValue();
+
+            if (dStart && dEnd) {
+                dStart.setHours(0, 0, 0, 0);
+                dEnd.setHours(23, 59, 59, 999);
+                this._oTableFilters.date = new sap.ui.model.Filter({
+                    path: "rawDate",
+                    operator: sap.ui.model.FilterOperator.BT,
+                    value1: dStart,
+                    value2: dEnd
+                });
+            } else {
+                this._oTableFilters.date = null;
+            }
+
+            this._applyCombinedFilters();
+        },
+
+        onClearDateFilter: function () {
+            this.getView().byId("dateRangeFilter").setValue("");
+            this._oTableFilters.date = null;
+            this._applyCombinedFilters();
+            this.getView().byId("dateFilterPopover").close();
+        },
+
+        onOpenUserFilter: function (oEvent) {
+            var oButton = oEvent.getSource();
+            var oPopover = this.getView().byId("userFilterPopover");
+            oPopover.openBy(oButton);
+        },
+
+        onApplyUserFilter: function () {
+            var oList = this.getView().byId("userFilterList");
+            var aSelectedItems = oList.getSelectedItems();
+
+            if (aSelectedItems.length > 0) {
+                var aUserFilters = [];
+                aSelectedItems.forEach(function (oItem) {
+                    var sUserName = oItem.getBindingContext("audit").getProperty("userName");
+                    aUserFilters.push(new sap.ui.model.Filter("lastUser", sap.ui.model.FilterOperator.EQ, sUserName));
+                });
+
+                this._oTableFilters.user = new sap.ui.model.Filter({
+                    filters: aUserFilters,
+                    and: false
+                });
+            } else {
+                this._oTableFilters.user = null;
+            }
+
+            this._applyCombinedFilters();
+
+            this.getView().byId("userFilterPopover").close();
+        },
+
+        onClearUserFilter: function () {
+            this.getView().byId("userFilterList").removeSelections(true);
+            this._oTableFilters.user = null;
+            this._applyCombinedFilters();
+            this.getView().byId("userFilterPopover").close();
+        },
+
+        onOpenActionFilter: function (oEvent) {
+            var oButton = oEvent.getSource();
+            var oPopover = this.getView().byId("actionFilterPopover");
+            oPopover.openBy(oButton);
+        },
+
+        onApplyActionFilter: function () {
+            var oList = this.getView().byId("actionFilterList");
+            var aSelectedItems = oList.getSelectedItems();
+
+            if (aSelectedItems.length > 0) {
+                var aActionFilters = [];
+                aSelectedItems.forEach(function (oItem) {
+                    var sActionName = oItem.getBindingContext("audit").getProperty("actionName");
+                    aActionFilters.push(new sap.ui.model.Filter("lastAction", sap.ui.model.FilterOperator.EQ, sActionName));
+                });
+
+                this._oTableFilters.action = new sap.ui.model.Filter({
+                    filters: aActionFilters,
+                    and: false
+                });
+            } else {
+                this._oTableFilters.action = null;
+            }
+
+            this._applyCombinedFilters();
+            this.getView().byId("actionFilterPopover").close();
+        },
+
+        onClearActionFilter: function () {
+            this.getView().byId("actionFilterList").removeSelections(true);
+            this._oTableFilters.action = null;
+            this._applyCombinedFilters();
+            this.getView().byId("actionFilterPopover").close();
+        },
+
+        _applyCombinedFilters: function () {
+            var aFinalFilters = [];
+            if (this._oTableFilters.date) {
+                aFinalFilters.push(this._oTableFilters.date);
+            }
+
+            if (this._oTableFilters.user) {
+                aFinalFilters.push(this._oTableFilters.user);
+            }
+
+            if (this._oTableFilters.action) {
+                aFinalFilters.push(this._oTableFilters.action);
+            }
+
+            var oTable = this.getView().byId("auditMasterTable");
+            var oBinding = oTable.getBinding("items");
+            oBinding.filter(aFinalFilters);
+        },
+
+        onClearAllFilters: function () {
+            this._oTableFilters = {
+                date: null,
+                user: null,
+                action: null
+            };
+
+            var oDateRange = this.getView().byId("dateRangeFilter");
+            if (oDateRange) {
+                oDateRange.setValue("");
+            }
+
+            var oUserList = this.getView().byId("userFilterList");
+            if (oUserList) {
+                oUserList.removeSelections(true);
+            }
+
+            var oActionList = this.getView().byId("actionFilterList");
+            if (oActionList) {
+                oActionList.removeSelections(true);
+            }
+
+            this._applyCombinedFilters();
+
+            sap.m.MessageToast.show("All filters have been cleared.");
+        },
+
         onViewAuditTrail: function (oEvent) {
             var oContext = oEvent.getSource().getBindingContext("audit");
             var oRowData = oContext.getObject();
@@ -196,6 +352,7 @@ sap.ui.define([
             var aCurrentPhase = [];
 
             aTrailLogs.forEach(function (oLog) {
+                console.log(oLog);
                 if (oLog.Status !== 'P') {
                     aCurrentPhase.push(oLog);
                     if (oLog.Status === 'A') {
@@ -216,8 +373,8 @@ sap.ui.define([
                 phaseLogs.sort(function (a, b) {
                     return new Date(b.ChangedAt) - new Date(a.ChangedAt);
                 });
-            });
-
+            }); 
+            
             aPhases.forEach(function (phaseLogs, phaseIndex) {
                 var sLaneId = "lane_" + phaseIndex;
 
@@ -229,8 +386,10 @@ sap.ui.define([
                 });
 
                 phaseLogs.forEach(function (oLog, nodeIndex) {
+                    console.log(oLog);
+                    
                     var sAction = oLog.Action === 'C' ? 'Create' : (oLog.Action === 'U' ? 'Update' : 'Delete');
-                    var sStatus = oLog.Status === 'A' ? 'Approved' : (oLog.Status === 'R' ? 'Rejected' : 'Pending');
+                    var sStatus = oLog.Status === 'R' ? 'Rejected' : (oLog.Status === 'P' ? 'Pending' : 'Approved');
                     var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
                     var sState = "";
                     switch (sStatus) {
@@ -272,7 +431,8 @@ sap.ui.define([
                     });
                 });
             });
-
+            console.log(aProcessNodes);
+            
             oLocalModel.setProperty("/processNodes", aProcessNodes);
             oLocalModel.setProperty("/processLanes", aProcessLanes);
 
@@ -428,159 +588,6 @@ sap.ui.define([
                 sap.m.MessageBox.error("Error when overwriting Database: " + oError.message);
                 console.error(oError);
             }.bind(this));
-        },
-
-        onOpenDateFilter: function (oEvent) {
-            var oButton = oEvent.getSource();
-            var oPopover = this.getView().byId("dateFilterPopover");
-            oPopover.openBy(oButton);
-        },
-
-        onApplyDateFilter: function () {
-            var oDateRange = this.getView().byId("dateRangeFilter");
-            var dStart = oDateRange.getDateValue();
-            var dEnd = oDateRange.getSecondDateValue();
-
-            if (dStart && dEnd) {
-                dStart.setHours(0, 0, 0, 0);
-                dEnd.setHours(23, 59, 59, 999);
-                this._oTableFilters.date = new sap.ui.model.Filter({
-                    path: "rawDate",
-                    operator: sap.ui.model.FilterOperator.BT,
-                    value1: dStart,
-                    value2: dEnd
-                });
-            } else {
-                this._oTableFilters.date = null;
-            }
-
-            this._applyCombinedFilters();
-        },
-
-        onClearDateFilter: function () {
-            this.getView().byId("dateRangeFilter").setValue("");
-            this._oTableFilters.date = null;
-            this._applyCombinedFilters();
-            this.getView().byId("dateFilterPopover").close();
-        },
-
-        onOpenUserFilter: function (oEvent) {
-            var oButton = oEvent.getSource();
-            var oPopover = this.getView().byId("userFilterPopover");
-            oPopover.openBy(oButton);
-        },
-
-        onApplyUserFilter: function () {
-            var oList = this.getView().byId("userFilterList");
-            var aSelectedItems = oList.getSelectedItems();
-
-            if (aSelectedItems.length > 0) {
-                var aUserFilters = [];
-                aSelectedItems.forEach(function (oItem) {
-                    var sUserName = oItem.getBindingContext("audit").getProperty("userName");
-                    aUserFilters.push(new sap.ui.model.Filter("lastUser", sap.ui.model.FilterOperator.EQ, sUserName));
-                });
-
-                this._oTableFilters.user = new sap.ui.model.Filter({
-                    filters: aUserFilters,
-                    and: false
-                });
-            } else {
-                this._oTableFilters.user = null;
-            }
-
-            this._applyCombinedFilters();
-
-            this.getView().byId("userFilterPopover").close();
-        },
-
-        onClearUserFilter: function () {
-            this.getView().byId("userFilterList").removeSelections(true);
-            this._oTableFilters.user = null;
-            this._applyCombinedFilters();
-            this.getView().byId("userFilterPopover").close();
-        },
-
-        onOpenActionFilter: function (oEvent) {
-            var oButton = oEvent.getSource();
-            var oPopover = this.getView().byId("actionFilterPopover");
-            oPopover.openBy(oButton);
-        },
-
-        onApplyActionFilter: function () {
-            var oList = this.getView().byId("actionFilterList");
-            var aSelectedItems = oList.getSelectedItems();
-
-            if (aSelectedItems.length > 0) {
-                var aActionFilters = [];
-                aSelectedItems.forEach(function (oItem) {
-                    var sActionName = oItem.getBindingContext("audit").getProperty("actionName");
-                    aActionFilters.push(new sap.ui.model.Filter("lastAction", sap.ui.model.FilterOperator.EQ, sActionName));
-                });
-
-                this._oTableFilters.action = new sap.ui.model.Filter({
-                    filters: aActionFilters,
-                    and: false
-                });
-            } else {
-                this._oTableFilters.action = null;
-            }
-
-            this._applyCombinedFilters();
-            this.getView().byId("actionFilterPopover").close();
-        },
-
-        onClearActionFilter: function () {
-            this.getView().byId("actionFilterList").removeSelections(true);
-            this._oTableFilters.action = null;
-            this._applyCombinedFilters();
-            this.getView().byId("actionFilterPopover").close();
-        },
-
-        _applyCombinedFilters: function () {
-            var aFinalFilters = [];
-            if (this._oTableFilters.date) {
-                aFinalFilters.push(this._oTableFilters.date);
-            }
-
-            if (this._oTableFilters.user) {
-                aFinalFilters.push(this._oTableFilters.user);
-            }
-
-            if (this._oTableFilters.action) {
-                aFinalFilters.push(this._oTableFilters.action);
-            }
-
-            var oTable = this.getView().byId("auditMasterTable");
-            var oBinding = oTable.getBinding("items");
-            oBinding.filter(aFinalFilters);
-        },
-
-        onClearAllFilters: function () {
-            this._oTableFilters = {
-                date: null,
-                user: null,
-                action: null
-            };
-
-            var oDateRange = this.getView().byId("dateRangeFilter");
-            if (oDateRange) {
-                oDateRange.setValue("");
-            }
-
-            var oUserList = this.getView().byId("userFilterList");
-            if (oUserList) {
-                oUserList.removeSelections(true);
-            }
-
-            var oActionList = this.getView().byId("actionFilterList");
-            if (oActionList) {
-                oActionList.removeSelections(true);
-            }
-
-            this._applyCombinedFilters();
-
-            sap.m.MessageToast.show("All filters have been cleared.");
         },
     });
 });

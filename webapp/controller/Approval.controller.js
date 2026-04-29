@@ -1,4 +1,4 @@
-DataFormattersap.ui.define([
+sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
     "sap/ui/model/Filter",
@@ -7,7 +7,7 @@ DataFormattersap.ui.define([
     "sap/m/MessageToast",
     "zapp/utils/DataFormatter",
     "zapp/api/LoadData"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatterm, LoadData) { 
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatter, LoadData) { 
     "use strict";
 
     return Controller.extend("zapp.controller.Approval", {
