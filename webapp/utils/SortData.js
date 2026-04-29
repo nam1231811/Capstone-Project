@@ -1,7 +1,20 @@
 sap.ui.define([
     "sap/ui/core/HTML",
-    "sap/ui/model/Sorter"
-], function(HTML, Sorter) {
+    "sap/ui/model/Sorter",
+    "sap/m/CheckBox",
+    "sap/m/ResponsivePopover",
+    "sap/m/Bar",
+    "sap/m/Title",
+    "sap/m/Button",
+    "sap/m/VBox",
+    "sap/m/Label",
+    "sap/m/HBox",
+    "sap/m/Text",
+    "sap/m/SegmentedButton",
+    "sap/m/SegmentedButtonItem",
+    "sap/m/Switch",
+    "sap/m/MessageToast"
+], function(HTML, Sorter, CheckBox, ResponsivePopover, Bar, Title, Button, VBox, Label, HBox, Text, SegmentedButton, SegmentedButtonItem, Switch, MessageToast) {
     "use strict";
 
     return {
@@ -11,16 +24,15 @@ sap.ui.define([
             var oColumn = oEvent.getParameter("column");
             if (!oColumn) return;
 
-            var iColIndex = oColumn.data("colIndex"); 
-            var sColName = oColumn.data("colName"); 
-            var that = this;
-
-            var oTable = this.byId("dataTable") || this.byId("TablePage");
-            var oBinding = oTable ? oTable.getBinding("rows") : null;
-            var aSorters = oBinding ? oBinding.aSorters : [];
-            
-            var sCurrentSortKey = "none"; 
-            var bIsGrouped = false; 
+            var oView = this.getView(),
+                oTable = this.byId("dataTable") || this.byId("TablePage"),
+                oBinding = oTable ? oTable.getBinding("rows") : null,
+                aSorters = oBinding ? oBinding.aSorters : [],
+                iColIndex = oColumn.data("colIndex"),
+                sColName = oColumn.data("colName"),
+                sCurrentSortKey = "none",
+                bIsGrouped = false,
+                that = this;
 
             if (aSorters && aSorters.length > 0) {
                 var oCurrentSorter = aSorters.find(function(s) { return s.sPath === (iColIndex + "/value"); });
@@ -34,52 +46,48 @@ sap.ui.define([
                 this._oColumnPopover.destroy();
             }
 
-            var oMultiSortCheckBox = new sap.m.CheckBox({
+            var oMultiSortCheckBox = new CheckBox({
                 text: "Multi-sort",
                 selected: false
             });
 
-            this._oColumnPopover = new sap.m.ResponsivePopover({
+            this._oColumnPopover = new ResponsivePopover({
                 showHeader: true,
-                customHeader: new sap.m.Bar({
-                    contentMiddle: [
-                        new sap.m.Title({ text: "Column Settings" })
-                    ],
+                contentWidth: "250px", 
+                placement: "Bottom",
+                customHeader: new Bar({
+                    contentMiddle: [new Title({ text: "Column Settings" })],
                     contentRight: [
-                        new sap.m.Button({
+                        new Button({
                             icon: "sap-icon://decline",
                             type: "Transparent",
-                            press: function() {
-                                that._oColumnPopover.close();
-                            }
+                            press: function() { that._oColumnPopover.close(); }
                         })
                     ]
                 }),
-                contentWidth: "250px", 
-                placement: "Bottom",
                 content: [
-                    new sap.m.VBox({
+                    new VBox({
                         items: [
-                            new sap.m.Label({ text: "Sort By", design: "Bold" }).addStyleClass("sapUiTinyMarginBottom"),
-                            new sap.m.HBox({
+                            new Label({ text: "Sort By", design: "Bold" }).addStyleClass("sapUiTinyMarginBottom"),
+                            new HBox({
                                 justifyContent: "SpaceBetween", 
                                 alignItems: "Center",
                                 width: "100%",
                                 items: [
-                                    new sap.m.Text({ text: sColName }), 
-                                    new sap.m.SegmentedButton({
+                                    new Text({ text: sColName }), 
+                                    new SegmentedButton({
                                         selectedKey: sCurrentSortKey,
                                         selectionChange: function(oEventSelect) {
-                                            var oItem = oEventSelect.getParameter("item");
-                                            var sKey = oItem ? oItem.getKey() : oEventSelect.getSource().getSelectedKey();
-                                            var bDescending = (sKey === "desc");
-                                            var bMultiSort = oMultiSortCheckBox.getSelected();
+                                            var oItem = oEventSelect.getParameter("item"),
+                                                sKey = oItem ? oItem.getKey() : oEventSelect.getSource().getSelectedKey(),
+                                                bDescending = (sKey === "desc"),
+                                                bMultiSort = oMultiSortCheckBox.getSelected();
                                             
                                             that.onSortColumnDirect(bDescending, iColIndex, bMultiSort, false); 
                                         },
                                         items: [
-                                            new sap.m.SegmentedButtonItem({ icon: "sap-icon://sort-ascending", key: "asc", tooltip: "Ascending" }),
-                                            new sap.m.SegmentedButtonItem({ icon: "sap-icon://sort-descending", key: "desc", tooltip: "Descending" })
+                                            new SegmentedButtonItem({ icon: "sap-icon://sort-ascending", key: "asc", tooltip: "Ascending" }),
+                                            new SegmentedButtonItem({ icon: "sap-icon://sort-descending", key: "desc", tooltip: "Descending" })
                                         ]
                                     })
                                 ]
@@ -89,28 +97,23 @@ sap.ui.define([
 
                             new HTML({ content: "<hr style='border: 0; border-top: 1px solid #e5e5e5; margin: 10px 0;'/>" }),
 
-                            new sap.m.Label({ text: "Group By", design: "Bold" }).addStyleClass("sapUiTinyMarginBottom"),
-                            new sap.m.HBox({
+                            new Label({ text: "Group By", design: "Bold" }).addStyleClass("sapUiTinyMarginBottom"),
+                            new HBox({
                                 justifyContent: "SpaceBetween",
                                 alignItems: "Center",
                                 width: "100%",
                                 items: [
-                                    new sap.m.Text({ text: sColName }),
-                                    new sap.m.Switch({
+                                    new Text({ text: sColName }),
+                                    new Switch({
                                         state: bIsGrouped, 
                                         customTextOn: " ", customTextOff: " ",
                                         change: function(oEventSwitch) {
-                                            var bState = oEventSwitch.getParameter("state");
-                                            
-                                            if (bState) {
+                                            if (oEventSwitch.getParameter("state")) {
                                                 that.onSortColumnDirect(false, iColIndex, false, true);
-                                                sap.m.MessageToast.show("Data grouped by: " + sColName);
+                                                MessageToast.show("Data grouped by: " + sColName);
                                             } else {
-                                                var oTargetTable = that.byId("dataTable") || that.byId("TablePage");
-                                                if (oTargetTable && oTargetTable.getBinding("rows")) {
-                                                    oTargetTable.getBinding("rows").sort(null); 
-                                                }
-                                                sap.m.MessageToast.show("Group removed, data reset");
+                                                if (oBinding) oBinding.sort(null); 
+                                                MessageToast.show("Group removed, data reset");
                                             }
                                         }
                                     })
@@ -121,26 +124,27 @@ sap.ui.define([
                 ]
             });
 
-            this.getView().addDependent(this._oColumnPopover);
+            oView.addDependent(this._oColumnPopover);
             this._oColumnPopover.openBy(oColumn.getLabel()); 
         },
 
         onSortColumnDirect: function(bDescending, iColIndex, bMultiSort, bGroup) {
-            var oTable = this.byId("dataTable") || this.byId("TablePage");
-            var oBinding = oTable ? oTable.getBinding("rows") : null;
+            var oTable = this.byId("dataTable") || this.byId("TablePage"),
+                oBinding = oTable ? oTable.getBinding("rows") : null,
+                sPath = iColIndex + "/value",
+                aFinalSorters = [];
 
             if (!oBinding) return;
 
-            var sPath = iColIndex + "/value";
-            
             var fnGroup = bGroup ? function(oContext) { return oContext.getProperty(sPath); } : false;
+            
             var fnComparator = function(a, b) {
                 if (a === b) return 0;
                 if (a === null || a === undefined) return -1;
                 if (b === null || b === undefined) return 1;
                 
-                var numA = parseFloat(a);
-                var numB = parseFloat(b);
+                var numA = parseFloat(a),
+                    numB = parseFloat(b);
                 
                 if (!isNaN(numA) && !isNaN(numB)) {
                     return numA - numB;
@@ -150,21 +154,14 @@ sap.ui.define([
             };
 
             var oNewSorter = new Sorter(sPath, bDescending, fnGroup, fnComparator);
-            var aFinalSorters = [];
 
-            if (!bGroup) {
-                if (bMultiSort) {
-                    var aCurrentSorters = oBinding.aSorters || [];
-                    aFinalSorters = aCurrentSorters.filter(function(oSorter) {
-                        return oSorter.sPath !== sPath;
-                    });
-
-                    aFinalSorters.push(oNewSorter);
-                } else {
-                    aFinalSorters = [oNewSorter];
-                }
+            if (!bGroup && bMultiSort) {
+                aFinalSorters = (oBinding.aSorters || []).filter(function(oSorter) {
+                    return oSorter.sPath !== sPath;
+                });
+                aFinalSorters.push(oNewSorter);
             } else {
-                aFinalSorters = [oNewSorter]; 
+                aFinalSorters = [oNewSorter];
             }
 
             oBinding.sort(aFinalSorters);

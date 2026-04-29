@@ -9,20 +9,21 @@ sap.ui.define([
 
     return {
         onPersonalization: function () {
-            var that = this;
-            var oTable = this.byId("dataTable");
-            var aColumns = oTable.getColumns();
+            var oView = this.getView(),
+                oTable = this.byId("dataTable"),
+                aColumns = oTable ? oTable.getColumns() : [],
+                oOverallModel = oView.getModel("overall"),
+                sTableName = oOverallModel ? oOverallModel.getProperty("/tableName") : "DefaultTable",
+                sStorageKey = "myApp_" + sTableName + "_GridPerso",
+                that = this;
 
-            var getColIndex = function(oCol) {
-                var aCustomData = oCol.getCustomData();
-                var oData = aCustomData.find(function(d) { return d.getKey() === "colIndex"; });
+            var getColIndex = function (oCol) {
+                var oData = oCol.getCustomData().find(function (d) { return d.getKey() === "colIndex"; });
                 return oData ? parseInt(oData.getValue(), 10) : -1;
             };
 
             if (!this._oPersoDialog) {
-                this._oPersoList = new List({
-                    mode: "MultiSelect"
-                });
+                this._oPersoList = new List({ mode: "MultiSelect" });
 
                 this._oPersoDialog = new Dialog({
                     title: "Personalization",
@@ -32,31 +33,18 @@ sap.ui.define([
                         type: "Emphasized",
                         text: "OK",
                         press: function () {
-                            var aSelectedItems = that._oPersoList.getSelectedItems();
-                            var aPersoState = [];
-                            
+                            var aSelectedItems = that._oPersoList.getSelectedItems(),
+                                aSelectedIndexes = aSelectedItems.map(function (oItem) { return parseInt(oItem.data("colIndex"), 10); }),
+                                aPersoState = [];
+
                             aColumns.forEach(function (oCol) {
-                                oCol.setVisible(false);
+                                var iColIdx = getColIndex(oCol),
+                                    bVisible = aSelectedIndexes.indexOf(iColIdx) !== -1;
+                                
+                                oCol.setVisible(bVisible);
+                                aPersoState.push({ index: iColIdx, visible: bVisible });
                             });
 
-                            aSelectedItems.forEach(function (oItem) {
-                                var iItemKey = parseInt(oItem.data("colIndex"), 10);
-                                var oTargetCol = aColumns.find(function(c) { return getColIndex(c) === iItemKey; });
-                                if (oTargetCol) {
-                                    oTargetCol.setVisible(true);
-                                }
-                            });
-
-                            aColumns.forEach(function(oCol) {
-                                aPersoState.push({
-                                    index: getColIndex(oCol),
-                                    visible: oCol.getVisible()
-                                });
-                            });
-
-                            var sTableName = that.getView().getModel("overall").getProperty("/tableName") || "DefaultTable";
-                            var sStorageKey = "myApp_" + sTableName + "_GridPerso";
-                            
                             try {
                                 window.localStorage.setItem(sStorageKey, JSON.stringify(aPersoState));
                                 MessageToast.show("Saved!");
@@ -69,31 +57,24 @@ sap.ui.define([
                     }),
                     endButton: new Button({
                         text: "Cancel",
-                        press: function () {
-                            that._oPersoDialog.close();
-                        }
+                        press: function () { that._oPersoDialog.close(); }
                     })
                 });
-                this.getView().addDependent(this._oPersoDialog);
+                oView.addDependent(this._oPersoDialog);
             }
 
             this._oPersoList.removeAllItems();
 
             aColumns.forEach(function (oCol) {
-                var sColName = oCol.getLabel() ? oCol.getLabel().getText() : "Column";
                 var iColIndex = getColIndex(oCol);
-
+                
                 if (iColIndex !== -1) {
-                    var oItem = new StandardListItem({
-                        title: sColName,
+                    that._oPersoList.addItem(new StandardListItem({
+                        title: oCol.getLabel() ? oCol.getLabel().getText() : "Column",
                         selected: oCol.getVisible()
-                    });
-                    
-                    oItem.data("colIndex", iColIndex.toString());
-                    
-                    this._oPersoList.addItem(oItem);
+                    }).data("colIndex", iColIndex.toString()));
                 }
-            }.bind(this));
+            });
 
             this._oPersoDialog.open();
         }
