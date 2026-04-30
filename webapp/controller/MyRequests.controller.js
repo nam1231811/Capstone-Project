@@ -28,11 +28,6 @@ sap.ui.define([
             }
         },
 
-        onNavBack: function () {
-            var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteHome", {}, true);
-        },
-
         _onRouteMatched: function () {
             this._loadMyRequests(true);
         },
