@@ -9,6 +9,7 @@ sap.ui.define([
         metadata: {
             manifest: "json"
         },
+
         init: function () {
             UIComponent.prototype.init.apply(this, arguments);
 
@@ -21,7 +22,24 @@ sap.ui.define([
 
             this._initAuthModel().then(function () {
                 BusyIndicator.hide();
-                this.getRouter().initialize();
+
+                var oRouter = this.getRouter();
+                oRouter.initialize();
+
+                // --- BƯỚC 3: LOGIC ĐÓN LÕNG TỪ NOTIFICATION VÀ BẺ LÁI ROUTER ---
+                if (sap.ushell && sap.ushell.Container) {
+                    var oUrlParsing = sap.ushell.Container.getService("URLParsing");
+                    // Lấy ra hash hiện tại trên URL của Fiori Launchpad
+                    var oHash = oUrlParsing.parseShellHash(window.location.hash);
+
+                    // Nếu Notification đẩy tới mang theo action = "myRequests"
+                    if (oHash && oHash.action === "myRequests") {
+                        // Nhảy thẳng sang trang My Requests (thay vì trang Home mặc định)
+                        oRouter.navTo("RouteMyRequests", {}, true);
+                    }
+                }
+                // ---------------------------------------------------------------
+
             }.bind(this)).catch(function (error) {
                 BusyIndicator.hide();
                 this.getRouter().initialize();
@@ -32,8 +50,7 @@ sap.ui.define([
         _initAuthModel: function () {
             var that = this;
 
-            return new Promise(function (resolve, reject) {
-
+            return new Promise(function (resolve) {
                 var oAuthModel = new JSONModel({
                     isClerk: false,
                     isManager: false,
@@ -46,11 +63,13 @@ sap.ui.define([
                 if (sap.ushell && sap.ushell.Container) {
                     sCurrentUserId = sap.ushell.Container.getUser().getId();
                 }
+
                 if (sCurrentUserId === "DEFAULT_USER") {
                     // 94 manager, 097 admin, 092 clerk
-                    sCurrentUserId = "DEV-097";
+                    sCurrentUserId = "DEV-094";
                 }
                 sCurrentUserId = sCurrentUserId.toUpperCase();
+
                 oAuthModel.setProperty("/currentUser", sCurrentUserId);
                 console.log("Current User ID: ", sCurrentUserId);
 
@@ -66,7 +85,6 @@ sap.ui.define([
                         oAuthModel.setProperty("/isAdmin", oData.IsAdmin);
 
                         resolve();
-
                     }).catch(function (e) {
                         console.error("Error fetching user roles: ", e);
                         resolve();
