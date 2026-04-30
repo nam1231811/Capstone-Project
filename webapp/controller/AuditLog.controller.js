@@ -6,13 +6,12 @@ sap.ui.define([
     "sap/m/MessageBox",
     "sap/m/MessageToast",
     "zapp/utils/DataFormatter",
-    "zapp/utils/ValueHelp"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatter, ValueHelp) {
+    "zapp/utils/ValueHelp",
+    "zapp/api/SaveToDatabase"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatter, ValueHelp, SaveToDatabase) {
     "use strict";
 
     return Controller.extend("zapp.controller.AuditLog", {
-        formatter: DataFormatter,
-
         onInit: function () {
             var oModel = new JSONModel({
                 mainLogs: [],
@@ -352,7 +351,6 @@ sap.ui.define([
             var aCurrentPhase = [];
 
             aTrailLogs.forEach(function (oLog) {
-                console.log(oLog);
                 if (oLog.Status !== 'P') {
                     aCurrentPhase.push(oLog);
                     if (oLog.Status === 'A') {
@@ -386,8 +384,6 @@ sap.ui.define([
                 });
 
                 phaseLogs.forEach(function (oLog, nodeIndex) {
-                    console.log(oLog);
-                    
                     var sAction = oLog.Action === 'C' ? 'Create' : (oLog.Action === 'U' ? 'Update' : 'Delete');
                     var sStatus = oLog.Status === 'R' ? 'Rejected' : (oLog.Status === 'P' ? 'Pending' : 'Approved');
                     var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
@@ -431,7 +427,6 @@ sap.ui.define([
                     });
                 });
             });
-            console.log(aProcessNodes);
             
             oLocalModel.setProperty("/processNodes", aProcessNodes);
             oLocalModel.setProperty("/processLanes", aProcessLanes);
@@ -452,21 +447,33 @@ sap.ui.define([
             var oLocalModel = this.getView().getModel("audit");
 
             var aAllLogs = oLocalModel.getProperty("/allLogs") || [];
-            var oSelectedLog = aAllLogs.find(function (l) { return l.LogUuid === sLogId; });
+            var oSelectedLog = aAllLogs.find(function (l) { 
+                return l.LogUuid === sLogId; 
+            });
 
-            if (!oSelectedLog) return;
+            if (!oSelectedLog) {
+                return;
+            }
 
             var sAction = oSelectedLog.Action === 'C' ? 'CREATE' : (oSelectedLog.Action === 'U' ? 'UPDATE' : 'DELETE');
-
             var sTime = DataFormatter.formatDateTime(oSelectedLog.ChangedAt);
-
             var aChanges = [];
-            var oOld = {}, oNew = {};
-            try { if (oSelectedLog.OldData) oOld = JSON.parse(oSelectedLog.OldData); } catch (e) { }
-            try { if (oSelectedLog.NewData) oNew = JSON.parse(oSelectedLog.NewData); } catch (e) { }
+            var oOld = {}, 
+                oNew = {};
+
+            try { 
+                if (oSelectedLog.OldData) 
+                    oOld = JSON.parse(oSelectedLog.OldData);
+
+                if (oSelectedLog.NewData) {
+                    oNew = JSON.parse(oSelectedLog.NewData);
+                }
+            } catch (e) { }
 
             var aAllKeys = Object.keys(oOld).concat(Object.keys(oNew));
-            var aUniqueKeys = aAllKeys.filter(function (item, pos) { return aAllKeys.indexOf(item) === pos; });
+            var aUniqueKeys = aAllKeys.filter(function (item, pos) { 
+                return aAllKeys.indexOf(item) === pos; 
+            });
 
             aUniqueKeys.forEach(function (sKey) {
                 if (sKey.toUpperCase() === 'MANDT') return;
@@ -565,13 +572,7 @@ sap.ui.define([
 
             var sBase64Data = btoa(unescape(encodeURIComponent(sJsonString)));
 
-            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
-            var oActionContext = oMainModel.bindContext(sActionPath);
-
-            oActionContext.setParameter("table_name", sTableName.toUpperCase());
-            oActionContext.setParameter("json_data", sBase64Data);
-
-            oActionContext.execute().then(function () {
+            SaveToDatabase.onSaveDB(sTableName, oView, sBase64Data).then(function () {
                 oView.setBusy(false);
                 sap.m.MessageToast.show("Recovery successful! Data has been updated.");
 
@@ -588,6 +589,7 @@ sap.ui.define([
                 sap.m.MessageBox.error("Error when overwriting Database: " + oError.message);
                 console.error(oError);
             }.bind(this));
+            return;
         },
     });
 });

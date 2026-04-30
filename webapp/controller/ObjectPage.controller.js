@@ -283,9 +283,19 @@ sap.ui.define([
             });
 
 
-            oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colIndex", value: iIndex }));
-            oColumn.addCustomData(new sap.ui.core.CustomData({ key: "colName", value: sHeaderText }));
+            oColumn.addCustomData(new sap.ui.core.CustomData(
+                { 
+                    key: "colIndex", 
+                    value: iIndex 
+                }
+            ));
 
+            oColumn.addCustomData(new sap.ui.core.CustomData(
+                {
+                    key: "colName", 
+                    value: sHeaderText
+                }
+            ));
 
             return oColumn;
         },
@@ -576,7 +586,9 @@ sap.ui.define([
 
         _validateLiveGrid: function () {
             var oModel = this.getView().getModel("displayModel");
-            var aCleanedData = GridValidator.performLiveValidation(oModel.getProperty("/Data"), oModel.getProperty("/Meta"));
+            var adata = oModel.getProperty("/Data");
+            var aMeta = oModel.getProperty("/Meta");
+            var aCleanedData = GridValidator.performLiveValidation(adata, aMeta);
             oModel.setProperty("/Data", aCleanedData);
         },
 
