@@ -4,25 +4,31 @@ sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
-    "sap/m/MessageToast",
-    "sap/ui/layout/form/SimpleForm"
-], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, SimpleForm) {
+    "sap/m/MessageToast"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast) {
     "use strict";
+
+    const ACTION_ASSIGN_ADMIN = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignAdmin";
+    const ACTION_ASSIGN_MANAGER = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignManager";
+    const ACTION_ASSIGN_CLERK = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignClerk";
+    const ACTION_REVOKE_ROLE = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.revokeRole(...)";
 
     return Controller.extend("zapp.controller.RoleAssignment", {
         onInit: function () {
             var oData = {
-                formData: {
-                    isEditMode: false,
-                    userId: "",
-                    roleId: "Clerk",
-                    validTo: ""
-                }
-            };
-            var oLocalModel = new JSONModel(oData);
+                    dialogTitle: "",
+                    formData: {
+                        isEditMode: false,
+                        userId: "",
+                        roleId: "Clerk",
+                        validTo: ""
+                    }
+                },
+                oLocalModel = new JSONModel(oData),
+                oRouter = this.getOwnerComponent().getRouter();
+
             this.getView().setModel(oLocalModel, "roleLocal");
 
-            var oRouter = this.getOwnerComponent().getRouter();
             if (oRouter.getRoute("RouteRoleAssignment")) {
                 oRouter.getRoute("RouteRoleAssignment").attachPatternMatched(this._onRouteMatched, this);
             }
@@ -32,7 +38,7 @@ sap.ui.define([
             var oAuthModel = this.getOwnerComponent().getModel("auth");
 
             if (!oAuthModel.getProperty("/isAdmin")) {
-                sap.m.MessageBox.error("Access Denied! You do not have permission to view this page.");
+                MessageBox.error("Access Denied! You do not have permission to view this page.");
                 this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true);
                 return;
             }
@@ -80,27 +86,25 @@ sap.ui.define([
         },
 
         onSearchUser: function () {
-            var sQuery = this.byId("searchUser").getValue();
-            var sRoleKey = this.byId("filterRole").getSelectedKey();
-
-            var aFilters = [];
+            var sQuery = this.byId("searchUser").getValue(),
+                sRoleKey = this.byId("filterRole").getSelectedKey(),
+                aFilters = [],
+                oTable = this.byId("usersTable"),
+                oBinding = oTable.getBinding("items");
 
             if (sQuery) {
-                aFilters.push(new sap.ui.model.Filter("Username", sap.ui.model.FilterOperator.Contains, sQuery.toUpperCase()));
+                aFilters.push(new Filter("Username", FilterOperator.Contains, sQuery.toUpperCase()));
             }
 
             if (sRoleKey && sRoleKey !== "ALL") {
                 if (sRoleKey === "Admin") {
-                    aFilters.push(new sap.ui.model.Filter("IsAdmin", sap.ui.model.FilterOperator.EQ, true));
+                    aFilters.push(new Filter("IsAdmin", FilterOperator.EQ, true));
                 } else if (sRoleKey === "Manager") {
-                    aFilters.push(new sap.ui.model.Filter("IsManager", sap.ui.model.FilterOperator.EQ, true));
+                    aFilters.push(new Filter("IsManager", FilterOperator.EQ, true));
                 } else if (sRoleKey === "Clerk") {
-                    aFilters.push(new sap.ui.model.Filter("IsClerk", sap.ui.model.FilterOperator.EQ, true));
+                    aFilters.push(new Filter("IsClerk", FilterOperator.EQ, true));
                 }
             }
-
-            var oTable = this.byId("usersTable");
-            var oBinding = oTable.getBinding("items");
 
             if (oBinding) {
                 oBinding.filter(aFilters, sap.ui.model.FilterType.Application);
@@ -109,28 +113,30 @@ sap.ui.define([
 
         onOpenAssignDialog: function () {
             var oModel = this.getView().getModel("roleLocal");
+            oModel.setProperty("/dialogTitle", "Assign New Role");
             oModel.setProperty("/formData", { isEditMode: false, userId: "", roleId: "", validTo: "" });
-            this._openRoleDialog("Assign New Role");
+            
+            this.byId("roleDialog").open();
         },
 
         onEditRole: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext();
-            var oRowData = oContext.getObject();
-            var oModel = this.getView().getModel("roleLocal");
-
-            var oAuthModel = this.getOwnerComponent().getModel("auth");
-            var sCurrentUser = oAuthModel ? oAuthModel.getProperty("/currentUser") : "";
+            var oContext = oEvent.getSource().getBindingContext(),
+                oRowData = oContext.getObject(),
+                oModel = this.getView().getModel("roleLocal"),
+                oAuthModel = this.getOwnerComponent().getModel("auth"),
+                sCurrentUser = oAuthModel ? oAuthModel.getProperty("/currentUser") : "",
+                sCurrentRole = "";
 
             if (sCurrentUser && oRowData.Username && sCurrentUser.toUpperCase() === oRowData.Username.toUpperCase()) {
-                sap.m.MessageBox.warning("Action Denied!\nYou cannot modify your own system role.");
+                MessageBox.warning("Action Denied!\nYou cannot modify your own system role.");
                 return;
             }
 
-            var sCurrentRole = "";
             if (this._checkRoleTrue(oRowData.IsAdmin)) sCurrentRole = "Admin";
             else if (this._checkRoleTrue(oRowData.IsManager)) sCurrentRole = "Manager";
             else if (this._checkRoleTrue(oRowData.IsClerk)) sCurrentRole = "Clerk";
 
+            oModel.setProperty("/dialogTitle", "Edit Role - User: " + oRowData.Username);
             oModel.setProperty("/formData", {
                 isEditMode: true,
                 userId: oRowData.Username,
@@ -138,124 +144,65 @@ sap.ui.define([
                 validTo: ""
             });
 
-            this._openRoleDialog("Edit Role - User: " + oRowData.Username);
+            this.byId("roleDialog").open();
         },
 
-        _openRoleDialog: function (sTitle) {
-            if (!this._oRoleDialog) {
-                this._oRoleDialog = new sap.m.Dialog({
-                    contentWidth: "400px",
-                    content: [
-                        new SimpleForm({
-                            layout: "ResponsiveGridLayout",
-                            labelSpanL: 4, labelSpanM: 4, emptySpanL: 1, emptySpanM: 1, columnsL: 1, columnsM: 1,
-                            content: [
-                                new sap.m.Label({ text: "User Account", required: true }),
-                                new sap.m.Input({
-                                    value: "{roleLocal>/formData/userId}",
-                                    placeholder: "e.g., DEV-097...",
-                                    enabled: "{= !${roleLocal>/formData/isEditMode} }"
-                                }),
-
-                                new sap.m.Label({ text: "Assign Role", required: true }),
-                                new sap.m.Select({
-                                    selectedKey: "{roleLocal>/formData/roleId}",
-                                    width: "100%",
-                                    items: [
-                                        new sap.ui.core.Item({ key: "", text: "--- Select Role (Unassigned) ---" }),
-
-                                        new sap.ui.core.Item({ key: "Admin", text: "Admin (Full Access)" }),
-                                        new sap.ui.core.Item({ key: "Manager", text: "Manager (Approval)" }),
-                                        new sap.ui.core.Item({ key: "Clerk", text: "Clerk (Employee)" })
-                                    ]
-                                }),
-
-                                new sap.m.Label({ text: "Expiration Date" }),
-                                new sap.m.DatePicker({
-                                    value: "{roleLocal>/formData/validTo}",
-                                    valueFormat: "yyyyMMdd",
-                                    displayFormat: "dd/MM/yyyy",
-                                    placeholder: "Leave blank = No expiration",
-                                    minDate: new Date()
-                                })
-                            ]
-                        })
-                    ],
-                    beginButton: new sap.m.Button({
-                        text: "Save (Assign Role)",
-                        type: "Emphasized",
-                        press: this.onSaveRole.bind(this)
-                    }),
-                    endButton: new sap.m.Button({
-                        text: "Cancel",
-                        press: function () { this._oRoleDialog.close(); }.bind(this)
-                    })
-                });
-                this.getView().addDependent(this._oRoleDialog);
-            }
-
-            this._oRoleDialog.setTitle(sTitle);
-            this._oRoleDialog.open();
+        onCloseRoleDialog: function () {
+            this.byId("roleDialog").close();
         },
 
         onSaveRole: function () {
-            var oView = this.getView();
-            var oFormData = oView.getModel("roleLocal").getProperty("/formData");
-            var sUserId = oFormData.userId;
+            var oView = this.getView(),
+                oFormData = oView.getModel("roleLocal").getProperty("/formData"),
+                sUserId = oFormData.userId,
+                sValidTo = oFormData.validTo,
+                sFormattedDate = "99991231",
+                sActionName = "", sPath, oActionContext,
+                oToday, sYear, sMonth, sDay, sTodayStr;
 
             if (!sUserId) {
-                sap.m.MessageBox.error("Please enter your User Account!");
+                MessageBox.error("Please enter your User Account!");
                 return;
             }
 
             if (!oFormData.roleId) {
-                sap.m.MessageBox.error("Please select a Role to assign!");
+                MessageBox.error("Please select a Role to assign!");
                 return;
             }
 
-            var sValidTo = oFormData.validTo;
-            var sFormattedDate = "99991231";
-
             if (sValidTo && sValidTo.trim() !== "") {
-
                 if (!/^\d{8}$/.test(sValidTo)) {
-                    sap.m.MessageBox.error("Invalid expiration date! Please enter the correct format DD/MM/YYYY or select from the calendar icon.");
+                    MessageBox.error("Invalid expiration date! Please enter the correct format DD/MM/YYYY or select from the calendar icon.");
                     return;
                 }
 
                 sFormattedDate = sValidTo;
-
-                var oToday = new Date();
-                var sYear = oToday.getFullYear().toString();
-                var sMonth = (oToday.getMonth() + 1).toString().padStart(2, '0');
-                var sDay = oToday.getDate().toString().padStart(2, '0');
-                var sTodayStr = sYear + sMonth + sDay;
+                oToday = new Date();
+                sYear = oToday.getFullYear().toString();
+                sMonth = (oToday.getMonth() + 1).toString().padStart(2, '0');
+                sDay = oToday.getDate().toString().padStart(2, '0');
+                sTodayStr = sYear + sMonth + sDay;
 
                 if (sFormattedDate < sTodayStr) {
-                    sap.m.MessageBox.error("Please select an expiration date greater than or equal to the current date!");
+                    MessageBox.error("Please select an expiration date greater than or equal to the current date!");
                     return;
                 }
             }
 
-            var sActionName = "";
-            if (oFormData.roleId === "Admin") {
-                sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignAdmin";
-            } else if (oFormData.roleId === "Manager") {
-                sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignManager";
-            } else if (oFormData.roleId === "Clerk") {
-                sActionName = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.assignClerk";
-            }
+            if (oFormData.roleId === "Admin") sActionName = ACTION_ASSIGN_ADMIN;
+            else if (oFormData.roleId === "Manager") sActionName = ACTION_ASSIGN_MANAGER;
+            else if (oFormData.roleId === "Clerk") sActionName = ACTION_ASSIGN_CLERK;
 
-            var sPath = "/UserRoleList('" + sUserId + "')/" + sActionName + "(...)";
-            var oActionContext = oView.getModel().bindContext(sPath);
+            sPath = "/UserRoleList('" + sUserId + "')/" + sActionName + "(...)";
+            oActionContext = oView.getModel().bindContext(sPath);
 
             oActionContext.setParameter("ValidTo", sFormattedDate);
 
             sap.ui.core.BusyIndicator.show(0);
 
             oActionContext.execute().then(function () {
-                sap.m.MessageToast.show("Successfully assigned " + oFormData.roleId + " role to " + sUserId + "!");
-                this._oRoleDialog.close();
+                MessageToast.show("Successfully assigned " + oFormData.roleId + " role to " + sUserId + "!");
+                this.onCloseRoleDialog();
 
                 setTimeout(function () {
                     this.byId("usersTable").getBinding("items").refresh();
@@ -263,32 +210,31 @@ sap.ui.define([
                 }.bind(this), 1500);
 
             }.bind(this)).catch(function (oError) {
-                sap.m.MessageBox.error("Error assigning role: " + oError.message);
+                MessageBox.error("Error assigning role: " + oError.message);
                 sap.ui.core.BusyIndicator.hide();
             });
         },
 
         onRevokeRole: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext();
-            var sUsername = oContext.getProperty("Username");
-
-            var oAuthModel = this.getOwnerComponent().getModel("auth");
-            var sCurrentUser = oAuthModel ? oAuthModel.getProperty("/currentUser") : "";
+            var oContext = oEvent.getSource().getBindingContext(),
+                sUsername = oContext.getProperty("Username"),
+                oAuthModel = this.getOwnerComponent().getModel("auth"),
+                sCurrentUser = oAuthModel ? oAuthModel.getProperty("/currentUser") : "";
 
             if (sCurrentUser && sUsername && sCurrentUser.toUpperCase() === sUsername.toUpperCase()) {
-                sap.m.MessageBox.warning("Action Denied!\nYou cannot revoke your own system role.");
+                MessageBox.warning("Action Denied!\nYou cannot revoke your own system role.");
                 return;
             }
 
-            sap.m.MessageBox.confirm("Are you sure you want to revoke the role for " + sUsername + "?", {
+            MessageBox.confirm("Are you sure you want to revoke the role for " + sUsername + "?", {
                 onClose: function (sAction) {
-                    if (sAction === sap.m.MessageBox.Action.OK) {
+                    if (sAction === MessageBox.Action.OK) {
                         sap.ui.core.BusyIndicator.show(0);
 
-                        var oOperation = oContext.getModel().bindContext("com.sap.gateway.srvd.zsd_dynamic_meta.v0001.revokeRole(...)", oContext);
+                        var oOperation = oContext.getModel().bindContext(ACTION_REVOKE_ROLE, oContext);
 
                         oOperation.execute().then(function () {
-                            sap.m.MessageToast.show("Successfully revoked role for " + sUsername + "!");
+                            MessageToast.show("Successfully revoked role for " + sUsername + "!");
 
                             setTimeout(function () {
                                 this.byId("usersTable").getBinding("items").refresh();
@@ -296,7 +242,7 @@ sap.ui.define([
                             }.bind(this), 1500);
 
                         }.bind(this)).catch(function (oError) {
-                            sap.m.MessageBox.error("Error revoking role: " + oError.message);
+                            MessageBox.error("Error revoking role: " + oError.message);
                             sap.ui.core.BusyIndicator.hide();
                         });
                     }
