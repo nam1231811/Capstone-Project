@@ -104,5 +104,95 @@
 
             </VBox>
         </f:content>
+
+        <f:dependents>
+            <Dialog 
+                id="resubmitDialog"
+                title="{= ${myreq>/currentDetail/status} === 'REJECTED' ? 'Edit Rejected Request' : 'Request Details' }"
+                contentWidth="800px" 
+                contentHeight="500px" 
+                resizable="true" 
+                draggable="true"
+                binding="{myreq>/currentDetail}">
+                
+                <content>
+                    <VBox>
+                        <ObjectHeader 
+                            title="Target Table: {myreq>tableName}" 
+                            icon="sap-icon://form" 
+                            responsive="true" 
+                            fullScreenOptimized="true">
+                            <statuses>
+                                <ObjectStatus 
+                                    text="{myreq>action}"
+                                    state="{= ${myreq>action} === 'CREATE' ? 'Success' : (${myreq>action} === 'DELETE' ? 'Error' : 'Warning') }"
+                                    icon="{= ${myreq>action} === 'CREATE' ? 'sap-icon://add' : (${myreq>action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }"
+                                    inverted="true" />
+                            </statuses>
+                        </ObjectHeader>
+
+                        <MessageStrip 
+                            text="Comment for this Rejection: {myreq>rejectReason}" 
+                            type="Error" 
+                            showIcon="true" 
+                            class="sapUiSmallMargin"
+                            visible="{= ${myreq>status} === 'REJECTED' &amp;&amp; !${myreq>/isTableBusy} }" />
+
+                        <Table 
+                            alternateRowColors="true" 
+                            busy="{myreq>/isTableBusy}" 
+                            busyIndicatorDelay="0" 
+                            backgroundDesign="Solid" 
+                            sticky="ColumnHeaders"
+                            class="sapUiTinyMargin" 
+                            items="{myreq>fields}">
+                            <columns>
+                                <Column width="25%"><Label text="Field" design="Bold" /></Column>
+                                <Column width="35%"><Label text="Old Data" design="Bold" /></Column>
+                                <Column width="40%"><Label text="New Data" design="Bold" /></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem>
+                                    <cells>
+                                        <Label text="{myreq>field}" design="Bold" />
+                                        <Text text="{myreq>oldData}" />
+
+                                        <HBox>
+                                            <Input 
+                                                value="{myreq>value}" 
+                                                valueLiveUpdate="true"
+                                                visible="{= ${myreq>/currentDetail/status} === 'REJECTED' &amp;&amp; ${myreq>/currentDetail/action} !== 'DELETE' }"
+                                                editable="{= ${myreq>isKey} !== true }"
+                                                valueState="{myreq>valueState}" 
+                                                valueStateText="{myreq>valueStateText}"
+                                                change=".onDialogInputChange" />
+                                                
+                                            <ObjectStatus 
+                                                text="{myreq>value}"
+                                                visible="{= ${myreq>/currentDetail/status} !== 'REJECTED' || ${myreq>/currentDetail/action} === 'DELETE' }"
+                                                state="{= ${myreq>oldData} !== ${myreq>value} &amp;&amp; ${myreq>oldData} !== 'N/A' &amp;&amp; ${myreq>oldData} !== '-' ? 'Warning' : 'Success' }"
+                                                icon="{= ${myreq>oldData} !== ${myreq>value} &amp;&amp; ${myreq>oldData} !== 'N/A' &amp;&amp; ${myreq>oldData} !== '-' ? 'sap-icon://edit' : 'sap-icon://sys-enter-2' }" />
+                                        </HBox>
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </VBox>
+                </content>
+
+                <buttons>
+                    <Button 
+                        text="Resubmit Request" 
+                        type="Accept" 
+                        icon="sap-icon://paper-plane" 
+                        press="._processResubmit"
+                        visible="{= ${myreq>/currentDetail/status} === 'REJECTED' &amp;&amp; !${myreq>/isTableBusy} }" />
+                        
+                    <Button text="Close" type="Transparent" press=".onCloseDetailDialog" />
+                </buttons>
+
+            </Dialog>
+        </f:dependents>
+
     </f:DynamicPage>
 </mvc:View>

@@ -11,16 +11,19 @@ sap.ui.define([
 ], function (Controller, JSONModel, Filter, FilterOperator, MessageBox, MessageToast, DataFormatter, GridValidator, LoadData) {
     "use strict";
 
+    const ACTION_RESUBMIT = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.resubmit";
+
     return Controller.extend("zapp.controller.MyRequests", {
         onInit: function () {
             var oModel = new JSONModel({
-                list: [],
-                currentDetail: null,
-                isTableBusy: false
-            });
+                    list: [],
+                    currentDetail: null,
+                    isTableBusy: false
+                }),
+                oRouter = this.getOwnerComponent().getRouter();
+
             this.getView().setModel(oModel, "myreq");
 
-            var oRouter = this.getOwnerComponent().getRouter();
             if (oRouter.getRoute("RouteMyRequests")) {
                 oRouter.getRoute("RouteMyRequests").attachPatternMatched(this._onRouteMatched, this);
             } else {
@@ -36,12 +39,24 @@ sap.ui.define([
             this._loadMyRequests(true);
         },
 
+        _safeParse: function(sDataStr) {
+            if (!sDataStr) return {};
+            try {
+                return (!sDataStr.startsWith("{") && !sDataStr.startsWith("[")) 
+                    ? DataFormatter.decodeFunction({ json_string: sDataStr }) 
+                    : JSON.parse(sDataStr);
+            } catch (e) {
+                return {};
+            }
+        },
+
         _loadMyRequests: function (bForceRefresh) {
-            var oView = this.getView();
-            var oODataModel = this.getOwnerComponent().getModel();
-            var oMyReqModel = oView.getModel("myreq");
-            var oAuthModel = this.getOwnerComponent().getModel("auth");
-            var oAuditModel = this.getOwnerComponent().getModel("auditOData");
+            var oView = this.getView(),
+                oODataModel = this.getOwnerComponent().getModel(),
+                oMyReqModel = oView.getModel("myreq"),
+                oAuthModel = this.getOwnerComponent().getModel("auth"),
+                oAuditModel = this.getOwnerComponent().getModel("auditOData"),
+                sCurrentUser, oPendingBinding, oHistoryBinding;
 
             if (!oODataModel || !oAuditModel) return;
             oView.setBusy(true);
@@ -51,128 +66,80 @@ sap.ui.define([
                 oAuditModel.refresh();
             }
 
-            var sCurrentUser = oAuthModel.getProperty("/currentUser");
-
-            var oPendingBinding = oODataModel.bindList("/Data", null, null, [
+            sCurrentUser = oAuthModel.getProperty("/currentUser");
+            oPendingBinding = oODataModel.bindList("/Data", null, null, [
                 new Filter("status", FilterOperator.EQ, "P")
             ]);
-            var oHistoryBinding = oAuditModel.bindList("/AuditLog", null, null, null);
+            oHistoryBinding = oAuditModel.bindList("/AuditLog", null, null, null);
 
             Promise.all([
                 oPendingBinding.requestContexts(0, 500),
                 oHistoryBinding.requestContexts(0, 500)
             ]).then(function (aResults) {
-                var aList = [];
-                var aAllContexts = [];
+                var aList = [],
+                    aAllContexts = [];
 
                 aResults[0].forEach(ctx => aAllContexts.push({ ctx: ctx, source: "TEMP" }));
                 aResults[1].forEach(ctx => aAllContexts.push({ ctx: ctx, source: "AUDIT" }));
 
                 aAllContexts.forEach(function (oWrapper) {
-                    var oData = oWrapper.ctx.getObject();
-                    var sCheckStatus = String(oData.status || oData.Status || "").toUpperCase();
+                    var oData = oWrapper.ctx.getObject(),
+                        sCheckStatus = String(oData.status || oData.Status || "").toUpperCase(),
+                        sRecordOwner = oData.created_by || oData.CreatedBy || oData.changed_by || oData.ChangedBy || "",
+                        sStatusText = "", sReqId = "", sActionCode = "", sActionText = "UPDATE",
+                        sOldDataStr = oData.old_data || oData.OldData || "",
+                        sNewDataStr = oData.new_data || oData.NewData || "",
+                        sTempData = oData.data || oData.Data || "",
+                        bHasOld, bHasNew, oParsedOld, oParsedNew, aFields = [], aAllKeys;
 
-                    var sStatusText = "";
+                    if (sRecordOwner.toUpperCase() !== sCurrentUser.toUpperCase()) return;
+
                     if (oWrapper.source === "TEMP") {
                         sStatusText = "PENDING";
-                    } else {
-                        if (sCheckStatus === "P") return;
-                        if (sCheckStatus === "R") {
-                            sStatusText = "REJECTED";
-                        } else {
-                            sStatusText = "APPROVED";
-                        }
-                    }
-
-                    var sRecordOwner = oData.created_by || oData.CreatedBy || oData.changed_by || oData.ChangedBy || "";
-                    if (sRecordOwner.toUpperCase() !== sCurrentUser.toUpperCase()) {
-                        return;
-                    }
-
-                    var sReqId = "";
-                    if (oWrapper.source === "TEMP") {
                         sReqId = oData.uuid || oData.Uuid || oData.UUID || "";
                     } else {
+                        if (sCheckStatus === "P") return;
+                        sStatusText = (sCheckStatus === "R") ? "REJECTED" : "APPROVED";
                         sReqId = oData.log_uuid || oData.LogUuid || oData.LOG_UUID || oData.uuid || "";
                     }
 
-                    var sActionCode = String(oData.action_type || oData.ActionType || oData.action || oData.Action || "").toUpperCase();
-                    var sActionText = "UPDATE";
-
+                    sActionCode = String(oData.action_type || oData.ActionType || oData.action || oData.Action || "").toUpperCase();
+                    
                     if (sActionCode === "C" || sActionCode === "CREATE") sActionText = "CREATE";
                     else if (sActionCode === "D" || sActionCode === "DELETE") sActionText = "DELETE";
                     else if (sActionCode === "U" || sActionCode === "UPDATE") sActionText = "UPDATE";
                     else {
-                        var bHasOld = !!(oData.old_data || oData.OldData);
-                        var bHasNew = !!(oData.new_data || oData.NewData || oData.data || oData.Data);
+                        bHasOld = !!(oData.old_data || oData.OldData);
+                        bHasNew = !!(oData.new_data || oData.NewData || oData.data || oData.Data);
                         if (bHasOld && !bHasNew) sActionText = "DELETE";
                         else if (!bHasOld && bHasNew) sActionText = "CREATE";
                         else sActionText = "UPDATE";
                     }
 
-                    var sOldDataStr = oData.old_data || oData.OldData || "";
-                    var sNewDataStr = oData.new_data || oData.NewData || "";
-                    var sTempData = oData.data || oData.Data || "";
-
                     if (sTempData) {
                         if (sActionText === "DELETE") sOldDataStr = sTempData;
-                        else if (sActionText === "CREATE") sNewDataStr = sTempData;
                         else sNewDataStr = sTempData;
                     }
 
                     if (sActionText === "DELETE" && !sOldDataStr && sNewDataStr) {
-                        sOldDataStr = sNewDataStr;
-                        sNewDataStr = "";
+                        sOldDataStr = sNewDataStr; sNewDataStr = "";
+                    } else if (sActionText === "CREATE" && !sNewDataStr && sOldDataStr) {
+                        sNewDataStr = sOldDataStr; sOldDataStr = "";
                     }
 
-                    if (sActionText === "CREATE" && !sNewDataStr && sOldDataStr) {
-                        sNewDataStr = sOldDataStr;
-                        sOldDataStr = "";
-                    }
+                    oParsedOld = this._safeParse(sOldDataStr);
+                    oParsedNew = this._safeParse(sNewDataStr);
 
-                    var oParsedOld = {};
-                    if (sOldDataStr) {
-                        try {
-                            oParsedOld = (!sOldDataStr.startsWith("{") && !sOldDataStr.startsWith("["))
-                                ? DataFormatter.decodeFunction({ json_string: sOldDataStr })
-                                : JSON.parse(sOldDataStr);
-                        } catch (e) { }
-                    }
-
-                    var oParsedNew = {};
-                    if (sNewDataStr) {
-                        try {
-                            oParsedNew = (!sNewDataStr.startsWith("{") && !sNewDataStr.startsWith("["))
-                                ? DataFormatter.decodeFunction({ json_string: sNewDataStr })
-                                : JSON.parse(sNewDataStr);
-                        } catch (e) { }
-                    }
-
-                    var aFields = [];
-                    var aAllKeys = Object.keys(oParsedNew);
+                    aAllKeys = Object.keys(oParsedNew);
                     Object.keys(oParsedOld).forEach(k => { if (!aAllKeys.includes(k)) aAllKeys.push(k); });
 
                     aAllKeys.forEach(function (key) {
+                        if (String(key).toUpperCase() === "MANDT") return;
 
-                        if (String(key).toUpperCase() === "MANDT") {
-                            return;
-                        }
+                        var sOldVal = (sActionText !== "CREATE" && oParsedOld[key] !== undefined) ? String(oParsedOld[key]) : "Loading...",
+                            sNewVal = (sActionText !== "DELETE" && oParsedNew[key] !== undefined) ? String(oParsedNew[key]) : "-";
 
-                        var sOldVal = "-";
-                        if (sActionText !== "CREATE") {
-                            sOldVal = oParsedOld[key] !== undefined ? String(oParsedOld[key]) : "Loading...";
-                        }
-
-                        var sNewVal = "-";
-                        if (sActionText !== "DELETE") {
-                            sNewVal = oParsedNew[key] !== undefined ? String(oParsedNew[key]) : "-";
-                        }
-
-                        aFields.push({
-                            field: key,
-                            oldData: sOldVal,
-                            value: sNewVal
-                        });
+                        aFields.push({ field: key, oldData: sOldVal, value: sNewVal });
                     });
 
                     aList.push({
@@ -187,19 +154,13 @@ sap.ui.define([
                         rejectReason: oData.RejectReason || oData.reject_reason || "",
                         fields: aFields
                     });
-                });
+                }.bind(this));
 
-                aList.sort(function (a, b) {
-                    return b.rawDataDate - a.rawDataDate;
-                });
-
-                aList.forEach(function (item, index) {
-                    item.indexNo = index + 1;
-                });
+                aList.sort((a, b) => b.rawDataDate - a.rawDataDate)
+                     .forEach((item, index) => item.indexNo = index + 1);
 
                 oMyReqModel.setProperty("/list", aList);
                 oView.setBusy(false);
-
                 this._applyFilters();
 
             }.bind(this)).catch(function (e) {
@@ -209,19 +170,18 @@ sap.ui.define([
         },
 
         _applyFilters: function () {
-            var sStatusKey = this.byId("statusFilterBar").getSelectedKey();
-            var sSearchQuery = this.byId("searchTable").getValue();
-            var aFilters = [];
+            var sStatusKey = this.byId("statusFilterBar").getSelectedKey(),
+                sSearchQuery = this.byId("searchTable").getValue(),
+                oBinding = this.byId("myRequestsTable").getBinding("items"),
+                aFilters = [];
 
             if (sStatusKey !== "ALL") {
                 aFilters.push(new Filter("status", FilterOperator.EQ, sStatusKey));
             }
-
             if (sSearchQuery && sSearchQuery.trim() !== "") {
                 aFilters.push(new Filter("tableName", FilterOperator.Contains, sSearchQuery.trim().toUpperCase()));
             }
 
-            var oBinding = this.byId("myRequestsTable").getBinding("items");
             oBinding.filter(aFilters);
         },
 
@@ -234,12 +194,12 @@ sap.ui.define([
         },
 
         onOpenDetailDialog: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext("myreq");
-            var oRowData = oContext.getObject();
-            var oModel = this.getView().getModel("myreq");
-
-            var oClone = Object.assign({}, oRowData);
-            var bNeedsFetch = (oRowData.status === "PENDING" || oRowData.status === "REJECTED") && (oRowData.action === "UPDATE" || oRowData.action === "CREATE");
+            var oContext = oEvent.getSource().getBindingContext("myreq"),
+                oRowData = oContext.getObject(),
+                oModel = this.getView().getModel("myreq"),
+                oODataModel = this.getOwnerComponent().getModel(),
+                oClone = Object.assign({}, oRowData),
+                bNeedsFetch = (oRowData.status === "PENDING" || oRowData.status === "REJECTED") && (oRowData.action === "UPDATE" || oRowData.action === "CREATE");
 
             if (bNeedsFetch) {
                 oClone.fields = [];
@@ -251,120 +211,20 @@ sap.ui.define([
 
             oModel.setProperty("/currentDetail", oClone);
 
-            var bIsRejected = (oRowData.status === "REJECTED");
-
-            if (!this._oResubmitDialog) {
-                this._oResubmitDialog = new sap.m.Dialog({
-                    contentWidth: "800px",
-                    contentHeight: "500px",
-                    resizable: true,
-                    draggable: true,
-                    content: [
-                        new sap.m.VBox({
-                            items: [
-                                new sap.m.ObjectHeader({
-                                    title: "Target Table: {myreq>/currentDetail/tableName}",
-                                    icon: "sap-icon://form",
-                                    responsive: true,
-                                    fullScreenOptimized: true,
-                                    statuses: [
-                                        new sap.m.ObjectStatus({
-                                            text: "{myreq>/currentDetail/action}",
-                                            state: "{= ${myreq>/currentDetail/action} === 'CREATE' ? 'Success' : (${myreq>/currentDetail/action} === 'DELETE' ? 'Error' : 'Warning') }",
-                                            icon: "{= ${myreq>/currentDetail/action} === 'CREATE' ? 'sap-icon://add' : (${myreq>/currentDetail/action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }",
-                                            inverted: true
-                                        })
-                                    ]
-                                }),
-
-                                new sap.m.MessageStrip({
-                                    text: "Comment for this Rejection: {myreq>/currentDetail/rejectReason}",
-                                    type: "Error",
-                                    showIcon: true,
-                                    visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && !${myreq>/isTableBusy} }"
-                                }).addStyleClass("sapUiSmallMargin"),
-
-                                new sap.m.Table({
-                                    alternateRowColors: true,
-                                    busy: "{myreq>/isTableBusy}",
-                                    busyIndicatorDelay: 0,
-                                    backgroundDesign: "Solid",
-                                    sticky: ["ColumnHeaders"],
-                                    items: {
-                                        path: "myreq>/currentDetail/fields",
-                                        template: new sap.m.ColumnListItem({
-                                            cells: [
-                                                new sap.m.Label({ text: "{myreq>field}", design: "Bold" }),
-                                                new sap.m.Text({ text: "{myreq>oldData}" }),
-
-                                                new sap.m.HBox({
-                                                    items: [
-                                                        new sap.m.Input({
-                                                            value: { path: 'myreq>value' },
-                                                            valueLiveUpdate: true,
-                                                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && ${myreq>/currentDetail/action} !== 'DELETE' }",
-                                                            editable: "{= ${myreq>isKey} !== true }",
-                                                            valueState: "{myreq>valueState}",
-                                                            valueStateText: "{myreq>valueStateText}",
-                                                            change: this.onDialogInputChange.bind(this)
-                                                        }),
-                                                        new sap.m.ObjectStatus({
-                                                            text: "{myreq>value}",
-                                                            visible: "{= ${myreq>/currentDetail/status} !== 'REJECTED' || ${myreq>/currentDetail/action} === 'DELETE' }",
-                                                            state: "{= ${myreq>oldData} !== ${myreq>value} && ${myreq>oldData} !== 'N/A' && ${myreq>oldData} !== '-' ? 'Warning' : 'Success' }",
-                                                            icon: "{= ${myreq>oldData} !== ${myreq>value} && ${myreq>oldData} !== 'N/A' && ${myreq>oldData} !== '-' ? 'sap-icon://edit' : 'sap-icon://sys-enter-2' }"
-                                                        })
-                                                    ]
-                                                })
-                                            ]
-                                        })
-                                    },
-                                    columns: [
-                                        new sap.m.Column({ header: new sap.m.Label({ text: "Field", design: "Bold" }), width: "25%" }),
-                                        new sap.m.Column({ header: new sap.m.Label({ text: "Old Data", design: "Bold" }), width: "35%" }),
-                                        new sap.m.Column({ header: new sap.m.Label({ text: "New Data", design: "Bold" }), width: "40%" })
-                                    ]
-                                }).addStyleClass("sapUiTinyMargin")
-                            ]
-                        })
-                    ],
-                    buttons: [
-                        new sap.m.Button({
-                            text: "Resubmit Request",
-                            type: "Accept",
-                            icon: "sap-icon://paper-plane",
-                            visible: "{= ${myreq>/currentDetail/status} === 'REJECTED' && !${myreq>/isTableBusy} }",
-                            press: this._processResubmit.bind(this)
-                        }),
-                        new sap.m.Button({
-                            text: "Close",
-                            type: "Transparent",
-                            press: function () { this._oResubmitDialog.close(); }.bind(this)
-                        })
-                    ]
-                });
-                this.getView().addDependent(this._oResubmitDialog);
-            }
-
-            this._oResubmitDialog.bindElement({ path: "myreq>/currentDetail" });
-            this._oResubmitDialog.setTitle(bIsRejected ? "Edit Rejected Request" : "Request Details");
-
+            this._oResubmitDialog = this.byId("resubmitDialog");
             this._oResubmitDialog.open();
 
-            if (!bNeedsFetch) {
-                return;
-            }
-
-            var oODataModel = this.getOwnerComponent().getModel();
+            if (!bNeedsFetch) return;
 
             LoadData.loadTableData(oODataModel, oRowData.tableName).then(function (oPayload) {
-                var aMasterData = oPayload.dataRows || oPayload.Data || [];
-                var aMeta = oPayload.metadata || oPayload.Meta || [];
+                var aMasterData = oPayload.dataRows || oPayload.Data || [],
+                    aMeta = oPayload.metadata || oPayload.Meta || [],
+                    oNewDataMapped = {},
+                    aKeyFields = [],
+                    oIdCol, oOldRow, aUpdatedFields;
 
-                var oNewDataMapped = {};
-                oRowData.fields.forEach(function (d) { oNewDataMapped[d.field] = d.value; });
+                oRowData.fields.forEach(d => oNewDataMapped[d.field] = d.value);
 
-                var aKeyFields = [];
                 aMeta.forEach(function (col) {
                     if (col.keyflag === "X" || col.keyFlag === "X" || col.isKey === true) {
                         aKeyFields.push((col.fieldname || col.fieldName).toUpperCase());
@@ -372,50 +232,41 @@ sap.ui.define([
                 });
 
                 if (aKeyFields.length === 0) {
-                    var oIdCol = aMeta.find(c => (c.fieldname || c.fieldName || "").toUpperCase().includes("ID"));
+                    oIdCol = aMeta.find(c => (c.fieldname || c.fieldName || "").toUpperCase().includes("ID"));
                     if (oIdCol) aKeyFields.push((oIdCol.fieldname || oIdCol.fieldName).toUpperCase());
                 }
 
-                var oOldRow = aMasterData.find(function (row) {
+                oOldRow = aMasterData.find(function (row) {
                     var oJson = {};
                     try { oJson = JSON.parse(row.data || "{}"); } catch (e) { }
 
                     if (aKeyFields.length === 0) return false;
-
                     return aKeyFields.every(function (keyField) {
-                        var sVal1 = String(oJson[keyField] || "").trim().toUpperCase();
-                        var sVal2 = String(oNewDataMapped[keyField] || "").trim().toUpperCase();
+                        var sVal1 = String(oJson[keyField] || "").trim().toUpperCase(),
+                            sVal2 = String(oNewDataMapped[keyField] || "").trim().toUpperCase();
                         return sVal1 === sVal2 && sVal1 !== "";
                     });
                 });
 
-                var aUpdatedFields = oRowData.fields.map(function (d) {
-                    var sOldValue = "N/A";
-                    if (oRowData.action === "CREATE") {
-                        sOldValue = "N/A";
-                    }
+                aUpdatedFields = oRowData.fields.map(function (d) {
+                    var sOldValue = (oRowData.action === "CREATE") ? "N/A" : "N/A",
+                        bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase()),
+                        oMetaDef, sDataType, iLength;
+
                     if (oOldRow) {
                         var oOldJson = {};
                         try { oOldJson = JSON.parse(oOldRow.data || "{}"); } catch (e) { }
-                        if (oOldJson[d.field] !== undefined) {
-                            sOldValue = String(oOldJson[d.field]);
-                        }
+                        if (oOldJson[d.field] !== undefined) sOldValue = String(oOldJson[d.field]);
                     }
 
-                    var bIsKeyField = aKeyFields.includes(String(d.field).toUpperCase());
-
-                    var oMetaDef = aMeta.find(function (m) {
+                    oMetaDef = aMeta.find(function (m) {
                         var sName = m.fieldname || m.fieldName || m.FIELDNAME || m.Fieldname || m.name || m.Name || "";
                         return sName.toUpperCase() === (d.field || "").toUpperCase();
                     }) || {};
 
-                    var sDataType = oMetaDef.datatype || oMetaDef.dataType || oMetaDef.DATATYPE || oMetaDef.type || "";
-                    var iLength = parseInt(oMetaDef.leng || oMetaDef.length || oMetaDef.LENG || oMetaDef.LENGTH || oMetaDef.maxLength || oMetaDef.MaxLength || 0, 10);
+                    sDataType = oMetaDef.datatype || oMetaDef.dataType || oMetaDef.DATATYPE || oMetaDef.type || "CHAR";
+                    iLength = parseInt(oMetaDef.leng || oMetaDef.length || oMetaDef.LENG || oMetaDef.maxLength || 0, 10);
                     if (isNaN(iLength)) iLength = 0;
-
-                    if (!sDataType || sDataType.trim() === "") {
-                        sDataType = "CHAR";
-                    }
 
                     return {
                         field: d.field,
@@ -437,40 +288,35 @@ sap.ui.define([
             }.bind(this)).catch(function (e) {
                 console.error("Error loading master data:", e);
                 oModel.setProperty("/isTableBusy", false);
-                sap.m.MessageBox.error("Cannot fetch old data right now.");
+                MessageBox.error("Cannot fetch old data right now.");
             }.bind(this));
         },
 
+        onCloseDetailDialog: function () {
+            if (this._oResubmitDialog) {
+                this._oResubmitDialog.close();
+            }
+        },
+
         _validateDialogFields: function () {
-            var oModel = this.getView().getModel("myreq");
-            var oCurrentReq = oModel.getProperty("/currentDetail");
+            var oModel = this.getView().getModel("myreq"),
+                oCurrentReq = oModel.getProperty("/currentDetail"),
+                aFakeMeta = [], oFakeRow = {},
+                aValidatedData, oResultRow, bHasError = false;
+
             if (!oCurrentReq || !oCurrentReq.fields || oCurrentReq.action === "DELETE") return false;
 
-            var aFakeMeta = [];
-            var oFakeRow = {};
-
             oCurrentReq.fields.forEach(function (f, idx) {
-                aFakeMeta.push({
-                    fieldname: f.field,
-                    datatype: f.datatype,
-                    length: f.length
-                });
-
-                oFakeRow[idx] = {
-                    fieldname: f.field,
-                    value: f.value,
-                    isEditable: !f.isKey,
-                    isNew: (idx === 0)
-                };
+                aFakeMeta.push({ fieldname: f.field, datatype: f.datatype, length: f.length });
+                oFakeRow[idx] = { fieldname: f.field, value: f.value, isEditable: !f.isKey, isNew: (idx === 0) };
             });
 
-            var aValidatedData = GridValidator.performLiveValidation([oFakeRow], aFakeMeta, []);
-            var oResultRow = aValidatedData[0];
+            aValidatedData = GridValidator.performLiveValidation([oFakeRow], aFakeMeta, []);
+            oResultRow = aValidatedData[0];
 
-            var bHasError = false;
             oCurrentReq.fields.forEach(function (f, idx) {
-                var oCell = oResultRow[idx];
-                var sPath = "/currentDetail/fields/" + idx;
+                var oCell = oResultRow[idx],
+                    sPath = "/currentDetail/fields/" + idx;
 
                 if (oCell && oCell._state === "Error") {
                     oModel.setProperty(sPath + "/valueState", "Error");
@@ -486,69 +332,54 @@ sap.ui.define([
         },
 
         onDialogInputChange: function (oEvent) {
-            var oInput = oEvent.getSource();
-            var sValue = oEvent.getParameter("value");
-            var sPath = oInput.getBindingContext("myreq").getPath();
+            var oInput = oEvent.getSource(),
+                sValue = oEvent.getParameter("value"),
+                sPath = oInput.getBindingContext("myreq").getPath();
 
             this.getView().getModel("myreq").setProperty(sPath + "/value", sValue);
             this._validateDialogFields();
         },
 
         _processResubmit: function () {
-            var oView = this.getView();
-            var oModel = oView.getModel("myreq");
-            var oCurrentReq = oModel.getProperty("/currentDetail");
-            var oODataModel = this.getOwnerComponent().getModel();
-            var that = this;
-
-            var bHasError = this._validateDialogFields();
+            var oView = this.getView(),
+                oModel = oView.getModel("myreq"),
+                oCurrentReq = oModel.getProperty("/currentDetail"),
+                oODataModel = this.getOwnerComponent().getModel(),
+                bHasError = this._validateDialogFields(),
+                oNewPayload = {}, sNewBase64 = "",
+                sServiceUrl, sActionUrl;
 
             if (bHasError) {
-                sap.m.MessageBox.error("Please correct the faulty fields (highlighted in red) before resubmitting!");
+                MessageBox.error("Please correct the faulty fields (highlighted in red) before resubmitting!");
                 return;
             }
 
-            var oNewPayload = {};
             oCurrentReq.fields.forEach(function (item) {
-                if (oCurrentReq.action === "DELETE") {
-                    oNewPayload[item.field] = item.oldData;
-                } else {
-                    oNewPayload[item.field] = DataFormatter.formatValueByType(item.value, item.datatype);
-                }
+                oNewPayload[item.field] = (oCurrentReq.action === "DELETE") 
+                    ? item.oldData 
+                    : DataFormatter.formatValueByType(item.value, item.datatype);
             });
 
-            var sNewBase64 = "";
             try {
                 sNewBase64 = DataFormatter.encodeFunction(oNewPayload);
             } catch (e) {
-                sap.m.MessageBox.error("Data encoding error!"); return;
+                MessageBox.error("Data encoding error!"); return;
             }
 
             this._oResubmitDialog.setBusy(true);
 
-            var sServiceUrl = oODataModel.getServiceUrl();
-            if (!sServiceUrl.endsWith("/")) {
-                sServiceUrl += "/";
-            }
+            sServiceUrl = oODataModel.getServiceUrl();
+            if (!sServiceUrl.endsWith("/")) sServiceUrl += "/";
+            
+            sActionUrl = sServiceUrl + "Data(uuid=" + oCurrentReq.reqId + ")/" + ACTION_RESUBMIT;
 
-            var sActionUrl = sServiceUrl + "Data(uuid=" + oCurrentReq.reqId + ")/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.resubmit";
-
-            fetch(sServiceUrl, {
-                method: "HEAD",
-                headers: {
-                    "X-CSRF-Token": "Fetch"
-                }
-            })
+            fetch(sServiceUrl, { method: "HEAD", headers: { "X-CSRF-Token": "Fetch" } })
                 .then(function (headResponse) {
-                    if (!headResponse.ok) {
-                        throw new Error("Cannot fetch CSRF token" + headResponse.status);
-                    }
+                    var sToken, oPayload;
+                    if (!headResponse.ok) throw new Error("Cannot fetch CSRF token" + headResponse.status);
 
-                    var sToken = headResponse.headers.get("X-CSRF-Token");
-                    var oPayload = {
-                        "table_name": oCurrentReq.tableName,
-                        "json_data": sNewBase64
-                    };
+                    sToken = headResponse.headers.get("X-CSRF-Token");
+                    oPayload = { "table_name": oCurrentReq.tableName, "json_data": sNewBase64 };
 
                     return fetch(sActionUrl, {
                         method: "POST",
@@ -562,31 +393,25 @@ sap.ui.define([
                 })
                 .then(function (postResponse) {
                     if (!postResponse.ok) {
-                        return postResponse.json().then(function (errData) {
-                            throw errData;
-                        });
+                        return postResponse.json().then(errData => { throw errData; });
                     }
 
-                    that._oResubmitDialog.setBusy(false);
-                    sap.m.MessageToast.show("Resubmitted successfully!");
-                    that._oResubmitDialog.close();
-
-                    that._loadMyRequests(true);
-                })
+                    this._oResubmitDialog.setBusy(false);
+                    MessageToast.show("Resubmitted successfully!");
+                    this._oResubmitDialog.close();
+                    this._loadMyRequests(true);
+                }.bind(this))
                 .catch(function (err) {
-                    that._oResubmitDialog.setBusy(false);
                     var sMsg = "Error during resubmit!";
-
+                    this._oResubmitDialog.setBusy(false);
+                    
                     try {
-                        if (err.error && err.error.message) {
-                            sMsg = err.error.message.value || err.error.message;
-                        } else if (err.message) {
-                            sMsg = err.message;
-                        }
+                        if (err.error && err.error.message) sMsg = err.error.message.value || err.error.message;
+                        else if (err.message) sMsg = err.message;
                     } catch (e) { }
 
-                    sap.m.MessageBox.error(sMsg);
-                });
+                    MessageBox.error(sMsg);
+                }.bind(this));
         }
     });
 });

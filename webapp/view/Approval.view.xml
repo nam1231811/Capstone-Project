@@ -125,5 +125,114 @@
                 </VBox>
             </VBox>
         </f:content>
+
+        <f:dependents>
+            <Dialog 
+                id="diffDialog"
+                title="Approval Detail" 
+                contentWidth="800px" 
+                contentHeight="500px" 
+                resizable="true" 
+                draggable="true">
+                
+                <customHeader>
+                    <Toolbar>
+                        <Title text="Review Request" />
+                        <ToolbarSpacer />
+                        <Button icon="sap-icon://decline" type="Transparent" press=".onCloseDiffDialog" />
+                    </Toolbar>
+                </customHeader>
+
+                <content>
+                    <VBox>
+                        <ObjectHeader 
+                            title="Target Table: {approval>/currentDetail/tableName}" 
+                            icon="sap-icon://table-view" 
+                            responsive="true" 
+                            fullScreenOptimized="true">
+                            <statuses>
+                                <ObjectStatus 
+                                    text="{approval>/currentDetail/action}"
+                                    state="{= ${approval>/currentDetail/action} === 'CREATE' ? 'Success' : (${approval>/currentDetail/action} === 'DELETE' ? 'Error' : 'Warning') }"
+                                    icon="{= ${approval>/currentDetail/action} === 'CREATE' ? 'sap-icon://add' : (${approval>/currentDetail/action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }"
+                                    inverted="true" />
+                            </statuses>
+                        </ObjectHeader>
+
+                        <MessageStrip 
+                            text="Please review the data differences below before making a decision" 
+                            type="Information" 
+                            showIcon="true" 
+                            class="sapUiSmallMargin" />
+                        
+                        <Table 
+                            backgroundDesign="Solid" 
+                            sticky="ColumnHeaders" 
+                            class="sapUiTinyMargin" 
+                            items="{path: 'approval>/currentDetail/diff'}">
+                            <columns>
+                                <Column><Label text="Field" design="Bold" /></Column>
+                                <Column><Label text="Old Data" design="Bold" /></Column>
+                                <Column><Label text="New Data" design="Bold" /></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem>
+                                    <cells>
+                                        <Label text="{approval>field}" design="Bold" />
+                                        
+                                        <ObjectStatus 
+                                            text="{approval>oldData}"
+                                            state="{= ${approval>/currentDetail/action} === 'DELETE' ? 'Warning' : 'None' }" />
+
+                                        <ObjectStatus 
+                                            text="{approval>newData}" 
+                                            state="{= ${approval>/currentDetail/action} === 'DELETE' ? 'None' : (${approval>oldData} !== ${approval>newData} &amp;&amp; ${approval>oldData} !== 'N/A' &amp;&amp; ${approval>oldData} !== '-' ? 'Warning' : 'Success') }"
+                                            icon="{= ${approval>/currentDetail/action} === 'DELETE' ? '' : (${approval>oldData} !== ${approval>newData} &amp;&amp; ${approval>oldData} !== 'N/A' &amp;&amp; ${approval>oldData} !== '-' ? 'sap-icon://edit' : 'sap-icon://sys-enter-2') }" />
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </VBox>
+                </content>
+
+                <beginButton>
+                    <Button text="Approve" type="Accept" icon="sap-icon://accept" press=".onApproveRequest" />
+                </beginButton>
+                <endButton>
+                    <Button text="Reject" type="Reject" icon="sap-icon://decline" press=".onRejectRequest" />
+                </endButton>
+
+            </Dialog>
+
+            <Dialog 
+                id="rejectDialog"
+                title="Confirm Rejection"
+                type="Message"
+                state="Error">
+                <content>
+                    <VBox class="sapUiTinyMarginTop">
+                        <MessageStrip 
+                            text="Rejecting this request will halt the current workflow"
+                            type="Warning"
+                            showIcon="true"
+                            class="sapUiMediumMarginBottom" />
+                        <Label text="Rejection Reason" required="true" />
+                        <TextArea 
+                            id="rejectReasonInput"
+                            width="100%"
+                            placeholder="Please enter the reason why this request is rejected..."
+                            rows="4" />
+                    </VBox>
+                </content>
+                <beginButton>
+                    <Button text="Reject Request" type="Reject" press=".onConfirmReject" />
+                </beginButton>
+                <endButton>
+                    <Button text="Cancel" press=".onCancelReject" />
+                </endButton>
+            </Dialog>
+
+        </f:dependents>
+
     </f:DynamicPage>
 </mvc:View>

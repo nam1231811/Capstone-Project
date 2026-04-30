@@ -6,24 +6,29 @@ sap.ui.define([
 ], function (MessageToast, MessageBox, BusyIndicator, GridValidator) {
     "use strict";
 
+    const ACTION_PREVIEW_EXCEL = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.previewExcel(...)";
+    const ACTION_SAVE_DB = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
+    const ACTION_UPLOAD_EXCEL = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.uploadExcel(...)";
+
     var UploadExcelData = {
+        
         onUploadExcelPress: function (oEvent) {
-            var aFiles = oEvent.getParameter("files");
-            var oFile = aFiles ? aFiles[0] : null;
+            var aFiles = oEvent.getParameter("files"),
+                oFile = aFiles ? aFiles[0] : null,
+                oReader;
 
             if (!oFile) {
                 MessageToast.show("File not found. Please try again!");
                 return;
             }
 
-            var oReader = new FileReader();
+            oReader = new FileReader();
             oReader.onload = function (e) {
-                var sDataURL = e.target.result;
-                var sBase64String = sDataURL.split(",")[1];
-                var sTableName = this.getView().getModel("overall").getProperty("/tableName");
+                var sDataURL = e.target.result,
+                    sBase64String = sDataURL.split(",")[1],
+                    sTableName = this.getView().getModel("overall").getProperty("/tableName");
 
                 UploadExcelData._getPreviewData.call(this, sTableName, sBase64String);
-
                 this.byId("excelUploader").clear();
             }.bind(this);
 
@@ -31,47 +36,42 @@ sap.ui.define([
         },
 
         _getPreviewData: function (sTableName, sBase64String) {
-            var oModel = this.getView().getModel();
-            BusyIndicator.show(0);
+            var oModel = this.getView().getModel(),
+                oActionContext = oModel.bindContext(ACTION_PREVIEW_EXCEL),
+                oPendingBinding = oModel.bindList("/Data", null, null, [
+                    new sap.ui.model.Filter("status", sap.ui.model.FilterOperator.EQ, "P")
+                ]);
 
-            var sPreviewPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.previewExcel(...)";
-            var oActionContext = oModel.bindContext(sPreviewPath);
+            BusyIndicator.show(0);
             oActionContext.setParameter("table_name", sTableName);
             oActionContext.setParameter("file_content", sBase64String);
 
-            // 1. Khởi tạo request lấy danh sách đang Pending
-            var oPendingBinding = oModel.bindList("/Data", null, null, [
-                new sap.ui.model.Filter("status", sap.ui.model.FilterOperator.EQ, "P")
-            ]);
-
-            // 2. Chạy song song cả 2 request (Preview và Pending)
             Promise.all([
                 oActionContext.execute(),
                 oPendingBinding.requestContexts(0, 5000)
             ]).then(function (aResults) {
-                BusyIndicator.hide();
-                var oResult = oActionContext.getBoundContext().getObject();
-                var aPendingContexts = aResults[1] || [];
+                var oResult = oActionContext.getBoundContext().getObject(),
+                    aPendingContexts = aResults[1] || [],
+                    aPendingData = [],
+                    sDecodedString, aParsedData;
 
-                // 3. Trích xuất dữ liệu Pending của đúng bảng hiện tại
-                var aPendingData = [];
+                BusyIndicator.hide();
+
                 aPendingContexts.forEach(function (ctx) {
-                    var oData = ctx.getObject();
-                    var sTbl = oData.table_name || oData.TableName || "";
+                    var oData = ctx.getObject(),
+                        sTbl = oData.table_name || oData.TableName || "";
+                        
                     if (sTbl.toUpperCase() === sTableName.toUpperCase()) {
                         try {
-                            var oParsed = JSON.parse(oData.data || oData.Data || "{}");
-                            aPendingData.push(oParsed);
+                            aPendingData.push(JSON.parse(oData.data || oData.Data || "{}"));
                         } catch (e) { }
                     }
                 });
 
                 if (oResult && oResult.json_string) {
                     try {
-                        var sDecodedString = decodeURIComponent(escape(atob(oResult.json_string)));
-                        var aParsedData = JSON.parse(sDecodedString);
-
-                        // 4. Truyền thêm aPendingData vào hàm mở Dialog
+                        sDecodedString = decodeURIComponent(escape(atob(oResult.json_string)));
+                        aParsedData = JSON.parse(sDecodedString);
                         UploadExcelData._openPreviewDialog.call(this, sTableName, aParsedData, aPendingData);
                     } catch (e) {
                         MessageBox.error("Preview data reading error: " + e.message);
@@ -80,17 +80,20 @@ sap.ui.define([
             }.bind(this)).catch(function (oError) {
                 BusyIndicator.hide();
                 MessageBox.error("Preview error: " + (oError.message || "Please see Console."));
+                console.error(oError);
             });
         },
 
         _openPreviewDialog: function (sTableName, aData, aPendingData) {
-            var oView = this.getView();
-            var oDisplayModel = oView.getModel("displayModel");
-            var aMeta = oDisplayModel ? oDisplayModel.getProperty("/Meta") : [];
-            var aOldData = oDisplayModel ? oDisplayModel.getProperty("/Data") : [];
-            var oJSONModel = new sap.ui.model.json.JSONModel(aData);
+            var oView = this.getView(),
+                oDisplayModel = oView.getModel("displayModel"),
+                aMeta = oDisplayModel ? oDisplayModel.getProperty("/Meta") : [],
+                aOldData = oDisplayModel ? oDisplayModel.getProperty("/Data") : [],
+                oJSONModel = new sap.ui.model.json.JSONModel(aData),
+                aKeyFields = [],
+                oIdCol, oTable, oScrollContainer, oDialog,
+                _performFullGridValidation;
 
-            var aKeyFields = [];
             if (aMeta && aMeta.length > 0) {
                 aMeta.forEach(function (m) {
                     var sUpperKey = (m.fieldname || m.fieldName || m.name || "").toUpperCase();
@@ -99,7 +102,7 @@ sap.ui.define([
                     }
                 });
                 if (aKeyFields.length === 0) {
-                    var oIdCol = aMeta.find(c => {
+                    oIdCol = aMeta.find(c => {
                         var name = (c.fieldname || c.fieldName || "").toUpperCase();
                         return name === "ID" || name.includes("_ID");
                     });
@@ -107,39 +110,36 @@ sap.ui.define([
                 }
             }
 
-            var _performFullGridValidation = function () {
-                var aCurrentData = oJSONModel.getData();
-                var aCleanedData = GridValidator.performLiveValidation(aCurrentData, aMeta, aOldData);
+            _performFullGridValidation = function () {
+                var aCurrentData = oJSONModel.getData(),
+                    aCleanedData = GridValidator.performLiveValidation(aCurrentData, aMeta, aOldData);
 
-                // Kiểm tra trùng Key với danh sách Pending
                 aCleanedData.forEach(function (oRow) {
-                    // Bỏ qua dòng trống không có dữ liệu
-                    var bHasVal = false;
-                    for (var key in oRow) {
+                    var bHasVal = false, key, bIsDuplicatePending;
+
+                    for (key in oRow) {
                         if (!key.startsWith("_state_") && !key.startsWith("_msg_")) {
-                            if (oRow[key] !== undefined && oRow[key] !== null && String(oRow[key]).trim() !== "") bHasVal = true;
+                            if (oRow[key] !== undefined && oRow[key] !== null && String(oRow[key]).trim() !== "") {
+                                bHasVal = true;
+                            }
                         }
                     }
 
                     if (bHasVal && aKeyFields.length > 0 && aPendingData && aPendingData.length > 0) {
-                        var bIsDuplicatePending = false;
+                        bIsDuplicatePending = false;
 
                         aPendingData.forEach(function (oPendingRow) {
                             var bMatchAllKeys = true;
                             aKeyFields.forEach(function (kField) {
-                                var sVal1 = String(oRow[kField] || "").trim().toUpperCase();
-                                var sVal2 = String(oPendingRow[kField] || oPendingRow[kField.toLowerCase()] || "").trim().toUpperCase();
+                                var sVal1 = String(oRow[kField] || "").trim().toUpperCase(),
+                                    sVal2 = String(oPendingRow[kField] || oPendingRow[kField.toLowerCase()] || "").trim().toUpperCase();
                                 if (sVal1 !== sVal2 || sVal1 === "") {
                                     bMatchAllKeys = false;
                                 }
                             });
-
-                            if (bMatchAllKeys) {
-                                bIsDuplicatePending = true;
-                            }
+                            if (bMatchAllKeys) bIsDuplicatePending = true;
                         });
 
-                        // Nếu trùng -> Bôi đỏ ngay lập tức
                         if (bIsDuplicatePending) {
                             aKeyFields.forEach(function (kField) {
                                 oRow["_state_" + kField] = "Error";
@@ -152,7 +152,7 @@ sap.ui.define([
                 oJSONModel.setData(aCleanedData);
             };
 
-            var oTable = new sap.ui.table.Table({
+            oTable = new sap.ui.table.Table({
                 selectionMode: "None",
                 visibleRowCount: aData.length,
                 alternateRowColors: true
@@ -160,9 +160,9 @@ sap.ui.define([
 
             if (aMeta && aMeta.length > 0) {
                 aMeta.forEach(function (colMeta) {
-                    var sKey = colMeta.fieldname;
-                    var sUpperKey = sKey.toUpperCase();
-                    var sLabelText = colMeta.scrtextL || colMeta.scrtextM || colMeta.scrtextS || sKey;
+                    var sKey = colMeta.fieldname,
+                        sUpperKey = sKey.toUpperCase(),
+                        sLabelText = colMeta.scrtextL || colMeta.scrtextM || colMeta.scrtextS || sKey;
 
                     if (sUpperKey !== "MANDT") {
                         oTable.addColumn(new sap.ui.table.Column({
@@ -171,9 +171,7 @@ sap.ui.define([
                                 value: "{" + sUpperKey + "}",
                                 valueState: "{_state_" + sUpperKey + "}",
                                 valueStateText: "{_msg_" + sUpperKey + "}",
-
-                                change: function (oEvent) {
-
+                                change: function () {
                                     _performFullGridValidation();
                                 }
                             }),
@@ -186,10 +184,9 @@ sap.ui.define([
 
             oTable.setModel(oJSONModel);
             oTable.bindRows("/");
-
             _performFullGridValidation();
 
-            var oScrollContainer = new sap.m.ScrollContainer({
+            oScrollContainer = new sap.m.ScrollContainer({
                 horizontal: true,
                 vertical: true,
                 width: "100%",
@@ -197,7 +194,7 @@ sap.ui.define([
                 content: [oTable]
             });
 
-            var oDialog = new sap.m.Dialog({
+            oDialog = new sap.m.Dialog({
                 title: "Check data before uploading - Table " + sTableName + " (" + aData.length + " line)",
                 contentWidth: "1200px",
                 contentHeight: "600px",
@@ -210,75 +207,49 @@ sap.ui.define([
                         type: "Emphasized",
                         icon: "sap-icon://upload",
                         press: function () {
-                            var oModel = this.getView().getModel();
+                            var oModelInner = this.getView().getModel(),
+                                oPendingBindingInner = oModelInner.bindList("/Data", null, null, [
+                                    new sap.ui.model.Filter("status", sap.ui.model.FilterOperator.EQ, "P")
+                                ]);
+
                             sap.ui.core.BusyIndicator.show(0);
 
-                            // --- BƯỚC A: GỌI BACKEND LẤY DANH SÁCH PENDING MỚI NHẤT TRƯỚC KHI GỬI ---
-                            var oPendingBinding = oModel.bindList("/Data", null, null, [
-                                new sap.ui.model.Filter("status", sap.ui.model.FilterOperator.EQ, "P")
-                            ]);
+                            oPendingBindingInner.requestContexts(0, 5000).then(function (aContexts) {
+                                var aFreshPendingData = [],
+                                    aCurrentData, bHasError = false, aCleanData = [],
+                                    sNewJsonString, sNewBase64String;
 
-                            oPendingBinding.requestContexts(0, 5000).then(function (aContexts) {
                                 sap.ui.core.BusyIndicator.hide();
 
-                                // Lọc lấy danh sách Pending của bảng hiện tại
-                                var aFreshPendingData = [];
                                 aContexts.forEach(function (ctx) {
-                                    var oData = ctx.getObject();
-                                    var sTbl = oData.table_name || oData.TableName || "";
+                                    var oData = ctx.getObject(),
+                                        sTbl = oData.table_name || oData.TableName || "";
                                     if (sTbl.toUpperCase() === sTableName.toUpperCase()) {
                                         try {
-                                            var oParsed = JSON.parse(oData.data || oData.Data || "{}");
-                                            aFreshPendingData.push(oParsed);
+                                            aFreshPendingData.push(JSON.parse(oData.data || oData.Data || "{}"));
                                         } catch (e) { }
                                     }
                                 });
 
-                                // Cập nhật lại biến Pending của Dialog và chạy lại bộ quét lỗi (để bôi đỏ nếu có trùng)
                                 aPendingData = aFreshPendingData;
                                 _performFullGridValidation();
 
-                                // --- BƯỚC B: CHẠY LOGIC LÀM SẠCH VÀ CHUẨN BỊ UPLOAD NHƯ CŨ ---
-                                var aCurrentData = oJSONModel.getData();
-                                var bHasError = false;
-                                var aCleanData = [];
+                                aCurrentData = oJSONModel.getData();
 
-                                // TỰ ĐỘNG TÌM CỘT KEY TỪ METADATA
-                                var aKeyFields = [];
-                                if (aMeta && aMeta.length > 0) {
-                                    aMeta.forEach(function (m) {
-                                        var sUpperKey = (m.fieldname || m.fieldName || m.name || "").toUpperCase();
-                                        if (m.keyflag === "X" || m.keyFlag === "X" || m.isKey === true) {
-                                            aKeyFields.push(sUpperKey);
-                                        }
-                                    });
-                                    if (aKeyFields.length === 0) {
-                                        var oIdCol = aMeta.find(c => {
-                                            var name = (c.fieldname || c.fieldName || "").toUpperCase();
-                                            return name === "ID" || name.includes("_ID");
-                                        });
-                                        if (oIdCol) aKeyFields.push((oIdCol.fieldname || oIdCol.fieldName).toUpperCase());
-                                    }
-                                }
-
-                                // QUÉT TỪNG DÒNG DỮ LIỆU
                                 aCurrentData.forEach(function (oRow) {
-                                    var oCleanRow = {};
-                                    var bIsEmptyRow = true;
-                                    var bHasKeyData = true;
-                                    var bHasOtherData = false;
+                                    var oCleanRow = {},
+                                        bIsEmptyRow = true,
+                                        bHasKeyData = true,
+                                        bHasOtherData = false,
+                                        key, sValue;
 
-                                    for (var key in oRow) {
+                                    for (key in oRow) {
                                         if (!key.startsWith("_state_") && !key.startsWith("_msg_")) {
-                                            var sValue = oRow[key];
+                                            sValue = oRow[key];
                                             oCleanRow[key] = sValue;
-
-                                            var bHasVal = (sValue !== undefined && sValue !== null && String(sValue).trim() !== "");
-                                            if (bHasVal) {
+                                            if (sValue !== undefined && sValue !== null && String(sValue).trim() !== "") {
                                                 bIsEmptyRow = false;
-                                                if (!aKeyFields.includes(key)) {
-                                                    bHasOtherData = true;
-                                                }
+                                                if (!aKeyFields.includes(key)) bHasOtherData = true;
                                             }
                                         }
                                     }
@@ -292,7 +263,6 @@ sap.ui.define([
                                         });
                                     }
 
-                                    // ÁP DỤNG LOGIC NGHIỆP VỤ
                                     if (!bIsEmptyRow) {
                                         if (!bHasKeyData && bHasOtherData) {
                                             aKeyFields.forEach(function (kField) {
@@ -303,12 +273,10 @@ sap.ui.define([
                                                 }
                                             });
                                         } else if (bHasKeyData) {
-                                            for (var key in oRow) {
+                                            for (key in oRow) {
                                                 if (!key.startsWith("_state_") && !key.startsWith("_msg_")) {
-                                                    var sVal = oRow[key];
-                                                    var bIsFieldEmpty = (sVal === undefined || sVal === null || String(sVal).trim() === "");
-
-                                                    if (bIsFieldEmpty) {
+                                                    sValue = oRow[key];
+                                                    if (sValue === undefined || sValue === null || String(sValue).trim() === "") {
                                                         oRow["_state_" + key] = "None";
                                                         oRow["_msg_" + key] = "";
                                                     }
@@ -316,8 +284,7 @@ sap.ui.define([
                                             }
                                         }
 
-                                        // Chốt lỗi cuối cùng (Bao gồm cả lỗi trùng Pending vừa quét ở trên)
-                                        for (var key in oRow) {
+                                        for (key in oRow) {
                                             if (key.startsWith("_state_") && oRow[key] === "Error") {
                                                 bHasError = true;
                                             }
@@ -329,28 +296,27 @@ sap.ui.define([
 
                                 oJSONModel.refresh();
 
-                                // --- BƯỚC C: CHẶN HOẶC CHO PHÉP GỬI ---
                                 if (aCleanData.length === 0) {
-                                    sap.m.MessageBox.warning("There is no valid data to upload. Please check again!");
+                                    MessageBox.warning("There is no valid data to upload. Please check again!");
                                     return;
                                 }
 
                                 if (bHasError) {
-                                    sap.m.MessageBox.error("Data conflict detected or format error! Please check the red cells before uploading.");
+                                    MessageBox.error("Data conflict detected or format error! Please check the red cells before uploading.");
                                     return;
                                 }
 
-                                var sNewJsonString = JSON.stringify(aCleanData);
-                                var sNewBase64String = btoa(unescape(encodeURIComponent(sNewJsonString)));
+                                sNewJsonString = JSON.stringify(aCleanData);
+                                sNewBase64String = btoa(unescape(encodeURIComponent(sNewJsonString)));
 
                                 UploadExcelData._sendExcelToBackend.call(this, sTableName, sNewBase64String);
                                 oDialog.close();
 
                             }.bind(this)).catch(function (oError) {
                                 sap.ui.core.BusyIndicator.hide();
-                                sap.m.MessageBox.error("System error when verifying pending status. Please try again!");
+                                MessageBox.error("System error when verifying pending status. Please try again!");
+                                console.error(oError);
                             });
-
                         }.bind(this)
                     }),
                     new sap.m.Button({
@@ -366,24 +332,15 @@ sap.ui.define([
         },
 
         _sendExcelToBackend: function (sTableName, sBase64String) {
-            var oView = this.getView();
-            var oModel = oView.getModel();
-
-            var oAuthModel = this.getOwnerComponent().getModel("auth");
-            var bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false;
-            var bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false;
+            var oView = this.getView(),
+                oModel = oView.getModel(),
+                oAuthModel = this.getOwnerComponent().getModel("auth"),
+                bIsManager = oAuthModel ? oAuthModel.getProperty("/isManager") : false,
+                bIsAdmin = oAuthModel ? oAuthModel.getProperty("/isAdmin") : false,
+                sActionPath = (bIsManager || bIsAdmin) ? ACTION_SAVE_DB : ACTION_UPLOAD_EXCEL,
+                oActionContext = oModel.bindContext(sActionPath);
 
             BusyIndicator.show(0);
-
-            var sActionPath = "";
-            if (bIsManager || bIsAdmin) {
-                sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
-            } else {
-                sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.uploadExcel(...)";
-            }
-
-            var oActionContext = oModel.bindContext(sActionPath);
-
             oActionContext.setParameter("table_name", sTableName.toUpperCase());
 
             if (bIsManager || bIsAdmin) {
@@ -393,11 +350,11 @@ sap.ui.define([
             }
 
             oActionContext.execute().then(function () {
-                BusyIndicator.hide();
-
                 var sSuccessMsg = (bIsManager || bIsAdmin)
                     ? "Data saved directly to Physical Database!"
                     : "Excel Uploaded successfully! Waiting for approval.";
+                
+                BusyIndicator.hide();
                 MessageToast.show(sSuccessMsg);
 
                 if (typeof this._refreshData === "function") {
@@ -406,6 +363,7 @@ sap.ui.define([
             }.bind(this)).catch(function (oError) {
                 BusyIndicator.hide();
                 MessageBox.error("Upload error: " + (oError.message || "Please see Console."));
+                console.error(oError);
             });
         }
     };
