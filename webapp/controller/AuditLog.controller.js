@@ -351,7 +351,6 @@ sap.ui.define([
             var aCurrentPhase = [];
 
             aTrailLogs.forEach(function (oLog) {
-                console.log(oLog);
                 if (oLog.Status !== 'P') {
                     aCurrentPhase.push(oLog);
                     if (oLog.Status === 'A') {
@@ -385,8 +384,6 @@ sap.ui.define([
                 });
 
                 phaseLogs.forEach(function (oLog, nodeIndex) {
-                    console.log(oLog);
-                    
                     var sAction = oLog.Action === 'C' ? 'Create' : (oLog.Action === 'U' ? 'Update' : 'Delete');
                     var sStatus = oLog.Status === 'R' ? 'Rejected' : (oLog.Status === 'P' ? 'Pending' : 'Approved');
                     var sTime = DataFormatter.formatDateTime(oLog.ChangedAt);
@@ -430,7 +427,6 @@ sap.ui.define([
                     });
                 });
             });
-            console.log(aProcessNodes);
             
             oLocalModel.setProperty("/processNodes", aProcessNodes);
             oLocalModel.setProperty("/processLanes", aProcessLanes);

@@ -68,47 +68,88 @@ sap.ui.define([], function () {
                 case "STRING":
                 case "CUKY":
                 case "UNIT":
-                    if (bHasLengthLimit && sStrVal.length > iMaxLen) return { valid: false, msg: msgTooLong };
+                    if (bHasLengthLimit && sStrVal.length > iMaxLen) return { 
+                        valid: false, 
+                        msg: msgTooLong 
+                    };
                     break;
                 case "NUMC":
-                    if (!/^\d+$/.test(sStrVal)) return { valid: false, msg: msgInvalidNumc };
-                    if (bHasLengthLimit && sStrVal.length > iMaxLen) return { valid: false, msg: msgTooLong };
+                    if (!/^\d+$/.test(sStrVal)) return { 
+                        valid: false, 
+                        msg: msgInvalidNumc 
+                    };
+                    if (bHasLengthLimit && sStrVal.length > iMaxLen) return { 
+                        valid: false, 
+                        msg: msgTooLong 
+                    };
                     break;
                 case "INT1":
                 case "INT2":
                 case "INT4":
                 case "INT8":
-                    if (!/^-?\d+$/.test(sStrVal)) return { valid: false, msg: msgOnlyNum };
-                    if (bHasLengthLimit && sStrVal.replace("-", "").length > iMaxLen) return { valid: false, msg: msgTooLong };
+                    if (!/^-?\d+$/.test(sStrVal)) return { 
+                        valid: false, 
+                        msg: msgOnlyNum 
+                    };
+                    if (bHasLengthLimit && sStrVal.replace("-", "").length > iMaxLen) return { 
+                        valid: false, 
+                        msg: msgTooLong 
+                    };
                     break;
                 case "DEC":
                 case "CURR":
                 case "QUAN":
                 case "FLTP":
-                    if (!/^-?\d+(\.\d+)?$/.test(sStrVal)) return { valid: false, msg: msgOnlyNum };
-                    if (bHasLengthLimit && sStrVal.replace("-", "").replace(".", "").length > iMaxLen) return { valid: false, msg: msgTooLong };
+                    if (!/^-?\d+(\.\d+)?$/.test(sStrVal)) return { 
+                        valid: false, 
+                        msg: msgOnlyNum 
+                    };
+                    if (bHasLengthLimit && sStrVal.replace("-", "").replace(".", "").length > iMaxLen) return { 
+                        valid: false, 
+                        msg: msgTooLong 
+                    };
                     break;
                 case "DATS":
-                    if (!/^(\d{4}-\d{2}-\d{2}|\d{8})$/.test(sStrVal)) return { valid: false, msg: msgIncorrectDate };
+                    if (!/^(\d{4}-\d{2}-\d{2}|\d{8})$/.test(sStrVal)) return { 
+                        valid: false, 
+                        msg: msgIncorrectDate 
+                    };
                     var iY, iM, iD;
                     if (sStrVal.includes("-")) {
                         var aParts = sStrVal.split("-");
-                        iY = parseInt(aParts[0], 10); iM = parseInt(aParts[1], 10); iD = parseInt(aParts[2], 10);
+                        iY = parseInt(aParts[0], 10); 
+                        iM = parseInt(aParts[1], 10); 
+                        iD = parseInt(aParts[2], 10);
                     } else {
-                        iY = parseInt(sStrVal.substring(0, 4), 10); iM = parseInt(sStrVal.substring(4, 6), 10); iD = parseInt(sStrVal.substring(6, 8), 10);
+                        iY = parseInt(sStrVal.substring(0, 4), 10); 
+                        iM = parseInt(sStrVal.substring(4, 6), 10); 
+                        iD = parseInt(sStrVal.substring(6, 8), 10);
                     }
                     var oDate = new Date(iY, iM - 1, iD);
-                    if (oDate.getFullYear() !== iY || (oDate.getMonth() + 1) !== iM || oDate.getDate() !== iD) return { valid: false, msg: msgInvalidDate };
+                    if (oDate.getFullYear() !== iY || (oDate.getMonth() + 1) !== iM || oDate.getDate() !== iD) 
+                        return { 
+                            valid: false, 
+                            msg: msgInvalidDate 
+                        };
                     break;
                 case "TIMS":
-                    if (!/^\d{6}$/.test(sStrVal)) return { valid: false, msg: msgInvalidTime };
+                    if (!/^\d{6}$/.test(sStrVal)) return { 
+                        valid: false, 
+                        msg: msgInvalidTime 
+                    };
                     var hh = parseInt(sStrVal.substring(0, 2), 10);
                     var mm = parseInt(sStrVal.substring(2, 4), 10);
                     var ss = parseInt(sStrVal.substring(4, 6), 10);
-                    if (hh > 23 || mm > 59 || ss > 59) return { valid: false, msg: msgInvalidTime };
+                    if (hh > 23 || mm > 59 || ss > 59) return { 
+                        valid: false, 
+                        msg: msgInvalidTime 
+                    };
                     break;
                 default:
-                    if (bHasLengthLimit && sStrVal.length > iMaxLen) return { valid: false, msg: msgTooLong };
+                    if (bHasLengthLimit && sStrVal.length > iMaxLen) return { 
+                        valid: false, 
+                        msg: msgTooLong 
+                    };
                     break;
             }
             return { valid: true, msg: "" };
