@@ -503,12 +503,23 @@ sap.ui.define([
             var oFCL = this.oView.getParent().getParent();
             if (oFCL) {
                 oFCL.setLayout(fioriLibrary.LayoutType.TwoColumnsMidExpanded);
-                var oItemPath = oEvent.getSource().getBindingContext("displayModel").getPath();
-                var row_id = oItemPath.split("/").slice(-1).pop();
+
+                var oContext = oEvent.getSource().getBindingContext("displayModel");
+                var oClickedData = oContext.getObject();
+                var oModel = this.getView().getModel("displayModel");
+                var aMeta = oModel.getProperty("/Meta") || [];
+                var row_id = aMeta.findIndex(function(meta) {
+                    return meta.fieldname === oClickedData.fieldname;
+                });
+
+                if (row_id === -1) {
+                    row_id = oContext.getPath().split("/").pop();
+                }
+
                 var tableName = this.getView().getModel("view").getProperty("/tableName");
                 this.getOwnerComponent().getRouter().navTo("Metadata", {
                     layout: fioriLibrary.LayoutType.TwoColumnsMidExpanded,
-                    rowId: row_id,
+                    rowId: row_id.toString(),
                     tableName: tableName
                 }, true);
             } else {

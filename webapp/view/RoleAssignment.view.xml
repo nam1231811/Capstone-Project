@@ -5,6 +5,7 @@
     xmlns:f="sap.f"
     xmlns:card="sap.f.cards"
     xmlns:layout="sap.ui.layout"
+    xmlns:form="sap.ui.layout.form"
     xmlns:core="sap.ui.core"
     displayBlock="true">
     
@@ -124,5 +125,54 @@
 
             </layout:Grid>
         </f:content>
+
+        <f:dependents>
+            <Dialog 
+                id="roleDialog"
+                title="{roleLocal>/dialogTitle}"
+                contentWidth="400px">
+                <content>
+                    <form:SimpleForm 
+                        layout="ResponsiveGridLayout" 
+                        labelSpanL="4" labelSpanM="4" 
+                        emptySpanL="1" emptySpanM="1" 
+                        columnsL="1" columnsM="1">
+                        <form:content>
+                            <Label text="User Account" required="true" />
+                            <Input 
+                                value="{roleLocal>/formData/userId}" 
+                                placeholder="e.g., DEV-097..." 
+                                enabled="{= !${roleLocal>/formData/isEditMode} }" />
+
+                            <Label text="Assign Role" required="true" />
+                            <Select 
+                                selectedKey="{roleLocal>/formData/roleId}" 
+                                width="100%">
+                                <items>
+                                    <core:Item key="" text="--- Select Role (Unassigned) ---" />
+                                    <core:Item key="Admin" text="Admin (Full Access)" />
+                                    <core:Item key="Manager" text="Manager (Approval)" />
+                                    <core:Item key="Clerk" text="Clerk (Employee)" />
+                                </items>
+                            </Select>
+
+                            <Label text="Expiration Date" />
+                            <DatePicker 
+                                value="{roleLocal>/formData/validTo}" 
+                                valueFormat="yyyyMMdd" 
+                                displayFormat="dd/MM/yyyy" 
+                                placeholder="Leave blank = No expiration" />
+                        </form:content>
+                    </form:SimpleForm>
+                </content>
+                <beginButton>
+                    <Button text="Save (Assign Role)" type="Emphasized" press=".onSaveRole" />
+                </beginButton>
+                <endButton>
+                    <Button text="Cancel" press=".onCloseRoleDialog" />
+                </endButton>
+            </Dialog>
+        </f:dependents>
+
     </f:DynamicPage>
 </mvc:View>
