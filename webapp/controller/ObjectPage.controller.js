@@ -522,10 +522,6 @@ sap.ui.define([
             }
             var oFCL = this.oView.getParent().getParent();
             if (oFCL) {
-                var oRowContext = oEvent.getParameter("rowContext");
-                if (!oRowContext) {
-                    return;
-                }
                 oFCL.setLayout(fioriLibrary.LayoutType.TwoColumnsMidExpanded);
                 var sPath = oRowContext.getPath();
                 var row_id = sPath.split("/").pop();
@@ -567,52 +563,10 @@ sap.ui.define([
         },
 
         onDynamicValueHelp: function (oEvent) {
-            // var oInput = oEvent.getSource();
-            // var sTableName = oInput.data("tableName");
-            // var sFieldName = oInput.data("fieldName");
-
-            // if (!sTableName || !sFieldName) {
-            //     console.error("Missing Metadata for Value Help");
-            //     return;
-            // }
-
-            // if (!this._oDynamicVHDialog) {
-            //     this._oDynamicVHDialog = new sap.m.SelectDialog({
-            //         title: "Select Value",
-            //         confirm: this.onValueHelpConfirm.bind(this)
-            //     });
-            //     this.getView().addDependent(this._oDynamicVHDialog);
-            // }
-
-            // var aFilters = [
-            //     new sap.ui.model.Filter("TableName", "EQ", sTableName),
-            //     new sap.ui.model.Filter("FieldName", "EQ", sFieldName)
-            // ];
-
-            // this._oDynamicVHDialog.bindAggregation("items", {
-            //     path: "/DynamicVHSet",
-            //     template: new sap.m.StandardListItem({
-            //         title: "{KeyValue}",
-            //         description: "{Description}",
-            //         info: "{FieldName}"
-            //     }),
-            //     filters: aFilters
-            // });
-
-            // this._oDynamicVHDialog.data("targetInput", oInput);
-            // this._oDynamicVHDialog.open();
             ValueHelp.openFieldValueHelp(this, oEvent);
         },
 
         onValueHelpConfirm: function (oEvent) {
-            // var oSelectedItem = oEvent.getParameter("selectedItem");
-            // var oDialog = oEvent.getSource();
-            // var oInput = oDialog.data("targetInput");
-            // if (oSelectedItem && oInput) {
-            //     var sSelectedKey = oSelectedItem.getTitle();
-            //     oInput.setValue(sSelectedKey);
-            //     oInput.fireChange({ value: sSelectedKey });
-            // }
             ValueHelp.confirmValueHelp(oEvent);
         },
 
