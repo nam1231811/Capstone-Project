@@ -72,7 +72,7 @@ sap.ui.define([
             var oView = this.getView();
             var oDisplayModel = oView.getModel("displayModel");
             var oOverallModel = oView.getModel("overall");
-            var aRawMeta = oPayload.metadata || [];
+            var aRawMeta = oPayload.metadata || [];         
             var oUniqueMap = new Map();
             aRawMeta.forEach(item => {
                 if (item.fieldname && !oUniqueMap.has(item.fieldname)) {
@@ -116,7 +116,7 @@ sap.ui.define([
             oDisplayModel?.setProperty("/Meta", aTableMeta);
             oDisplayModel?.setProperty("/UiMeta", aUiMeta);
             var aRawData = oPayload.dataRows || oDisplayModel?.getProperty("/Data") || [];
-
+            console.log(aRawData);
             var aFormattedData = aRawData.map((rowObj, rowIndex) => {
                 var oActualData = {};
                 if (rowObj.data) {
@@ -159,7 +159,8 @@ sap.ui.define([
                 });
                 return oNewRow;
             });
-
+            console.log(aFormattedData);
+            
             var sRecentKey = this._sRecentlySavedKey;
             aFormattedData.sort((a, b) => {
                 var valA = a[0] ? String(a[0].value).trim() : "";
@@ -309,7 +310,7 @@ sap.ui.define([
         },
 
         onAdd: function () {
-            var footer = this._onEditToggleButtonPress();
+            var footer = this.onEditToggleButtonPress();
             var oModel = this.getView().getModel("displayModel");
             var aData = oModel.getProperty("/Data") ? oModel.getProperty("/Data").slice() : [];
             if (footer) {
@@ -430,12 +431,12 @@ sap.ui.define([
                     sap.ui.core.BusyIndicator.hide();
                     sap.m.MessageToast.show("Created in database successfully!");
                     this._refreshData(table);
-                    this._onEditToggleButtonPress();
+                    this.onEditToggleButtonPress();
                 }.bind(this)).catch(function (oError) {
                     tableView.setBusy(false);
                     sap.ui.core.BusyIndicator.hide();
                     this._refreshData(table);
-                    this._onEditToggleButtonPress();
+                    this.onEditToggleButtonPress();
                 }.bind(this));
                 return;
             }
@@ -458,7 +459,7 @@ sap.ui.define([
                 if (bSuccess) {
                     sap.m.MessageToast.show("Request sent successfully! Please wait for Manager approval!");
                     this._refreshData(table);
-                    this._onEditToggleButtonPress();
+                    this.onEditToggleButtonPress();
                 } else {
                     if (oEventContext && oEventContext.isTransient()) {
                         oEventContext.delete(); 
@@ -475,18 +476,18 @@ sap.ui.define([
                     }
                     sap.m.MessageBox.error("Failed to send request:\n\n" + sBackendError);
                     this._refreshData(table);
-                    this._onEditToggleButtonPress();
+                    this.onEditToggleButtonPress();
                 }
             }.bind(this));
             var oContext = oListBinding.create(oFinalPayload);
         },
 
-        _onEditToggleButtonPress: function () {
+        onEditToggleButtonPress: function () {
             var oObjectPage = this.getView().byId("TableContent"),
                 bCurrentShowFooterState = oObjectPage.getShowFooter(),
                 oModel = this.getView().getModel("displayModel"),
                 aData = oModel.getProperty("/Data") || [];
-
+            var oOverallModel = this.getView().getModel("overall");
             oObjectPage.setShowFooter(!bCurrentShowFooterState);
             if (bCurrentShowFooterState) {
                 if (aData.length > 0 && aData[0][0] && aData[0][0].isNew) {
@@ -494,6 +495,7 @@ sap.ui.define([
                     oModel.setProperty("/Data", aData);
                 }
             }
+            oOverallModel.setProperty("/count", aData.length);
             return bCurrentShowFooterState
         },
 

@@ -141,7 +141,8 @@
                 </subSections>
             </ObjectPageSection>
 
-            <ObjectPageSection title="Technical Information">
+            <ObjectPageSection title="System Data"
+            visible="{= ${detailRecord>/Data/0/createdBy} !== '' || ${detailRecord>/Data/0/createdAt} !== '' || ${detailRecord>/Data/0/changedBy} !== '' || ${detailRecord>/Data/0/changedAt} !== '' }">
                 <subSections>
                     <ObjectPageSubSection>
                         <blocks>
