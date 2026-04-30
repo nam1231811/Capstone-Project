@@ -1,7 +1,9 @@
 sap.ui.define([
     "sap/ui/model/Filter",
-    "sap/ui/model/FilterOperator"
-], function (Filter, FilterOperator) {
+    "sap/ui/model/FilterOperator",
+    "sap/m/SelectDialog",
+    "sap/m/StandardListItem",
+], function (Filter, FilterOperator, SelectDialog, StandardListItem) {
     "use strict";
 
     return {
@@ -92,6 +94,54 @@ sap.ui.define([
             }
 
             oController._pValueHelpDialog.open();
-        }
+        },
+
+        openFieldValueHelp: function (oController, oEvent) {
+            var oInput = oEvent.getSource();
+            var sTableName = oInput.data("tableName");
+            var sFieldName = oInput.data("fieldName") ;
+
+            if (!sTableName || !sFieldName) {
+                console.error("Missing Metadata for Value Help. Table: " + sTableName + ", Field: " + sFieldName);
+                MessageToast.show("Cannot find metadata for this field");
+                return;
+            }
+
+            if (!oController._oDynamicVHDialog) {
+                oController._oDynamicVHDialog = new SelectDialog({
+                    title: "Select Value",
+                    confirm: oController.onValueHelpConfirm.bind(oController) 
+                });
+                oController.getView().addDependent(oController._oDynamicVHDialog);
+            }
+
+            var aFilters = [
+                new Filter("TableName", FilterOperator.EQ, sTableName),
+                new Filter("FieldName", FilterOperator.EQ, sFieldName)
+            ];
+
+            oController._oDynamicVHDialog.bindAggregation("items", {
+                path: "/DynamicVHSet",
+                template: new StandardListItem({
+                    title: "{KeyValue}",
+                    description: "{Description}",
+                    info: "{FieldName}"
+                }),
+                filters: aFilters
+            });
+            oController._oDynamicVHDialog.data("targetInput", oInput);
+            oController._oDynamicVHDialog.open();
+        },
+
+        confirmValueHelp: function (oEvent) {
+            var oSelectedItem = oEvent.getParameter("selectedItem");
+            var oDialog = oEvent.getSource();
+            var oInput = oDialog.data("targetInput");
+            if (oSelectedItem && oInput) {
+                var sSelectedKey = oSelectedItem.getTitle();
+                oInput.setValue(sSelectedKey);
+                oInput.fireChange({ value: sSelectedKey });
+            }
+        },
     };
 });

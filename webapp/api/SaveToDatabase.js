@@ -2,13 +2,12 @@ sap.ui.define([
     "zapp/utils/DataFormatter"
 ], function (DataFormatter) {
     "use strict";
-
+    const SAVE_PATH = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
     return {
         onSaveDB: function (sTableName, oView, vCustomData) {
             var oModel = oView.getModel();
             var sBase64Data = "";
-            var sActionPath = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.saveToDatabase(...)";
-
+            var sActionPath = SAVE_PATH;
             if (!sTableName) {
                 sap.m.MessageBox.error("Table is unknown");
                 return Promise.reject(new Error("Table is unknown"));

@@ -11,9 +11,10 @@ sap.ui.define([
     "zapp/api/SaveToDatabase",
     "zapp/utils/GridValidator",
     "zapp/api/LoadData",
+    "zapp/utils/ValueHelp"
 ], function (
     Controller, fioriLibrary, SearchData, FilterData, SortData, PersonalizationData,
-    DataFormatter, UploadExcelData, DownloadExcelData, SaveToDatabase, GridValidator, LoadData
+    DataFormatter, UploadExcelData, DownloadExcelData, SaveToDatabase, GridValidator, LoadData, ValueHelp
 ) {
     "use strict";
 
@@ -22,17 +23,7 @@ sap.ui.define([
         _oFieldName: [],
         _oDataRaw: [],
         _sRecentlySavedKey: null,
-        onSearch: function (oEvent) {
-            SearchData.onSearch.call(this, oEvent);
-        },
 
-        onFilter: function () {
-            FilterData.onFilter.call(this);
-        },
-
-        onFilterConfirm: function (oEvent) {
-            FilterData.onFilterConfirm.call(this, oEvent);
-        },
         onInit: function () {
             var oOwnerComponent = this.getOwnerComponent();
             this.oRouter = oOwnerComponent.getRouter();
@@ -299,10 +290,6 @@ sap.ui.define([
             return oColumn;
         },
 
-        onPersonalization: function () {
-            PersonalizationData.onPersonalization.call(this);
-        },
-
         onColumnSelect: function (oEvent) {
             SortData.onColumnSelect.call(this, oEvent);
         },
@@ -529,6 +516,10 @@ sap.ui.define([
         },
 
         onListItemPress: function (oEvent) {
+            var oRowContext = oEvent.getParameter("rowContext");
+            if (!oRowContext) {
+                return;
+            }
             var oFCL = this.oView.getParent().getParent();
             if (oFCL) {
                 var oRowContext = oEvent.getParameter("rowContext");
@@ -547,61 +538,6 @@ sap.ui.define([
                 }, true);
             } else {
                 console.error("FCL object not found");
-            }
-        },
-
-        onUploadExcelPress: function (oEvent) {
-            UploadExcelData.onUploadExcelPress.call(this, oEvent);
-        },
-
-        onDownloadExcelPress: function () {
-            DownloadExcelData.onDownloadExcelPress(this);
-        },
-
-        onDynamicValueHelp: function (oEvent) {
-            var oInput = oEvent.getSource();
-            var sTableName = oInput.data("tableName");
-            var sFieldName = oInput.data("fieldName");
-
-            if (!sTableName || !sFieldName) {
-                console.error("Missing Metadata for Value Help");
-                return;
-            }
-
-            if (!this._oDynamicVHDialog) {
-                this._oDynamicVHDialog = new sap.m.SelectDialog({
-                    title: "Select Value",
-                    confirm: this.onValueHelpConfirm.bind(this)
-                });
-                this.getView().addDependent(this._oDynamicVHDialog);
-            }
-
-            var aFilters = [
-                new sap.ui.model.Filter("TableName", "EQ", sTableName),
-                new sap.ui.model.Filter("FieldName", "EQ", sFieldName)
-            ];
-
-            this._oDynamicVHDialog.bindAggregation("items", {
-                path: "/DynamicVHSet",
-                template: new sap.m.StandardListItem({
-                    title: "{KeyValue}",
-                    description: "{Description}",
-                    info: "{FieldName}"
-                }),
-                filters: aFilters
-            });
-
-            this._oDynamicVHDialog.data("targetInput", oInput);
-            this._oDynamicVHDialog.open();
-        },
-
-        onValueHelpConfirm: function (oEvent) {
-            var oSelectedItem = oEvent.getParameter("selectedItem");
-            if (oSelectedItem) {
-                var oInput = oEvent.getSource().data("targetInput");
-                var sSelectedKey = oSelectedItem.getTitle();
-                oInput.setValue(sSelectedKey);
-                oInput.fireChange({ value: sSelectedKey });
             }
         },
 
@@ -630,10 +566,84 @@ sap.ui.define([
                 });
         },
 
+        onDynamicValueHelp: function (oEvent) {
+            // var oInput = oEvent.getSource();
+            // var sTableName = oInput.data("tableName");
+            // var sFieldName = oInput.data("fieldName");
+
+            // if (!sTableName || !sFieldName) {
+            //     console.error("Missing Metadata for Value Help");
+            //     return;
+            // }
+
+            // if (!this._oDynamicVHDialog) {
+            //     this._oDynamicVHDialog = new sap.m.SelectDialog({
+            //         title: "Select Value",
+            //         confirm: this.onValueHelpConfirm.bind(this)
+            //     });
+            //     this.getView().addDependent(this._oDynamicVHDialog);
+            // }
+
+            // var aFilters = [
+            //     new sap.ui.model.Filter("TableName", "EQ", sTableName),
+            //     new sap.ui.model.Filter("FieldName", "EQ", sFieldName)
+            // ];
+
+            // this._oDynamicVHDialog.bindAggregation("items", {
+            //     path: "/DynamicVHSet",
+            //     template: new sap.m.StandardListItem({
+            //         title: "{KeyValue}",
+            //         description: "{Description}",
+            //         info: "{FieldName}"
+            //     }),
+            //     filters: aFilters
+            // });
+
+            // this._oDynamicVHDialog.data("targetInput", oInput);
+            // this._oDynamicVHDialog.open();
+            ValueHelp.openFieldValueHelp(this, oEvent);
+        },
+
+        onValueHelpConfirm: function (oEvent) {
+            // var oSelectedItem = oEvent.getParameter("selectedItem");
+            // var oDialog = oEvent.getSource();
+            // var oInput = oDialog.data("targetInput");
+            // if (oSelectedItem && oInput) {
+            //     var sSelectedKey = oSelectedItem.getTitle();
+            //     oInput.setValue(sSelectedKey);
+            //     oInput.fireChange({ value: sSelectedKey });
+            // }
+            ValueHelp.confirmValueHelp(oEvent);
+        },
+
+        onPersonalization: function () {
+            PersonalizationData.onPersonalization.call(this);
+        },
+
         _validateLiveGrid: function () {
             var oModel = this.getView().getModel("displayModel");
             var aCleanedData = GridValidator.performLiveValidation(oModel.getProperty("/Data"), oModel.getProperty("/Meta"));
             oModel.setProperty("/Data", aCleanedData);
+        },
+
+        onUploadExcelPress: function (oEvent) {
+            UploadExcelData.onUploadExcelPress.call(this, oEvent);
+        },
+
+        onDownloadExcelPress: function () {
+            DownloadExcelData.onDownloadExcelPress(this);
+        },
+
+        onSearch: function (oEvent) {
+            SearchData.onSearch.call(this, oEvent);
+        },
+
+        onFilter: function () {
+            FilterData.onFilter.call(this);
+        },
+
+        onFilterConfirm: function (oEvent) {
+            FilterData.onFilterConfirm.call(this, oEvent);
         },
     });
 });
