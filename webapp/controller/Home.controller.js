@@ -6,97 +6,67 @@ sap.ui.define([
     "use strict";
 
     return Controller.extend("zapp.controller.Home", {
+        
         onInit: function () {
         },
 
-        _checkHasRole: function () {
+        _getAuthProp: function (sProp) {
             var oAuthModel = this.getOwnerComponent().getModel("auth");
-            var bIsAdmin = oAuthModel.getProperty("/isAdmin");
-            var bIsManager = oAuthModel.getProperty("/isManager");
-            var bIsClerk = oAuthModel.getProperty("/isClerk");
+            return oAuthModel ? oAuthModel.getProperty(sProp) : false;
+        },
 
-            if (!bIsAdmin && !bIsManager && !bIsClerk) {
-                MessageBox.error("You are currently Unassigned!\nPlease contact the IT Administrator to request system access.", {
-                    title: "Access Denied"
-                });
-                return false;
+        _navIfPermitted: function (sRoute, bHasPermission, sErrMsg, sMsgType) {
+            var oRouter = this.getOwnerComponent().getRouter(),
+                sType = sMsgType || "warning";
+
+            if (!bHasPermission) {
+                MessageBox[sType](sErrMsg, { title: "Access Denied" });
+                return;
             }
-            return true;
+            
+            oRouter.navTo(sRoute);
         },
 
         onNavToApp: function () {
-            if (!this._checkHasRole()) return;
-
-            var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteMain");
+            var bHasRole = this._getAuthProp("/isAdmin") || this._getAuthProp("/isManager") || this._getAuthProp("/isClerk"),
+                sMsg = "You are currently Unassigned!\nPlease contact the IT Administrator to request system access.";
+            
+            this._navIfPermitted("RouteMain", bHasRole, sMsg, "error");
         },
 
         onNavToMyRequests: function () {
-            if (!this._checkHasRole()) return;
-
-            var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteMyRequests");
+            var bHasRole = this._getAuthProp("/isAdmin") || this._getAuthProp("/isManager") || this._getAuthProp("/isClerk"),
+                sMsg = "You are currently Unassigned!\nPlease contact the IT Administrator to request system access.";
+            
+            this._navIfPermitted("RouteMyRequests", bHasRole, sMsg, "error");
         },
 
         onNavToDashboard: function () {
-            var oAuthModel = this.getOwnerComponent().getModel("auth");
-            var bIsAdmin = oAuthModel.getProperty("/isAdmin");
-
-            if (!bIsAdmin) {
-                MessageBox.warning("Dashboard function is only available for Admins!\nYou do not have permission to access!", {
-                    title: "Access Denied"
-                });
-                return;
-            }
-
-            var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteDashboard");
+            var bIsAdmin = this._getAuthProp("/isAdmin"),
+                sMsg = "Dashboard function is only available for Admins!\nYou do not have permission to access!";
+            
+            this._navIfPermitted("RouteDashboard", bIsAdmin, sMsg);
         },
 
         onNavToApproval: function () {
-            var oAuthModel = this.getOwnerComponent().getModel("auth");
-            var bIsAdmin = oAuthModel.getProperty("/isAdmin");
-            var bIsManager = oAuthModel.getProperty("/isManager");
-
-            if (!bIsAdmin && !bIsManager) {
-                MessageBox.warning("Approval function is only available for Managers and Admins!\nYou do not have permission to access!", {
-                    title: "Access Denied"
-                });
-                return;
-            }
-
-            var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteApproval");
+            var bHasPerm = this._getAuthProp("/isAdmin") || this._getAuthProp("/isManager"),
+                sMsg = "Approval function is only available for Managers and Admins!\nYou do not have permission to access!";
+            
+            this._navIfPermitted("RouteApproval", bHasPerm, sMsg);
         },
 
         onNavToAuditLog: function () {
-            var oAuthModel = this.getOwnerComponent().getModel("auth");
-            var bIsAdmin = oAuthModel.getProperty("/isAdmin");
-
-            if (!bIsAdmin) {
-                MessageBox.warning("Audit Log function is only available for Admins!\nYou do not have permission to access!", {
-                    title: "Access Denied"
-                });
-                return;
-            }
-
-            var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteAuditLog");
+            var bIsAdmin = this._getAuthProp("/isAdmin"),
+                sMsg = "Audit Log function is only available for Admins!\nYou do not have permission to access!";
+            
+            this._navIfPermitted("RouteAuditLog", bIsAdmin, sMsg);
         },
 
         onNavToRoleAssignment: function () {
-            var oAuthModel = this.getOwnerComponent().getModel("auth");
-            var bIsAdmin = oAuthModel.getProperty("/isAdmin");
-
-            if (!bIsAdmin) {
-                MessageBox.warning("Role Assignment function is only available for Admins!\nYou do not have permission to access!", {
-                    title: "Access Denied"
-                });
-                return;
-            }
-
-            var oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("RouteRoleAssignment");
+            var bIsAdmin = this._getAuthProp("/isAdmin"),
+                sMsg = "Role Assignment function is only available for Admins!\nYou do not have permission to access!";
+            
+            this._navIfPermitted("RouteRoleAssignment", bIsAdmin, sMsg);
         }
     });
 });
