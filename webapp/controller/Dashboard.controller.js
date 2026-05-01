@@ -96,7 +96,14 @@ sap.ui.define([
                         oDate = new Date();
 
                     if (sCleanTime.length >= 14) {
-                        oDate = new Date(sCleanTime.substring(0,4), parseInt(sCleanTime.substring(4,6)) - 1, sCleanTime.substring(6,8));
+                        oDate = new Date(
+                            parseInt(sCleanTime.substring(0, 4), 10), 
+                            parseInt(sCleanTime.substring(4, 6), 10) - 1, 
+                            parseInt(sCleanTime.substring(6, 8), 10),
+                            parseInt(sCleanTime.substring(8, 10), 10), 
+                            parseInt(sCleanTime.substring(10, 12), 10), 
+                            parseInt(sCleanTime.substring(12, 14), 10)
+                        );
                     } else if (sRawTime) {
                         oDate = new Date(sRawTime);
                     }
@@ -133,8 +140,12 @@ sap.ui.define([
                         var logDate = new Date(),
                             sClean = String(log.ChangedAt || "").replace(/\D/g, "");
                         
-                        if(sClean.length >= 8) {
-                            logDate = new Date(sClean.substring(0,4), parseInt(sClean.substring(4,6)) - 1, sClean.substring(6,8));
+                        if(sClean.length >= 14) {
+                            logDate = new Date(
+                                parseInt(sClean.substring(0, 4), 10), 
+                                parseInt(sClean.substring(4, 6), 10) - 1, 
+                                parseInt(sClean.substring(6, 8), 10)
+                            );
                         } else if (log.ChangedAt) {
                             logDate = new Date(log.ChangedAt);
                         }
