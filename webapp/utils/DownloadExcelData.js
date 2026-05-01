@@ -37,11 +37,11 @@ sap.ui.define([
             var oSheet = new Spreadsheet(oSettings);
             oSheet.build()
                 .then(function () {
-                    MessageToast.show("Tải file Excel thành công!");
+                    MessageToast.show("Successfully downloaded Excel file!");
                 })
                 .catch(function (sMessage) {
-                    console.error("Lỗi xuất Excel: ", sMessage);
-                    MessageToast.show("Có lỗi xảy ra khi xuất file!");
+                    console.error("Error exporting Excel: ", sMessage);
+                    MessageToast.show("Error occurred while exporting Excel file!");
                 })
                 .finally(function () {
                     oSheet.destroy();

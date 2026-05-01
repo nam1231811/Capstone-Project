@@ -26,19 +26,14 @@ sap.ui.define([
                 var oRouter = this.getRouter();
                 oRouter.initialize();
 
-                // --- BƯỚC 3: LOGIC ĐÓN LÕNG TỪ NOTIFICATION VÀ BẺ LÁI ROUTER ---
                 if (sap.ushell && sap.ushell.Container) {
                     var oUrlParsing = sap.ushell.Container.getService("URLParsing");
-                    // Lấy ra hash hiện tại trên URL của Fiori Launchpad
                     var oHash = oUrlParsing.parseShellHash(window.location.hash);
 
-                    // Nếu Notification đẩy tới mang theo action = "myRequests"
                     if (oHash && oHash.action === "myRequests") {
-                        // Nhảy thẳng sang trang My Requests (thay vì trang Home mặc định)
                         oRouter.navTo("RouteMyRequests", {}, true);
                     }
                 }
-                // ---------------------------------------------------------------
 
             }.bind(this)).catch(function (error) {
                 BusyIndicator.hide();
@@ -66,7 +61,7 @@ sap.ui.define([
 
                 if (sCurrentUserId === "DEFAULT_USER") {
                     // 94 manager, 097 admin, 092 clerk
-                    sCurrentUserId = "DEV-094";
+                    sCurrentUserId = "DEV-097";
                 }
                 sCurrentUserId = sCurrentUserId.toUpperCase();
 
