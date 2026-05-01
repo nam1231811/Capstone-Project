@@ -24,34 +24,19 @@ sap.ui.define([], function () {
                 pKpi = fetch(BASE_URL + ACTION_GET_KPI, {
                     method: "POST",
                     headers: { "X-CSRF-Token": sToken, "Content-Type": "application/json" }
-                }).then(function(res) { 
-                    if (!res.ok) {
-                        console.error("Error calling KPI API, status:", res.status);
-                        throw new Error("Error loading KPI/Logs data");
-                    }
-                    return res.json(); 
-                });
+                }).then(res => res.json());
 
                 pChart = fetch(BASE_URL + ACTION_GET_CHART, {
                     method: "POST",
                     headers: { "X-CSRF-Token": sToken, "Content-Type": "application/json" }
-                }).then(function(res) { 
-                    if (!res.ok) {
-                        console.error("Error calling chart data API, status:", res.status);
-                        throw new Error("Error loading line chart data");
-                    }
-                    return res.json(); 
-                });
+                }).then(res => res.json());
 
                 return Promise.all([pKpi, pChart]);
             })
             .then(function(aResults) {
                 var oKpiResult = aResults[0],
-                    oChartResult = aResults[1],
                     aTopUsers = [],
-                    aRecentLogs = [],
-                    aLineData = [],
-                    aParsedUsers, aParsedLogs, aParsedChart;
+                    aParsedUsers;
 
                 if (oKpiResult.top_users) {
                     try { 
@@ -64,61 +49,13 @@ sap.ui.define([], function () {
                     console.warn("Error: 'top_users' field not found in response");
                 }
 
-                if (oKpiResult.recent_logs) {
-                    try {
-                        aParsedLogs = JSON.parse(oKpiResult.recent_logs);
-                        aRecentLogs = aParsedLogs.map(function(item) {
-                            var sAction = item.action || "",
-                                sTime = item.changedAt || "";
-
-                            if (sAction === "C") sAction = "CREATE";
-                            else if (sAction === "U") sAction = "UPDATE";
-                            else if (sAction === "D") sAction = "DELETE";
-
-                            if (sTime && sTime.length >= 14) {
-                                sTime = sTime.substring(0,4) + "-" + sTime.substring(4,6) + "-" + sTime.substring(6,8) + " " + 
-                                        sTime.substring(8,10) + ":" + sTime.substring(10,12) + ":" + sTime.substring(12,14);
-                            }
-                            
-                            return {
-                                tableName: item.tableName || "",
-                                action: sAction,
-                                user: item.changedBy || "",
-                                time: sTime,
-                                status: "Success",
-                                rowId: item.recordKey || ""
-                            };
-                        });
-                    } catch(e) {
-                        console.error("Error parsing recent logs json:", e);
-                    }
-                } else {
-                    console.warn("Error: 'recent_logs' field not found in response");
-                }
-
-                if (oChartResult.json_string) {
-                    try {
-                        aParsedChart = JSON.parse(oChartResult.json_string);
-                        aLineData = aParsedChart.map(i => ({ 
-                            date: i.date, 
-                            create: i.create || 0, 
-                            update: i.update || 0, 
-                            delete: i.delete || 0 
-                        }));
-                    } catch(e) {
-                        console.error("Error parsing chart data json string:", e); 
-                    }
-                } else {
-                    console.warn("Error: 'json_string' field not found in response.");
-                }
-
                 return {
                     totalTables: oKpiResult.total_tables,
-                    changedToday: oKpiResult.today_changes,
                     totalRecords: oKpiResult.total_data,
+                    changedToday: oKpiResult.today_changes,
                     topUsers: aTopUsers,
-                    recentLogs: aRecentLogs,
-                    lineData: aLineData
+                    recentLogs: [], 
+                    lineData: []    
                 };
             });
         }
