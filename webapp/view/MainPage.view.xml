@@ -134,5 +134,36 @@
                 </ScrollContainer>
             </VBox>
         </f:content>
+
+        <f:dependents>
+            <SelectDialog
+                id="langDialog"
+                title="{i18n>language}"
+                confirm=".onLangDialogConfirm">
+                <items>
+                    <StandardListItem title="English" description="EN" type="Active" />
+                    <StandardListItem title="Tiếng Việt" description="VI" type="Active" />
+                </items>
+            </SelectDialog>
+
+            <Dialog 
+                id="persoDialog" 
+                title="{i18n>personalization}" 
+                contentWidth="300px">
+                <content>
+                    <List 
+                        id="persoList" 
+                        mode="MultiSelect" 
+                        includeItemInSelection="true" />
+                </content>
+                <beginButton>
+                    <Button text="OK" type="Emphasized" press=".onPersoDialogConfirm" />
+                </beginButton>
+                <endButton>
+                    <Button text="Cancel" press=".onPersoDialogCancel" />
+                </endButton>
+            </Dialog>
+        </f:dependents>
+
     </f:DynamicPage>
 </mvc:View>

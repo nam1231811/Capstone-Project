@@ -165,40 +165,24 @@ sap.ui.define([
         },
 
         onOpenSettings: function () {
-            if (!this._oLangDialog) {
-                var oBundle = this.getView().getModel("i18n").getResourceBundle();
-                this._oLangDialog = new sap.m.SelectDialog({
-                    title: oBundle.getText("language"),
-                    items: [
-                        new sap.m.StandardListItem({ 
-                            title: "English", 
-                            description: "EN", 
-                            type: "Active" 
-                        }),
-                        new sap.m.StandardListItem({ 
-                            title: "Tiếng Việt", 
-                            description: "VI", 
-                            type: "Active" 
-                        })
-                    ],
-                    confirm: function (oEvent) {
-                        var sLangCode = oEvent.getParameter("selectedItem").getDescription();
-                        var sBackendLang = (sLangCode === "VI") ? "V" : "E";
-                        this.getView().getModel("settingsModel").setProperty("/selectedLanguage", sBackendLang);
-                        var sUiLang = (sLangCode === "VI") ? "vi" : "en";
-                        sap.ui.getCore().getConfiguration().setLanguage(sUiLang);
-                        var oTableInput = this.byId("searchInput");
-                        var oDescInput = this.byId("searchDescInput");
-                        var sName = oTableInput ? oTableInput.getValue().trim() : "";
-                        var sDesc = oDescInput ? oDescInput.getValue().trim() : "";
-                        
-                        if (sName || sDesc) {
-                            this.onSearch();
-                        }
-                    }.bind(this)
-                });
+            this.byId("langDialog").open();
+        },
+
+        onLangDialogConfirm: function (oEvent) {
+            var sLangCode = oEvent.getParameter("selectedItem").getDescription();
+            var sBackendLang = (sLangCode === "VI") ? "V" : "E";
+            this.getView().getModel("settingsModel").setProperty("/selectedLanguage", sBackendLang);
+            var sUiLang = (sLangCode === "VI") ? "vi" : "en";
+            sap.ui.getCore().getConfiguration().setLanguage(sUiLang);
+
+            var oTableInput = this.byId("searchInput");
+            var oDescInput = this.byId("searchDescInput");
+            var sName = oTableInput ? oTableInput.getValue().trim() : "";
+            var sDesc = oDescInput ? oDescInput.getValue().trim() : "";
+            
+            if (sName || sDesc) {
+                this.onSearch();
             }
-            this._oLangDialog.open();
         },
 
         _loadColumnState: function() {
@@ -230,48 +214,10 @@ sap.ui.define([
         },
 
         onPersonalization: function () {
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            
-            if (!this._oPersoDialog) {
-                this._oPersoDialog = new sap.m.Dialog({
-                    title: oBundle.getText("personalization") || "Personalization",
-                    contentWidth: "300px",
-                    content: new sap.m.List({
-                        mode: "MultiSelect",
-                        includeItemInSelection: true
-                    }),
-                    beginButton: new sap.m.Button({
-                        text: "OK",
-                        type: "Emphasized",
-                        press: function() {
-                            var oList = this._oPersoDialog.getContent()[0];
-                            var aItems = oList.getItems();
-                            var oTable = this.byId("dynamicTable");
-                            var aColumns = oTable.getColumns();
-                            
-                            aItems.forEach(function(item, idx) {
-                                if (aColumns[idx]) {
-                                    aColumns[idx].setVisible(item.getSelected());
-                                }
-                            });
-                            
-                            this._saveColumnState();
-                            this._oPersoDialog.close();
-                        }.bind(this)
-                    }),
-                    endButton: new sap.m.Button({
-                        text: "Cancel",
-                        press: function() {
-                            this._oPersoDialog.close();
-                        }.bind(this)
-                    })
-                });
-                this.getView().addDependent(this._oPersoDialog);
-            }
-            
-            var oList = this._oPersoDialog.getContent()[0];
-            oList.removeAllItems();
+            var oList = this.byId("persoList");
             var oTable = this.byId("dynamicTable");
+            
+            oList.removeAllItems();
             
             oTable.getColumns().forEach(function(col) {
                 var oLabel = col.getLabel();
@@ -284,7 +230,27 @@ sap.ui.define([
                 }));
             });
             
-            this._oPersoDialog.open();
+            this.byId("persoDialog").open();
+        },
+
+        onPersoDialogConfirm: function () {
+            var oList = this.byId("persoList");
+            var aItems = oList.getItems();
+            var oTable = this.byId("dynamicTable");
+            var aColumns = oTable.getColumns();
+            
+            aItems.forEach(function(item, idx) {
+                if (aColumns[idx]) {
+                    aColumns[idx].setVisible(item.getSelected());
+                }
+            });
+            
+            this._saveColumnState();
+            this.byId("persoDialog").close();
+        },
+
+        onPersoDialogCancel: function () {
+            this.byId("persoDialog").close();
         }
     });
 });
