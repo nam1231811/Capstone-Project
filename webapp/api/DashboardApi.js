@@ -1,32 +1,38 @@
 sap.ui.define([], function () {
     "use strict";
 
-    var sBaseUrl = "/sap/opu/odata4/sap/zsb_audit_log_gsp14/srvd/sap/zsd_audit_log_gsp14/0001";
+    const BASE_URL = "/sap/opu/odata4/sap/zsb_audit_log_gsp14/srvd/sap/zsd_audit_log_gsp14/0001";
+    const ACTION_GET_KPI = "/AuditLog/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getKpi";
+    const ACTION_GET_CHART = "/AuditLog/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getChartData";
 
     return {
         getDashboardData: function () {
-            return fetch(sBaseUrl + "/", {
+            return fetch(BASE_URL + "/", {
                 method: "HEAD",
                 headers: { "X-CSRF-Token": "Fetch" }
             })
             .then(function(oResponse) {
+                var sToken, pKpi, pChart;
+
                 if (!oResponse.ok) {
                     console.error("Error fetching CSRF token, status:", oResponse.status);
                     throw new Error("Cannot fetch CSRF Token");
                 }
-                var sToken = oResponse.headers.get("X-CSRF-Token");
-                var pKpi = fetch(sBaseUrl + "/AuditLog/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getKpi", {
+                
+                sToken = oResponse.headers.get("X-CSRF-Token");
+
+                pKpi = fetch(BASE_URL + ACTION_GET_KPI, {
                     method: "POST",
                     headers: { "X-CSRF-Token": sToken, "Content-Type": "application/json" }
                 }).then(function(res) { 
                     if (!res.ok) {
-                        console.error("Error calling kpi API, status:", res.status);
+                        console.error("Error calling KPI API, status:", res.status);
                         throw new Error("Error loading KPI/Logs data");
                     }
                     return res.json(); 
                 });
 
-                var pChart = fetch(sBaseUrl + "/AuditLog/com.sap.gateway.srvd.zsd_audit_log_gsp14.v0001.getChartData", {
+                pChart = fetch(BASE_URL + ACTION_GET_CHART, {
                     method: "POST",
                     headers: { "X-CSRF-Token": sToken, "Content-Type": "application/json" }
                 }).then(function(res) { 
@@ -40,15 +46,17 @@ sap.ui.define([], function () {
                 return Promise.all([pKpi, pChart]);
             })
             .then(function(aResults) {
-                var oKpiResult = aResults[0];
-                var oChartResult = aResults[1];
-                var aTopUsers = [];
+                var oKpiResult = aResults[0],
+                    oChartResult = aResults[1],
+                    aTopUsers = [],
+                    aRecentLogs = [],
+                    aLineData = [],
+                    aParsedUsers, aParsedLogs, aParsedChart;
+
                 if (oKpiResult.top_users) {
                     try { 
-                        var aParsedUsers = JSON.parse(oKpiResult.top_users);
-                        aTopUsers = aParsedUsers.map(function(i) {
-                            return { user: i.USER, actions: i.ACTIONS };
-                        }); 
+                        aParsedUsers = JSON.parse(oKpiResult.top_users);
+                        aTopUsers = aParsedUsers.map(i => ({ user: i.USER, actions: i.ACTIONS })); 
                     } catch(e) {
                         console.error("Error parsing top users json:", e); 
                     }
@@ -56,20 +64,22 @@ sap.ui.define([], function () {
                     console.warn("Error: 'top_users' field not found in response");
                 }
 
-                var aRecentLogs = [];
                 if (oKpiResult.recent_logs) {
                     try {
-                        var aParsedLogs = JSON.parse(oKpiResult.recent_logs);
+                        aParsedLogs = JSON.parse(oKpiResult.recent_logs);
                         aRecentLogs = aParsedLogs.map(function(item) {
-                            var sAction = item.action || "";
+                            var sAction = item.action || "",
+                                sTime = item.changedAt || "";
+
                             if (sAction === "C") sAction = "CREATE";
                             else if (sAction === "U") sAction = "UPDATE";
                             else if (sAction === "D") sAction = "DELETE";
 
-                            var sTime = item.changedAt || "";
                             if (sTime && sTime.length >= 14) {
-                                sTime = sTime.substring(0,4) + "-" + sTime.substring(4,6) + "-" + sTime.substring(6,8) + " " + sTime.substring(8,10) + ":" + sTime.substring(10,12) + ":" + sTime.substring(12,14);
+                                sTime = sTime.substring(0,4) + "-" + sTime.substring(4,6) + "-" + sTime.substring(6,8) + " " + 
+                                        sTime.substring(8,10) + ":" + sTime.substring(10,12) + ":" + sTime.substring(12,14);
                             }
+                            
                             return {
                                 tableName: item.tableName || "",
                                 action: sAction,
@@ -86,13 +96,15 @@ sap.ui.define([], function () {
                     console.warn("Error: 'recent_logs' field not found in response");
                 }
 
-                var aLineData = [];
                 if (oChartResult.json_string) {
                     try {
-                        var aParsedChart = JSON.parse(oChartResult.json_string);
-                        aLineData = aParsedChart.map(function(i) {
-                            return { date: i.date, create: i.create || 0, update: i.update || 0, delete: i.delete || 0 };
-                        });
+                        aParsedChart = JSON.parse(oChartResult.json_string);
+                        aLineData = aParsedChart.map(i => ({ 
+                            date: i.date, 
+                            create: i.create || 0, 
+                            update: i.update || 0, 
+                            delete: i.delete || 0 
+                        }));
                     } catch(e) {
                         console.error("Error parsing chart data json string:", e); 
                     }

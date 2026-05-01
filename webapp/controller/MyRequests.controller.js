@@ -32,6 +32,14 @@ sap.ui.define([
         },
 
         _onRouteMatched: function () {
+            var oAuthModel = this.getOwnerComponent().getModel("auth"),
+                bIsClerk = oAuthModel ? oAuthModel.getProperty("/isClerk") : false;
+
+            if (!bIsClerk) {
+                this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true);
+                return;
+            }
+
             this._loadMyRequests(true);
         },
 

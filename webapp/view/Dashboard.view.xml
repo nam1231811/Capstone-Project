@@ -35,7 +35,6 @@
                                         <core:CustomData key="kpiTitle" value="Total of Custom Tables" />
                                     </customData>
                                     <HBox width="100%" justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
-                                        
                                         <HBox alignItems="Center">
                                             <core:Icon src="sap-icon://grid" size="2.5rem" class="sapUiMediumMarginEnd" color="#2b7c2b" />
                                             <VBox>
@@ -43,9 +42,7 @@
                                                 <Text text="In audit log table" class="sapUiMutedText"/>
                                             </VBox>
                                         </HBox>
-                                        
                                         <Title text="{dash>/kpi/totalTables}" level="H1" titleStyle="H1" class="sapThemeGoodText sapUiLargeMarginEnd" />
-                                    
                                     </HBox>
                                 </CustomListItem>
                             </List>
@@ -60,7 +57,6 @@
                                         <core:CustomData key="kpiTitle" value="Total of Changes Today" />
                                     </customData>
                                     <HBox width="100%" justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
-                                        
                                         <HBox alignItems="Center">
                                             <core:Icon src="sap-icon://history" size="2.5rem" class="sapUiMediumMarginEnd" color="#e9730c" />
                                             <VBox>
@@ -68,9 +64,7 @@
                                                 <Text text="Real-time updates" class="sapUiMutedText"/>
                                             </VBox>
                                         </HBox>
-                                        
                                         <Title text="{dash>/kpi/changedToday}" level="H1" titleStyle="H1" class="sapThemeCriticalText sapUiLargeMarginEnd" />
-                                    
                                     </HBox>
                                 </CustomListItem>
                             </List>
@@ -85,7 +79,6 @@
                                         <core:CustomData key="kpiTitle" value="Total of Data" />
                                     </customData>
                                     <HBox width="100%" justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
-                                        
                                         <HBox alignItems="Center">
                                             <core:Icon src="sap-icon://product" size="2.5rem" class="sapUiMediumMarginEnd" color="#107e3e" />
                                             <VBox>
@@ -93,9 +86,7 @@
                                                 <Text text="In custom tables" class="sapUiMutedText"/>
                                             </VBox>
                                         </HBox>
-                                        
                                         <Title text="{dash>/kpi/totalRecords}" level="H1" titleStyle="H1" class="sapThemeNeutralText sapUiLargeMarginEnd" />
-                                    
                                     </HBox>
                                 </CustomListItem>
                             </List>
@@ -180,16 +171,12 @@
                             </Toolbar>
                             
                             <HBox width="100%" alignItems="Center" justifyContent="SpaceBetween">
-                                
                                 <VBox width="65%">
                                     <viz:VizFrame id="idPieChart" uiConfig="{applicationSet:'fiori'}" vizType="donut" width="100%" height="280px" 
                                         vizProperties="{
                                             title: {visible: false},
                                             legendGroup: {
-                                                layout: {
-                                                    position: 'bottom', 
-                                                    alignment: 'center'
-                                                }
+                                                layout: { position: 'bottom', alignment: 'center' }
                                             }
                                         }">
                                         <viz:dataset>
@@ -217,7 +204,6 @@
                                         valueColor="{dash>/qualityColor}" />
                                     <Label text="Data Quality Percentage" design="Bold" class="sapUiSmallMarginTop" textAlign="Center" wrapping="true"/>
                                 </VBox>
-
                             </HBox>
                         </VBox>
                     </f:content>
@@ -235,36 +221,30 @@
                             <List items="{dash>/recentLogs}" showSeparators="Inner" width="100%">
                                 <CustomListItem type="Navigation" press=".onRecentLogPress" class="sapUiSmallMarginBottom sapUiShadow1">
                                     <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
-                                        
                                         <HBox alignItems="Center">
                                             <core:Icon 
                                                 src="{= ${dash>action} === 'CREATE' ? 'sap-icon://add-document' : (${dash>action} === 'UPDATE' ? 'sap-icon://edit' : 'sap-icon://delete') }"
                                                 size="1.5rem"
                                                 color="{= ${dash>action} === 'CREATE' ? '#2b7c2b' : (${dash>action} === 'UPDATE' ? '#e9730c' : '#bb0000') }"
                                                 class="sapUiMediumMarginEnd" />
-                                            
                                             <VBox>
                                                 <Title text="Table: {dash>tableName}" level="H5" />
-                                                
                                                 <HBox class="sapUiTinyMarginTop">
                                                     <Label text="By:" design="Bold" class="sapUiTinyMarginEnd"/>
                                                     <Text text="{dash>user}" />
                                                 </HBox>
-                                                
                                                 <HBox class="sapUiTinyMarginTop">
                                                     <Label text="At:" design="Bold" class="sapUiTinyMarginEnd"/>
                                                     <Text text="{dash>time}" />
                                                 </HBox>
                                             </VBox>
                                         </HBox>
-
                                         <VBox alignItems="End">
                                             <ObjectStatus 
                                                 text="{dash>action}" 
                                                 state="{= ${dash>action} === 'CREATE' ? 'Success' : (${dash>action} === 'UPDATE' ? 'Warning' : 'Error') }"
                                                 inverted="true" />
                                         </VBox>
-
                                     </HBox>
                                 </CustomListItem>
                             </List>
@@ -274,5 +254,49 @@
 
             </layout:Grid>
         </f:content>
+
+        <f:dependents>
+            <Popover 
+                id="kpiPopover" 
+                title="{dash>/popoverTitle}" 
+                contentWidth="320px" 
+                placement="Bottom">
+                <content>
+                    <VBox visible="{= ${dash>/popoverType} === 'CHANGES' }" class="sapUiSmallMargin">
+                        <ObjectStatus text="Create: {dash>/popoverChanges/create}" state="Success" icon="sap-icon://add-document" class="sapUiTinyMarginBottom" />
+                        <ObjectStatus text="Update: {dash>/popoverChanges/update}" state="Warning" icon="sap-icon://edit" class="sapUiTinyMarginBottom" />
+                        <ObjectStatus text="Delete: {dash>/popoverChanges/delete}" state="Error" icon="sap-icon://delete" />
+                    </VBox>
+
+                    <List 
+                        visible="{= ${dash>/popoverType} === 'TABLES' }" 
+                        items="{dash>/popoverTables}" 
+                        busy="{dash>/isPopoverTableBusy}" 
+                        busyIndicatorDelay="0" 
+                        showSeparators="Inner"
+                        noDataText="No recent activity">
+                        <items>
+                            <ObjectListItem title="{dash>name}" icon="sap-icon://table-chart">
+                                <attributes>
+                                    <ObjectAttribute text="{dash>desc}" />
+                                </attributes>
+                                <firstStatus>
+                                    <ObjectStatus text="{dash>cols} Cols" icon="sap-icon://add-column" state="Information" />
+                                </firstStatus>
+                            </ObjectListItem>
+                        </items>
+                    </List>
+
+                    <VBox visible="{= ${dash>/popoverType} === 'RECORDS' }" class="sapUiSmallMargin">
+                        <Text text="Average records per table:" class="sapUiTinyMarginBottom" />
+                        <ObjectNumber number="{dash>/popoverAvg}" unit="Records / Table" state="Success" />
+                    </VBox>
+                </content>
+                <endButton>
+                    <Button icon="sap-icon://decline" type="Transparent" press=".onCloseKPIPopover" />
+                </endButton>
+            </Popover>
+        </f:dependents>
+
     </f:DynamicPage>
 </mvc:View>

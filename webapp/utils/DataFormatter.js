@@ -23,7 +23,7 @@ sap.ui.define([
                 var mm = parseInt(sSafeDate.substring(10, 12), 10);
                 var ss = parseInt(sSafeDate.substring(12, 14), 10);
                 
-                oDate = new Date(Date.UTC(yyyy, MM, dd, hh, mm, ss)); //change to current timezone
+                oDate = new Date(Date.UTC(yyyy, MM, dd, hh, mm, ss));
             } else {
                 oDate = new Date(sDateString);
             }
