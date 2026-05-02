@@ -1,6 +1,7 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/f/library",
+    "sap/m/MessageBox",
     "zapp/utils/SearchData",
     "zapp/utils/FilterData",
     "zapp/utils/SortData",
@@ -13,7 +14,7 @@ sap.ui.define([
     "zapp/api/LoadData",
     "zapp/utils/ValueHelp"
 ], function (
-    Controller, fioriLibrary, SearchData, FilterData, SortData, PersonalizationData,
+    Controller, fioriLibrary, MessageBox, SearchData, FilterData, SortData, PersonalizationData,
     DataFormatter, UploadExcelData, DownloadExcelData, SaveToDatabase, GridValidator, LoadData, ValueHelp
 ) {
     "use strict";
@@ -34,9 +35,8 @@ sap.ui.define([
             var oDisplayModel = this.getView().getModel("displayModel");
             var sNewTableName = oEvent.getParameter("arguments").tableName || "";
             var sCurrentTableName = oDisplayModel.getProperty("/CurrentTable");
+            console.log(sNewTableName);  
             var oModel = this.getOwnerComponent().getModel();
-            var oSettingsModel = this.getView().getModel("settingsModel");
-            var sLang = oSettingsModel ? oSettingsModel.getProperty("/selectedLanguage") : "E";
             var oTable = this.byId("TablePage") || this.byId("dataTable");
             var state = oEvent.getParameter("arguments").newTable || false;
 
@@ -55,12 +55,12 @@ sap.ui.define([
             oDisplayModel.setProperty("/CurrentTable", sNewTableName);
             oDisplayModel.setProperty("/searchQuery", "");
 
-            LoadData.loadTableData(oModel, sNewTableName, "", sLang).then(function (oPayload) {
+            LoadData.loadTableData(oModel, sNewTableName).then(function (oPayload) {
                 this._processPayload(oPayload);
                 this._displayData();
             }.bind(this)).catch(function (err) {
                 console.error("Load Meta/Data Error:", err);
-                sap.m.MessageBox.error("No data found for the selected table.");
+                MessageBox.error("No data found for the selected table.");
             }).finally(function () {
                 if (oTable) {
                     oTable.setBusy(false)
@@ -116,7 +116,6 @@ sap.ui.define([
             oDisplayModel?.setProperty("/Meta", aTableMeta);
             oDisplayModel?.setProperty("/UiMeta", aUiMeta);
             var aRawData = oPayload.dataRows || oDisplayModel?.getProperty("/Data") || [];
-            console.log(aRawData);
             var aFormattedData = aRawData.map((rowObj, rowIndex) => {
                 var oActualData = {};
                 if (rowObj.data) {
@@ -159,8 +158,7 @@ sap.ui.define([
                 });
                 return oNewRow;
             });
-            console.log(aFormattedData);
-            
+
             var sRecentKey = this._sRecentlySavedKey;
             aFormattedData.sort((a, b) => {
                 var valA = a[0] ? String(a[0].value).trim() : "";
@@ -301,14 +299,6 @@ sap.ui.define([
             return oColumn;
         },
 
-        onColumnSelect: function (oEvent) {
-            SortData.onColumnSelect.call(this, oEvent);
-        },
-
-        onSortColumnDirect: function (bDescending, iColIndex, bMultiSort, bGroup) {
-            SortData.onSortColumnDirect.call(this, bDescending, iColIndex, bMultiSort, bGroup);
-        },
-
         onAdd: function () {
             var footer = this.onEditToggleButtonPress();
             var oModel = this.getView().getModel("displayModel");
@@ -319,7 +309,7 @@ sap.ui.define([
             var aMeta = oModel.getProperty("/Meta");
             var oNewRow = {};
             aMeta.forEach(function (colMeta, iIndex) {
-                var bHasVH = (colMeta.hasValueHelp === true || colMeta.hasValueHelp === "X" || colMeta.has_value_help === true || colMeta.has_value_help === "X");
+                var bHasVH = colMeta.hasValueHelp === "X";
 
                 oNewRow[iIndex] = {
                     value: "",
@@ -391,7 +381,7 @@ sap.ui.define([
 
             if (bHasError) {
                 oTable.setBusy(false);
-                sap.m.MessageBox.error("Please correct the faulty cells (highlighted in red) before saving!");
+                MessageBox.error("Please correct the faulty cells (highlighted in red) before saving!");
                 return;
             }
 
@@ -410,7 +400,7 @@ sap.ui.define([
                 this._sendToBackend(tableName, oSingleRowData);
             } else {
                 oTable.setBusy(false);
-                sap.m.MessageBox.error("No valid data to save.");
+                MessageBox.error("No valid data to save.");
             }
         },
 
@@ -474,7 +464,7 @@ sap.ui.define([
                             sBackendError = aErrors[aErrors.length - 1].message;
                         }
                     }
-                    sap.m.MessageBox.error("Failed to send request:\n\n" + sBackendError);
+                    MessageBox.error("Failed to send request:\n\n" + sBackendError);
                     this._refreshData(table);
                     this.onEditToggleButtonPress();
                 }
@@ -571,7 +561,7 @@ sap.ui.define([
                     if (oTable) {
                         oTable.setBusy(false);
                     }
-                });
+            });
         },
 
         onDynamicValueHelp: function (oEvent) {
@@ -612,6 +602,14 @@ sap.ui.define([
 
         onFilterConfirm: function (oEvent) {
             FilterData.onFilterConfirm.call(this, oEvent);
+        },
+        
+        onColumnSelect: function (oEvent) {
+            SortData.onColumnSelect.call(this, oEvent);
+        },
+
+        onSortColumnDirect: function (bDescending, iColIndex, bMultiSort, bGroup) {
+            SortData.onSortColumnDirect.call(this, bDescending, iColIndex, bMultiSort, bGroup);
         },
     });
 });

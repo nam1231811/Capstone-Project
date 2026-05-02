@@ -19,7 +19,7 @@ return Controller.extend("zapp.controller.Metadata", {
     _onObjectMatched: function (oEvent) {
         this._record = oEvent.getParameter("arguments").rowId|| this._record || "0";
         var aData = this.getView().getModel("displayModel").getProperty("/Meta");
-         if (aData.length === 0) {
+        if (aData.length === 0) {
             var tableName = oEvent.getParameter("arguments").tableName|| this._record || "";
             this.getOwnerComponent().getRouter().navTo("RouteObjectPage", {
                     layout: fioriLibrary.LayoutType.OneColumn,
