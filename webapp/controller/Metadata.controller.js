@@ -38,7 +38,7 @@ return Controller.extend("zapp.controller.Metadata", {
                     keyFlag = "Yes";
                 }
 
-                if(detailMeta.valuehelp === "X"){
+                if(detailMeta.hasValueHelp === "X"){
                     valueHelp = "Yes";
                 }
 
