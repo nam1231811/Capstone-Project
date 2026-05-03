@@ -144,7 +144,7 @@ sap.ui.define([
                     aAllKeys.forEach(function (key) {
                         if (String(key).toUpperCase() === "MANDT") return;
 
-                        var sOldVal = (sActionText !== "CREATE" && oParsedOld[key] !== undefined) ? String(oParsedOld[key]) : "Loading...",
+                        var sOldVal = (sActionText !== "CREATE" && oParsedOld[key] !== undefined) ? String(oParsedOld[key]) : "-",
                             sNewVal = (sActionText !== "DELETE" && oParsedNew[key] !== undefined) ? String(oParsedNew[key]) : "-";
 
                         aFields.push({ field: key, oldData: sOldVal, value: sNewVal });
