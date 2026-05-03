@@ -36,11 +36,6 @@ sap.ui.define([], function () {
         if (col.keyflag === "X" || col.keyFlag === "X" || col.isKey === true || col.IsKey === true) {
             return true;
         }
-
-        if (sFN === "ID" || sFN === "CODE" || sFN === "EMP_ID" || sFN === "UUID") {
-            return true;
-        }
-
         return false;
     };
 
