@@ -164,28 +164,6 @@
                                         <l:content>
                                             <m:VBox class="sapUiSmallMarginBottom">
                                                 <m:Label 
-                                                    text="Created By: " 
-                                                    design="Bold" 
-                                                    class="sapUiTinyMarginBottom" />
-
-                                                <m:Text 
-                                                    text="{detailRecord>/Data/0/createdBy}"
-                                                    width="100%" />
-                                            </m:VBox>
-
-                                            <m:VBox class="sapUiSmallMarginBottom">
-                                                <m:Label 
-                                                    text="Created At: " 
-                                                    design="Bold" 
-                                                    class="sapUiTinyMarginBottom" />
-                                                
-                                                <m:Text 
-                                                    text="{detailRecord>/Data/0/createdAt}"
-                                                    width="100%" />
-                                            </m:VBox>
-
-                                            <m:VBox class="sapUiSmallMarginBottom">
-                                                <m:Label 
                                                     text="Lasted Changed By: " 
                                                     design="Bold" 
                                                     class="sapUiTinyMarginBottom" />
