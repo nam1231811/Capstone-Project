@@ -135,7 +135,7 @@ sap.ui.define([
                 Object.keys(oParsedOld).forEach(k => { if (!aAllKeys.includes(k)) aAllKeys.push(k); });
 
                 aAllKeys.forEach(function (key) {
-                    var sOldVal = (sActionText !== "CREATE" && oParsedOld[key] !== undefined) ? String(oParsedOld[key]) : (sActionText === "CREATE" ? "-" : "Loading..."),
+                    var sOldVal = (sActionText !== "CREATE" && oParsedOld[key] !== undefined) ? String(oParsedOld[key]) : (sActionText === "CREATE" ? "-" : "-"),
                         sNewVal = (sActionText !== "DELETE" && oParsedNew[key] !== undefined) ? String(oParsedNew[key]) : "-";
 
                     aDiff.push({ field: key, oldData: sOldVal, newData: sNewVal });
@@ -336,7 +336,7 @@ sap.ui.define([
                 this._loadApprovalData();
             }.bind(this)).catch(function (oError) {
                 sap.ui.core.BusyIndicator.hide();
-                MessageBox.error("Error processing Request: " + oError.message);
+                MessageBox.error("Error processing Request: ");
                 console.error(oError);
             });
         }

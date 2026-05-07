@@ -55,7 +55,10 @@
                                items="{/UserRoleList}"
                                noDataText="Loading data or user not found..."
                                alternateRowColors="true"
-                               class="sapUiTinyMarginBottom">
+                               class="sapUiTinyMarginBottom"
+                               growing = "true"
+                               growingScrollToLoad = "true"
+                               growingThreshold = "50">
                                
                             <headerToolbar>
                                 <Toolbar style="Clear" height="auto" class="sapUiSmallMarginTopBottom">

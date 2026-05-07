@@ -37,7 +37,6 @@
                                     placeholder="{i18n>searchDescPlaceholder}" 
                                     showSuggestion="true"
                                     suggestionItems="{/TableLookup}"
-                                    suggestionItemSelected=".onSuggestionSelect"
                                     submit=".onSearch"
                                     showValueHelp="true" 
                                     valueHelpRequest=".onValueHelpRequest">

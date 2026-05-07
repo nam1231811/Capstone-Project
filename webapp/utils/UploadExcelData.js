@@ -101,13 +101,6 @@ sap.ui.define([
                         aKeyFields.push(sUpperKey);
                     }
                 });
-                if (aKeyFields.length === 0) {
-                    oIdCol = aMeta.find(c => {
-                        var name = (c.fieldname || c.fieldName || "").toUpperCase();
-                        return name === "ID" || name.includes("_ID");
-                    });
-                    if (oIdCol) aKeyFields.push((oIdCol.fieldname || oIdCol.fieldName).toUpperCase());
-                }
             }
 
             _performFullGridValidation = function () {

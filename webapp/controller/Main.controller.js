@@ -126,18 +126,6 @@ sap.ui.define([
             });
         },
 
-        onSuggestionSelect: function(oEvent) {
-            var oSelectedItem = oEvent.getParameter("selectedItem");
-            if (oSelectedItem) {
-                var sTableName = oSelectedItem.getKey(); 
-                var sDescription = oSelectedItem.getText(); 
-                
-                this.byId("searchInput").setValue(sTableName);
-                this.byId("searchDescInput").setValue(sDescription);
-                
-            }
-        },
-
         onClear: function () {
             this.byId("searchInput").setValue("");
             this.byId("searchDescInput").setValue("");
