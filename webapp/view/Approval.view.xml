@@ -7,7 +7,7 @@
     displayBlock="true">
 
     <f:DynamicPage id="approvalPageId" headerExpanded="true" class="sapUiResponsiveContentPadding">
-        
+       
         <f:title>
             <f:DynamicPageTitle>
                 <f:heading>
@@ -18,18 +18,16 @@
 
         <f:content>
             <VBox fitContainer="true" height="100%">
-                
-                <MessagePage 
+                <MessagePage
                     id="accessDeniedPage"
-                    visible="{= !(${auth>/isManager} || ${auth>/isAdmin}) }" 
+                    visible="{= !(${auth>/isManager} || ${auth>/isAdmin}) }"
                     showHeader="false"
                     icon="sap-icon://locked"
                     text="You do not have permission"
                     description="This feature is only available for Managers and Admins!"/>
 
                 <VBox visible="{= ${auth>/isManager} || ${auth>/isAdmin} }" width="100%">
-                    
-                <OverflowToolbar height="3.5rem" class="sapUiSmallMarginBottom sapUiShadow1" design="Solid">
+                    <OverflowToolbar height="3.5rem" class="sapUiSmallMarginBottom sapUiShadow1" design="Solid">
                         <Title text="Filter Action:" level="H4" class="sapUiTinyMarginEnd" />
                         <SegmentedButton id="actionFilterBar" selectionChange=".onActionFilterSelect" selectedKey="ALL">
                             <items>
@@ -42,13 +40,6 @@
 
                         <ToolbarSpacer />
 
-                        <SearchField id="searchRequestedBy" 
-                                     placeholder="Search requester..." 
-                                     width="250px" 
-                                     showSearchButton="false"
-                                     liveChange=".onSearchUser" 
-                                     class="sapUiSmallMarginEnd"/>
-
                         <Button id="modeToggleBtn"
                                 text="{= ${approval>/isPendingMode} ? 'Pending (' + ${approval>/pendingCount} + ')' : 'History (' + ${approval>/historyCount} + ')' }"
                                 icon="{= ${approval>/isPendingMode} ? 'sap-icon://pending' : 'sap-icon://history' }"
@@ -56,31 +47,58 @@
                                 press=".onToggleMode" />
                     </OverflowToolbar>
 
-                    <Table id="pendingTable" 
-                        items="{approval>/pendingList}" 
+                    <Table id="pendingTable"
+                        items="{approval>/pendingList}"
+                        mode="MultiSelect"
+                        multiSelectMode="ClearAll"
                         noDataText="No pending approval requests"
                         sticky="ColumnHeaders"
                         class="sapUiSmallMarginBottom sapUiShadow1"
                         visible="{approval>/isPendingMode}">
+                       
+                        <headerToolbar>
+                            <OverflowToolbar>
+                                <Title text="Pending Requests" level="H6" />
+                                <ToolbarSpacer />
+                                <Button text="Approve Selected" type="Accept" icon="sap-icon://accept" press=".onMassApprove" />
+                            </OverflowToolbar>
+                        </headerToolbar>
+
                         <columns>
-                            <Column width="15%"><Label text="No." design="Bold"/></Column>
-                            <Column width="20%"><Label text="Data Table" design="Bold"/></Column>
+                            <Column width="10%"><Label text="No." design="Bold"/></Column>
+                            <Column width="25%">
+                                <header>
+                                    <HBox alignItems="Center">
+                                        <Label text="Data Table" design="Bold" class="sapUiTinyMarginEnd"/>
+                                        <core:Icon src="sap-icon://filter" press=".onOpenTableFilter" color="#0854a0" class="sapUiTinyMarginTop"/>
+                                    </HBox>
+                                </header>
+                            </Column>
                             <Column width="15%" hAlign="Center"><Label text="Action" design="Bold"/></Column>
-                            <Column width="20%" demandPopin="true" minScreenWidth="Tablet"><Label text="Requested By" design="Bold"/></Column>
+                            <Column width="20%" demandPopin="true" minScreenWidth="Tablet">
+                                <header>
+                                    <HBox alignItems="Center">
+                                        <Label text="Requested By" design="Bold" class="sapUiTinyMarginEnd"/>
+                                        <core:Icon src="sap-icon://filter" press=".onOpenRequesterFilter" color="#0854a0" class="sapUiTinyMarginTop"/>
+                                    </HBox>
+                                </header>
+                            </Column>
                             <Column width="20%" demandPopin="true" minScreenWidth="Desktop"><Label text="Requested At" design="Bold"/></Column>
                             <Column width="10%" hAlign="End"><Label text="Details" design="Bold"/></Column>
                         </columns>
+                       
                         <items>
                             <ColumnListItem type="Navigation" press=".onViewDiffDetail">
                                 <cells>
                                     <Text text="{approval>indexNo}" class="sapUiMutedText" />
                                     <VBox>
                                         <Text text="{approval>tableName}"/>
-                                        <Text text="ID: {approval>reqId}" visible="false" /> </VBox>
-                                    <ObjectStatus text="{approval>action}" 
-                                                state="{= ${approval>action} === 'CREATE' ? 'Success' : (${approval>action} === 'DELETE' ? 'Error' : 'Warning') }" 
-                                                icon="{= ${approval>action} === 'CREATE' ? 'sap-icon://add' : (${approval>action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }" 
-                                                inverted="true" /> 
+                                        <Text text="ID: {approval>reqId}" visible="false" />
+                                    </VBox>
+                                    <ObjectStatus text="{approval>action}"
+                                                state="{= ${approval>action} === 'CREATE' ? 'Success' : (${approval>action} === 'DELETE' ? 'Error' : 'Warning') }"
+                                                icon="{= ${approval>action} === 'CREATE' ? 'sap-icon://add' : (${approval>action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }"
+                                                inverted="true" />
                                     <Text text="{approval>requestedBy}" />
                                     <Text text="{approval>requestedAt}" />
                                     <Button icon="sap-icon://compare" type="Transparent" press=".onViewDiffDetail"/>
@@ -89,31 +107,45 @@
                         </items>
                     </Table>
 
-                    <Table id="historyTable" 
-                        items="{approval>/historyList}" 
+                    <Table id="historyTable"
+                        items="{approval>/historyList}"
                         noDataText="No history data available"
                         sticky="ColumnHeaders"
                         class="sapUiSmallMarginBottom sapUiShadow1"
                         visible="{= !${approval>/isPendingMode} }">
                         <columns>
-                            <Column width="15%"><Label text="No." design="Bold"/></Column>
-                            <Column width="15%" demandPopin="true" minScreenWidth="Tablet"><Label text="Data Table" design="Bold"/></Column>
+                            <Column width="10%"><Label text="No." design="Bold"/></Column>
+                            <Column width="20%" demandPopin="true" minScreenWidth="Tablet">
+                                <header>
+                                    <HBox alignItems="Center">
+                                        <Label text="Data Table" design="Bold" class="sapUiTinyMarginEnd"/>
+                                        <core:Icon src="sap-icon://filter" press=".onOpenTableFilter" color="#0854a0" class="sapUiTinyMarginTop"/>
+                                    </HBox>
+                                </header>
+                            </Column>
                             <Column width="15%" demandPopin="true" minScreenWidth="Tablet"><Label text="Action" design="Bold"/></Column>
                             <Column width="20%"><Label text="Approval Status" design="Bold"/></Column>
                             <Column width="20%" demandPopin="true" minScreenWidth="Desktop"><Label text="Approved At" design="Bold"/></Column>
-                            <Column width="15%" demandPopin="true" minScreenWidth="Desktop"><Label text="Approver" design="Bold"/></Column>
+                            <Column width="15%" demandPopin="true" minScreenWidth="Desktop">
+                                <header>
+                                    <HBox alignItems="Center">
+                                        <Label text="Approver" design="Bold" class="sapUiTinyMarginEnd"/>
+                                        <core:Icon src="sap-icon://filter" press=".onOpenApproverFilter" color="#0854a0" class="sapUiTinyMarginTop"/>
+                                    </HBox>
+                                </header>
+                            </Column>
                         </columns>
                         <items>
                             <ColumnListItem>
                                 <cells>
                                     <Text text="{approval>indexNo}" class="sapUiMutedText" />
                                     <Text text="{approval>tableName}" />
-                                    <ObjectStatus text="{approval>action}" 
-                                                state="{= ${approval>action} === 'CREATE' ? 'Success' : (${approval>action} === 'DELETE' ? 'Error' : 'Warning') }" 
+                                    <ObjectStatus text="{approval>action}"
+                                                state="{= ${approval>action} === 'CREATE' ? 'Success' : (${approval>action} === 'DELETE' ? 'Error' : 'Warning') }"
                                                 inverted="true" />
-                                    <ObjectStatus text="{approval>status}" 
+                                    <ObjectStatus text="{approval>status}"
                                                 state="{= ${approval>status} === 'APPROVED' ? 'Success' : 'Error' }"
-                                                icon="{= ${approval>status} === 'APPROVED' ? 'sap-icon://accept' : 'sap-icon://decline' }" 
+                                                icon="{= ${approval>status} === 'APPROVED' ? 'sap-icon://accept' : 'sap-icon://decline' }"
                                                 inverted="true" />
                                     <Text text="{approval>processedAt}" />
                                     <Text text="{approval>processedBy}" />
@@ -121,20 +153,58 @@
                             </ColumnListItem>
                         </items>
                     </Table>
-
                 </VBox>
             </VBox>
         </f:content>
 
         <f:dependents>
-            <Dialog 
+            <Popover id="tableFilterPopover" title="Filter by Table" placement="Bottom">
+                <List id="tableFilterList" mode="MultiSelect" items="{approval>/uniqueTables}">
+                    <StandardListItem title="{approval>tableName}" />
+                </List>
+                <footer>
+                    <Toolbar>
+                        <ToolbarSpacer/>
+                        <Button text="Apply" type="Emphasized" press=".onApplyTableFilter" />
+                        <Button text="Clear" press=".onClearTableFilter" />
+                    </Toolbar>
+                </footer>
+            </Popover>
+
+            <Popover id="requesterFilterPopover" title="Filter by Requester" placement="Bottom">
+                <List id="requesterFilterList" mode="MultiSelect" items="{approval>/uniqueRequesters}">
+                    <StandardListItem title="{approval>userName}" />
+                </List>
+                <footer>
+                    <Toolbar>
+                        <ToolbarSpacer/>
+                        <Button text="Apply" type="Emphasized" press=".onApplyRequesterFilter" />
+                        <Button text="Clear" press=".onClearRequesterFilter" />
+                    </Toolbar>
+                </footer>
+            </Popover>
+
+            <Popover id="approverFilterPopover" title="Filter by Approver" placement="Bottom">
+                <List id="approverFilterList" mode="MultiSelect" items="{approval>/uniqueApprovers}">
+                    <StandardListItem title="{approval>userName}" />
+                </List>
+                <footer>
+                    <Toolbar>
+                        <ToolbarSpacer/>
+                        <Button text="Apply" type="Emphasized" press=".onApplyApproverFilter" />
+                        <Button text="Clear" press=".onClearApproverFilter" />
+                    </Toolbar>
+                </footer>
+            </Popover>
+
+            <Dialog
                 id="diffDialog"
-                title="Approval Detail" 
-                contentWidth="800px" 
-                contentHeight="500px" 
-                resizable="true" 
+                title="Approval Detail"
+                contentWidth="800px"
+                contentHeight="500px"
+                resizable="true"
                 draggable="true">
-                
+
                 <customHeader>
                     <Toolbar>
                         <Title text="Review Request" />
@@ -145,13 +215,13 @@
 
                 <content>
                     <VBox>
-                        <ObjectHeader 
-                            title="Target Table: {approval>/currentDetail/tableName}" 
-                            icon="sap-icon://table-view" 
-                            responsive="true" 
+                        <ObjectHeader
+                            title="Target Table: {approval>/currentDetail/tableName}"
+                            icon="sap-icon://table-view"
+                            responsive="true"
                             fullScreenOptimized="true">
                             <statuses>
-                                <ObjectStatus 
+                                <ObjectStatus
                                     text="{approval>/currentDetail/action}"
                                     state="{= ${approval>/currentDetail/action} === 'CREATE' ? 'Success' : (${approval>/currentDetail/action} === 'DELETE' ? 'Error' : 'Warning') }"
                                     icon="{= ${approval>/currentDetail/action} === 'CREATE' ? 'sap-icon://add' : (${approval>/currentDetail/action} === 'DELETE' ? 'sap-icon://delete' : 'sap-icon://edit') }"
@@ -159,16 +229,16 @@
                             </statuses>
                         </ObjectHeader>
 
-                        <MessageStrip 
-                            text="Please review the data differences below before making a decision" 
-                            type="Information" 
-                            showIcon="true" 
+                        <MessageStrip
+                            text="Please review the data differences below before making a decision"
+                            type="Information"
+                            showIcon="true"
                             class="sapUiSmallMargin" />
-                        
-                        <Table 
-                            backgroundDesign="Solid" 
-                            sticky="ColumnHeaders" 
-                            class="sapUiTinyMargin" 
+                       
+                        <Table
+                            backgroundDesign="Solid"
+                            sticky="ColumnHeaders"
+                            class="sapUiTinyMargin"
                             items="{path: 'approval>/currentDetail/diff'}">
                             <columns>
                                 <Column><Label text="Field" design="Bold" /></Column>
@@ -179,13 +249,13 @@
                                 <ColumnListItem>
                                     <cells>
                                         <Label text="{approval>field}" design="Bold" />
-                                        
-                                        <ObjectStatus 
+                                    
+                                        <ObjectStatus
                                             text="{approval>oldData}"
                                             state="{= ${approval>/currentDetail/action} === 'DELETE' ? 'Warning' : 'None' }" />
 
-                                        <ObjectStatus 
-                                            text="{approval>newData}" 
+                                        <ObjectStatus
+                                            text="{approval>newData}"
                                             state="{= ${approval>/currentDetail/action} === 'DELETE' ? 'None' : (${approval>oldData} !== ${approval>newData} &amp;&amp; ${approval>oldData} !== 'N/A' &amp;&amp; ${approval>oldData} !== '-' ? 'Warning' : 'Success') }"
                                             icon="{= ${approval>/currentDetail/action} === 'DELETE' ? '' : (${approval>oldData} !== ${approval>newData} &amp;&amp; ${approval>oldData} !== 'N/A' &amp;&amp; ${approval>oldData} !== '-' ? 'sap-icon://edit' : 'sap-icon://sys-enter-2') }" />
                                     </cells>
@@ -201,23 +271,22 @@
                 <endButton>
                     <Button text="Reject" type="Reject" icon="sap-icon://decline" press=".onRejectRequest" />
                 </endButton>
-
             </Dialog>
 
-            <Dialog 
+            <Dialog
                 id="rejectDialog"
                 title="Confirm Rejection"
                 type="Message"
                 state="Error">
                 <content>
                     <VBox class="sapUiTinyMarginTop">
-                        <MessageStrip 
+                        <MessageStrip
                             text="Rejecting this request will halt the current workflow"
                             type="Warning"
                             showIcon="true"
                             class="sapUiMediumMarginBottom" />
                         <Label text="Rejection Reason" required="true" />
-                        <TextArea 
+                        <TextArea
                             id="rejectReasonInput"
                             width="100%"
                             placeholder="Please enter the reason why this request is rejected..."
@@ -231,7 +300,6 @@
                     <Button text="Cancel" press=".onCancelReject" />
                 </endButton>
             </Dialog>
-
         </f:dependents>
 
     </f:DynamicPage>
