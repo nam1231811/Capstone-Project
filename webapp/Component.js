@@ -38,7 +38,7 @@ sap.ui.define([
             }.bind(this)).catch(function (error) {
                 BusyIndicator.hide();
                 this.getRouter().initialize();
-                console.error("Lỗi khi tải quyền user:", error);
+                console.error("Error loading user role:", error);
             }.bind(this));
         },
 
@@ -58,16 +58,17 @@ sap.ui.define([
                 if (sap.ushell && sap.ushell.Container) {
                     sCurrentUserId = sap.ushell.Container.getUser().getId();
                 }
+                if (sCurrentUserId === "DEFAULT_USER") {
+                    sCurrentUserId = "DEV-097";
+                }
                 sCurrentUserId = sCurrentUserId.toUpperCase();
                 oAuthModel.setProperty("/currentUser", sCurrentUserId);
-                console.log("Current User ID: ", sCurrentUserId);
 
                 var oODataModel = that.getModel();
                 if (oODataModel) {
                     var oContextBinding = oODataModel.bindContext("/UserRoleList('" + sCurrentUserId + "')");
 
                     oContextBinding.requestObject().then(function (oData) {
-                        console.log("User roles: ", oData);
 
                         oAuthModel.setProperty("/isClerk", oData.IsClerk);
                         oAuthModel.setProperty("/isManager", oData.IsManager);
