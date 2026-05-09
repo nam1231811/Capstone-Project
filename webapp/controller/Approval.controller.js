@@ -24,13 +24,10 @@ sap.ui.define([
                     pendingCount: 0,
                     historyCount: 0,
                     currentDetail: null,
-                    uniqueTables: [],
-                    uniqueRequesters: [],
-                    uniqueApprovers: []
+                    searchQuery: ""
                 }),
                 oRouter = this.getOwnerComponent().getRouter();
 
-            this._oColumnFilters = { table: null, requester: null, approver: null };
             this.getView().setModel(oApprovalModel, "approval");
 
             if (oRouter.getRoute("RouteApproval")) {
@@ -41,11 +38,8 @@ sap.ui.define([
         },
 
         _onRouteMatched: function () {
-            var oAuthModel = this.getOwnerComponent().getModel("auth"),
-                bIsManager = oAuthModel.getProperty("/isManager"),
-                bIsAdmin = oAuthModel.getProperty("/isAdmin");
-
-            if (!bIsManager && !bIsAdmin) {
+            var oAuthModel = this.getOwnerComponent().getModel("auth");
+            if (!oAuthModel.getProperty("/isManager") && !oAuthModel.getProperty("/isAdmin")) {
                 this.getOwnerComponent().getRouter().navTo("RouteHome", {}, true);
                 return;
             }
@@ -72,11 +66,7 @@ sap.ui.define([
                 var aPendingCtx = aResults[0] || [],
                     aHistoryCtx = aResults[1] || [],
                     aPendingList = this._formatData(aPendingCtx, true),
-                    aHistoryList = this._formatData(aHistoryCtx, false),
-                    aAllTables = [], aTempTableNames = [],
-                    aAllRequesters = [], aTempRequesters = [],
-                    aAllApprovers = [], aTempApprovers = [],
-                    aCombinedList = [];
+                    aHistoryList = this._formatData(aHistoryCtx, false);
 
                 aPendingList.sort(function(a, b) { return new Date(b.rawDataTime) - new Date(a.rawDataTime); });
                 aPendingList.forEach(function(item, idx) { item.indexNo = idx + 1; });
@@ -89,39 +79,12 @@ sap.ui.define([
                 oApprovalModel.setProperty("/historyList", aHistoryList);
                 oApprovalModel.setProperty("/historyCount", aHistoryList.length);
 
-                aCombinedList = aPendingList.concat(aHistoryList);
-                aCombinedList.forEach(function(oItem) {
-                    if (aTempTableNames.indexOf(oItem.tableName) === -1) {
-                        aTempTableNames.push(oItem.tableName);
-                        aAllTables.push({ tableName: oItem.tableName });
-                    }
-                });
-
-                aPendingList.forEach(function(oItem) {
-                    if (aTempRequesters.indexOf(oItem.requestedBy) === -1) {
-                        aTempRequesters.push(oItem.requestedBy);
-                        aAllRequesters.push({ userName: oItem.requestedBy });
-                    }
-                });
-
-                aHistoryList.forEach(function(oItem) {
-                    if (aTempApprovers.indexOf(oItem.processedBy) === -1) {
-                        aTempApprovers.push(oItem.processedBy);
-                        aAllApprovers.push({ userName: oItem.processedBy });
-                    }
-                });
-
-                oApprovalModel.setProperty("/uniqueTables", aAllTables);
-                oApprovalModel.setProperty("/uniqueRequesters", aAllRequesters);
-                oApprovalModel.setProperty("/uniqueApprovers", aAllApprovers);
-
                 this._applyFilters();
                 oView.setBusy(false);
 
             }.bind(this)).catch(function (oError) {
                 oView.setBusy(false);
                 MessageBox.error("Error loading data: " + oError.message);
-                console.error(oError);
             });
         },
 
@@ -168,12 +131,9 @@ sap.ui.define([
                 });
 
                 aAllKeys.forEach(function (key) {
-                    var sOldVal = "-",
-                        sNewVal = "-";
-
+                    var sOldVal = "-", sNewVal = "-";
                     if (sActionText !== "CREATE" && oParsedOld[key] !== undefined) sOldVal = String(oParsedOld[key]);
                     if (sActionText !== "DELETE" && oParsedNew[key] !== undefined) sNewVal = String(oParsedNew[key]);
-
                     aDiff.push({ field: key, oldData: sOldVal, newData: sNewVal });
                 });
 
@@ -201,9 +161,7 @@ sap.ui.define([
                 return (!sDataStr.startsWith("{") && !sDataStr.startsWith("["))
                     ? DataFormatter.decodeFunction({ json_string: sDataStr })
                     : JSON.parse(sDataStr);
-            } catch (e) {
-                return {};
-            }
+            } catch (e) { return {}; }
         },
         
         onToggleMode: function() {
@@ -215,50 +173,21 @@ sap.ui.define([
             this._applyFilters();
         },
 
-        onActionFilterSelect: function () { this._applyFilters(); },
-        onOpenTableFilter: function (oEvent) { this.byId("tableFilterPopover").openBy(oEvent.getSource()); },
-        onOpenRequesterFilter: function (oEvent) { this.byId("requesterFilterPopover").openBy(oEvent.getSource()); },
-        onOpenApproverFilter: function (oEvent) { this.byId("approverFilterPopover").openBy(oEvent.getSource()); },
+        onActionFilterSelect: function () { 
+            this._applyFilters(); 
+        },
 
-        onApplyTableFilter: function () { this._handleColumnFilter("tableFilterList", "table", "tableName", "tableFilterPopover", false); },
-        onClearTableFilter: function () { this._handleColumnFilter("tableFilterList", "table", "tableName", "tableFilterPopover", true); },
-        onApplyRequesterFilter: function () { this._handleColumnFilter("requesterFilterList", "requester", "userName", "requesterFilterPopover", false); },
-        onClearRequesterFilter: function () { this._handleColumnFilter("requesterFilterList", "requester", "userName", "requesterFilterPopover", true); },
-        onApplyApproverFilter: function () { this._handleColumnFilter("approverFilterList", "approver", "userName", "approverFilterPopover", false); },
-        onClearApproverFilter: function () { this._handleColumnFilter("approverFilterList", "approver", "userName", "approverFilterPopover", true); },
-
-        _handleColumnFilter: function (sListId, sFilterKey, sPropName, sPopoverId, bIsClear) {
-            var oList = this.byId(sListId),
-                aSelectedItems = oList ? oList.getSelectedItems() : [],
-                aFilters = [],
-                sFilterTarget = "";
-
-            if (sFilterKey === "table") sFilterTarget = "tableName";
-            else if (sFilterKey === "requester") sFilterTarget = "requestedBy";
-            else sFilterTarget = "processedBy";
-
-            if (bIsClear) {
-                if (oList) oList.removeSelections(true);
-                this._oColumnFilters[sFilterKey] = null;
-            } else {
-                if (aSelectedItems.length > 0) {
-                    aSelectedItems.forEach(function(oItem) {
-                        var sValue = oItem.getBindingContext("approval").getProperty(sPropName);
-                        aFilters.push(new Filter(sFilterTarget, FilterOperator.EQ, sValue));
-                    });
-                    this._oColumnFilters[sFilterKey] = new Filter({ filters: aFilters, and: false });
-                } else {
-                    this._oColumnFilters[sFilterKey] = null;
-                }
-            }
-
+        onSearchTable: function (oEvent) {
+            var sQuery = oEvent.getParameter("newValue");
+            this.getView().getModel("approval").setProperty("/searchQuery", sQuery);
             this._applyFilters();
-            this.byId(sPopoverId).close();
         },
 
         _applyFilters: function() {
-            var sActionKey = this.byId("actionFilterBar").getSelectedKey(),
-                bIsPending = this.getView().getModel("approval").getProperty("/isPendingMode"),
+            var oModel = this.getView().getModel("approval"),
+                sActionKey = this.byId("actionFilterBar").getSelectedKey(),
+                bIsPending = oModel.getProperty("/isPendingMode"),
+                sQuery = oModel.getProperty("/searchQuery"),
                 sTableId = bIsPending ? "pendingTable" : "historyTable",
                 oTable = this.byId(sTableId),
                 oBinding,
@@ -267,10 +196,13 @@ sap.ui.define([
             if (!oTable) return;
             oBinding = oTable.getBinding("items");
 
-            if (sActionKey && sActionKey !== "ALL") aFinalFilters.push(new Filter("action", FilterOperator.EQ, sActionKey));
-            if (this._oColumnFilters.table !== null) aFinalFilters.push(this._oColumnFilters.table);
-            if (bIsPending && this._oColumnFilters.requester !== null) aFinalFilters.push(this._oColumnFilters.requester);
-            if (!bIsPending && this._oColumnFilters.approver !== null) aFinalFilters.push(this._oColumnFilters.approver);
+            if (sActionKey && sActionKey !== "ALL") {
+                aFinalFilters.push(new Filter("action", FilterOperator.EQ, sActionKey));
+            }
+
+            if (sQuery && sQuery.trim() !== "") {
+                aFinalFilters.push(new Filter("tableName", FilterOperator.Contains, sQuery.trim()));
+            }
             
             oBinding.filter(aFinalFilters);
         },
