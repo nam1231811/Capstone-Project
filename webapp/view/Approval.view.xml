@@ -25,8 +25,8 @@
                     icon="sap-icon://locked"
                     text="You do not have permission"
                     description="This feature is only available for Managers and Admins!"/>
-
                 <VBox visible="{= ${auth>/isManager} || ${auth>/isAdmin} }" width="100%">
+                    
                     <OverflowToolbar height="3.5rem" class="sapUiSmallMarginBottom sapUiShadow1" design="Solid">
                         <Title text="Filter Action:" level="H4" class="sapUiTinyMarginEnd" />
                         <SegmentedButton id="actionFilterBar" selectionChange=".onActionFilterSelect" selectedKey="ALL">
@@ -39,6 +39,11 @@
                         </SegmentedButton>
 
                         <ToolbarSpacer />
+
+                        <SearchField placeholder="Search by Table Name..." 
+                                     liveChange=".onSearchTable" 
+                                     width="280px" 
+                                     class="sapUiSmallMarginEnd"/>
 
                         <Button id="modeToggleBtn"
                                 text="{= ${approval>/isPendingMode} ? 'Pending (' + ${approval>/pendingCount} + ')' : 'History (' + ${approval>/historyCount} + ')' }"
@@ -66,23 +71,9 @@
 
                         <columns>
                             <Column width="10%"><Label text="No." design="Bold"/></Column>
-                            <Column width="25%">
-                                <header>
-                                    <HBox alignItems="Center">
-                                        <Label text="Data Table" design="Bold" class="sapUiTinyMarginEnd"/>
-                                        <core:Icon src="sap-icon://filter" press=".onOpenTableFilter" color="#0854a0" class="sapUiTinyMarginTop"/>
-                                    </HBox>
-                                </header>
-                            </Column>
+                            <Column width="25%"><Label text="Data Table" design="Bold"/></Column>
                             <Column width="15%" hAlign="Center"><Label text="Action" design="Bold"/></Column>
-                            <Column width="20%" demandPopin="true" minScreenWidth="Tablet">
-                                <header>
-                                    <HBox alignItems="Center">
-                                        <Label text="Requested By" design="Bold" class="sapUiTinyMarginEnd"/>
-                                        <core:Icon src="sap-icon://filter" press=".onOpenRequesterFilter" color="#0854a0" class="sapUiTinyMarginTop"/>
-                                    </HBox>
-                                </header>
-                            </Column>
+                            <Column width="20%" demandPopin="true" minScreenWidth="Tablet"><Label text="Requested By" design="Bold"/></Column>
                             <Column width="20%" demandPopin="true" minScreenWidth="Desktop"><Label text="Requested At" design="Bold"/></Column>
                             <Column width="10%" hAlign="End"><Label text="Details" design="Bold"/></Column>
                         </columns>
@@ -115,25 +106,11 @@
                         visible="{= !${approval>/isPendingMode} }">
                         <columns>
                             <Column width="10%"><Label text="No." design="Bold"/></Column>
-                            <Column width="20%" demandPopin="true" minScreenWidth="Tablet">
-                                <header>
-                                    <HBox alignItems="Center">
-                                        <Label text="Data Table" design="Bold" class="sapUiTinyMarginEnd"/>
-                                        <core:Icon src="sap-icon://filter" press=".onOpenTableFilter" color="#0854a0" class="sapUiTinyMarginTop"/>
-                                    </HBox>
-                                </header>
-                            </Column>
+                            <Column width="20%" demandPopin="true" minScreenWidth="Tablet"><Label text="Data Table" design="Bold"/></Column>
                             <Column width="15%" demandPopin="true" minScreenWidth="Tablet"><Label text="Action" design="Bold"/></Column>
                             <Column width="20%"><Label text="Approval Status" design="Bold"/></Column>
                             <Column width="20%" demandPopin="true" minScreenWidth="Desktop"><Label text="Approved At" design="Bold"/></Column>
-                            <Column width="15%" demandPopin="true" minScreenWidth="Desktop">
-                                <header>
-                                    <HBox alignItems="Center">
-                                        <Label text="Approver" design="Bold" class="sapUiTinyMarginEnd"/>
-                                        <core:Icon src="sap-icon://filter" press=".onOpenApproverFilter" color="#0854a0" class="sapUiTinyMarginTop"/>
-                                    </HBox>
-                                </header>
-                            </Column>
+                            <Column width="15%" demandPopin="true" minScreenWidth="Desktop"><Label text="Approver" design="Bold"/></Column>
                         </columns>
                         <items>
                             <ColumnListItem>
@@ -158,45 +135,6 @@
         </f:content>
 
         <f:dependents>
-            <Popover id="tableFilterPopover" title="Filter by Table" placement="Bottom">
-                <List id="tableFilterList" mode="MultiSelect" items="{approval>/uniqueTables}">
-                    <StandardListItem title="{approval>tableName}" />
-                </List>
-                <footer>
-                    <Toolbar>
-                        <ToolbarSpacer/>
-                        <Button text="Apply" type="Emphasized" press=".onApplyTableFilter" />
-                        <Button text="Clear" press=".onClearTableFilter" />
-                    </Toolbar>
-                </footer>
-            </Popover>
-
-            <Popover id="requesterFilterPopover" title="Filter by Requester" placement="Bottom">
-                <List id="requesterFilterList" mode="MultiSelect" items="{approval>/uniqueRequesters}">
-                    <StandardListItem title="{approval>userName}" />
-                </List>
-                <footer>
-                    <Toolbar>
-                        <ToolbarSpacer/>
-                        <Button text="Apply" type="Emphasized" press=".onApplyRequesterFilter" />
-                        <Button text="Clear" press=".onClearRequesterFilter" />
-                    </Toolbar>
-                </footer>
-            </Popover>
-
-            <Popover id="approverFilterPopover" title="Filter by Approver" placement="Bottom">
-                <List id="approverFilterList" mode="MultiSelect" items="{approval>/uniqueApprovers}">
-                    <StandardListItem title="{approval>userName}" />
-                </List>
-                <footer>
-                    <Toolbar>
-                        <ToolbarSpacer/>
-                        <Button text="Apply" type="Emphasized" press=".onApplyApproverFilter" />
-                        <Button text="Clear" press=".onClearApproverFilter" />
-                    </Toolbar>
-                </footer>
-            </Popover>
-
             <Dialog
                 id="diffDialog"
                 title="Approval Detail"
