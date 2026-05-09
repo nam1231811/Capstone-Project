@@ -58,6 +58,9 @@ sap.ui.define([
                 if (sap.ushell && sap.ushell.Container) {
                     sCurrentUserId = sap.ushell.Container.getUser().getId();
                 }
+                if (sCurrentUserId === "DEFAULT_USER") {
+                    sCurrentUserId = "DEV-097";
+                }
                 sCurrentUserId = sCurrentUserId.toUpperCase();
                 oAuthModel.setProperty("/currentUser", sCurrentUserId);
                 console.log("Current User ID: ", sCurrentUserId);

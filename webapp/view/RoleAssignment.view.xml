@@ -53,6 +53,7 @@
                     <f:content>
                         <Table id="usersTable" 
                                items="{/UserRoleList}"
+                               mode="MultiSelect"
                                noDataText="Loading data or user not found..."
                                alternateRowColors="true"
                                class="sapUiTinyMarginBottom"
@@ -71,8 +72,10 @@
                                     
                                     <ToolbarSpacer />
                                     
-                                    <HBox width="15%" justifyContent="Center">
-                                        <Button text="Assign Role" type="Emphasized" icon="sap-icon://add-contact" press=".onOpenAssignDialog"/>
+                                    <HBox width="auto" justifyContent="End">
+                                        <Button text="Mass Assign" type="Accept" icon="sap-icon://multi-select" press=".onOpenMassAssignDialog" class="sapUiTinyMarginEnd" />
+    
+                                        <Button text="Assign Single" type="Emphasized" icon="sap-icon://add-contact" press=".onOpenAssignDialog"/>
                                     </HBox>
                                     
                                 </Toolbar>
@@ -175,6 +178,33 @@
                     <Button text="Cancel" press=".onCloseRoleDialog" />
                 </endButton>
             </Dialog>
+
+            <Dialog id="massRoleDialog" title="Mass Assign Role ({roleLocal>/massSelectedCount} users)" contentWidth="400px">
+    <content>
+        <form:SimpleForm layout="ResponsiveGridLayout" labelSpanL="4" emptySpanL="1" columnsL="1">
+            <form:content>
+                <Label text="Assign Role" required="true" />
+                <Select selectedKey="{roleLocal>/formData/roleId}" width="100%">
+                    <items>
+                        <core:Item key="" text="--- Select Role ---" />
+                        <core:Item key="Admin" text="Admin (Full Access)" />
+                        <core:Item key="Manager" text="Manager (Approval)" />
+                        <core:Item key="Clerk" text="Clerk (Employee)" />
+                    </items>
+                </Select>
+
+                <Label text="Expiration Date" />
+                <DatePicker value="{roleLocal>/formData/validTo}" valueFormat="yyyyMMdd" displayFormat="dd/MM/yyyy" placeholder="Leave blank = No expiration" />
+            </form:content>
+        </form:SimpleForm>
+    </content>
+    <beginButton>
+        <Button text="Save Mass Assign" type="Emphasized" press=".onSaveMassRole" />
+    </beginButton>
+    <endButton>
+        <Button text="Cancel" press=".onCloseMassDialog" />
+    </endButton>
+</Dialog>
         </f:dependents>
 
     </f:DynamicPage>

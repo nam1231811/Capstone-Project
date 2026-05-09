@@ -16,14 +16,16 @@ sap.ui.define([
     return Controller.extend("zapp.controller.RoleAssignment", {
         onInit: function () {
             var oData = {
-                    dialogTitle: "",
-                    formData: {
-                        isEditMode: false,
-                        userId: "",
-                        roleId: "Clerk",
-                        validTo: ""
-                    }
-                },
+                dialogTitle: "",
+                minDate: new Date(),
+                massSelectedCount: 0,
+                formData: {
+                    isEditMode: false,
+                    userId: "",
+                    roleId: "Clerk",
+                    validTo: ""
+                }
+            },
                 oLocalModel = new JSONModel(oData),
                 oRouter = this.getOwnerComponent().getRouter();
 
@@ -115,7 +117,7 @@ sap.ui.define([
             var oModel = this.getView().getModel("roleLocal");
             oModel.setProperty("/dialogTitle", "Assign New Role");
             oModel.setProperty("/formData", { isEditMode: false, userId: "", roleId: "", validTo: "" });
-            
+
             this.byId("roleDialog").open();
         },
 
@@ -157,8 +159,7 @@ sap.ui.define([
                 sUserId = oFormData.userId,
                 sValidTo = oFormData.validTo,
                 sFormattedDate = "99991231",
-                sActionName = "", sPath, oActionContext,
-                oToday, sYear, sMonth, sDay, sTodayStr;
+                sActionName = "", sPath, oActionContext;
 
             if (!sUserId) {
                 MessageBox.error("Please enter your User Account!");
@@ -175,18 +176,7 @@ sap.ui.define([
                     MessageBox.error("Invalid expiration date! Please enter the correct format DD/MM/YYYY or select from the calendar icon.");
                     return;
                 }
-
                 sFormattedDate = sValidTo;
-                oToday = new Date();
-                sYear = oToday.getFullYear().toString();
-                sMonth = (oToday.getMonth() + 1).toString().padStart(2, '0');
-                sDay = oToday.getDate().toString().padStart(2, '0');
-                sTodayStr = sYear + sMonth + sDay;
-
-                if (sFormattedDate < sTodayStr) {
-                    MessageBox.error("Please select an expiration date greater than or equal to the current date!");
-                    return;
-                }
             }
 
             if (oFormData.roleId === "Admin") sActionName = ACTION_ASSIGN_ADMIN;
@@ -204,13 +194,89 @@ sap.ui.define([
                 MessageToast.show("Successfully assigned " + oFormData.roleId + " role to " + sUserId + "!");
                 this.onCloseRoleDialog();
 
-                setTimeout(function () {
-                    this.byId("usersTable").getBinding("items").refresh();
-                    sap.ui.core.BusyIndicator.hide();
-                }.bind(this), 1500);
-
+                this.byId("usersTable").getBinding("items").refresh();
+                sap.ui.core.BusyIndicator.hide();
             }.bind(this)).catch(function (oError) {
                 MessageBox.error("Error assigning role: " + oError.message);
+                sap.ui.core.BusyIndicator.hide();
+            });
+        },
+
+        onOpenMassAssignDialog: function () {
+            var oTable = this.byId("usersTable"),
+                aSelectedItems = oTable.getSelectedItems();
+
+            if (aSelectedItems.length === 0) {
+                MessageBox.warning("Please select at least one user from the table to mass assign.");
+                return;
+            }
+
+            var oModel = this.getView().getModel("roleLocal");
+            oModel.setProperty("/massSelectedCount", aSelectedItems.length);
+            oModel.setProperty("/formData", { roleId: "", validTo: "" });
+
+            this.byId("massRoleDialog").open();
+        },
+
+        onCloseMassDialog: function () {
+            this.byId("massRoleDialog").close();
+        },
+
+        onSaveMassRole: function () {
+            var oView = this.getView(),
+                oModel = oView.getModel(),
+                oFormData = oView.getModel("roleLocal").getProperty("/formData"),
+                oTable = this.byId("usersTable"),
+                aSelectedContexts = oTable.getSelectedContexts(),
+                sValidTo = oFormData.validTo,
+                sFormattedDate = "99991231",
+                sActionName = "",
+                aPromises = [];
+
+            if (!oFormData.roleId) {
+                MessageBox.error("Please select a Role to assign!");
+                return;
+            }
+
+            if (sValidTo && sValidTo.trim() !== "") {
+                if (!/^\d{8}$/.test(sValidTo)) {
+                    MessageBox.error("Invalid expiration date format!");
+                    return;
+                }
+                sFormattedDate = sValidTo;
+            }
+
+            if (oFormData.roleId === "Admin") sActionName = ACTION_ASSIGN_ADMIN;
+            else if (oFormData.roleId === "Manager") sActionName = ACTION_ASSIGN_MANAGER;
+            else if (oFormData.roleId === "Clerk") sActionName = ACTION_ASSIGN_CLERK;
+
+            sap.ui.core.BusyIndicator.show(0);
+
+            // Gói tất cả các request vào một mảng Promise
+            aSelectedContexts.forEach(function (oContext) {
+                var sUserId = oContext.getProperty("Username"),
+                    sPath = "/UserRoleList('" + sUserId + "')/" + sActionName + "(...)",
+                    oActionContext = oModel.bindContext(sPath);
+
+                oActionContext.setParameter("ValidTo", sFormattedDate);
+                aPromises.push(oActionContext.execute());
+            });
+
+            // Thực thi toàn bộ đồng loạt
+            Promise.all(aPromises).then(function () {
+                MessageToast.show("Successfully assigned roles to " + aSelectedContexts.length + " users!");
+                this.onCloseMassDialog();
+
+                // Bỏ tick chọn trên bảng
+                oTable.removeSelections(true);
+
+                // Refresh bảng
+                oTable.getBinding("items").refresh();
+                sap.ui.core.BusyIndicator.hide();
+
+            }.bind(this)).catch(function (oError) {
+                MessageBox.error("An error occurred during mass assignment. Check console for details.");
+                console.error(oError);
                 sap.ui.core.BusyIndicator.hide();
             });
         },
@@ -236,11 +302,8 @@ sap.ui.define([
                         oOperation.execute().then(function () {
                             MessageToast.show("Successfully revoked role for " + sUsername + "!");
 
-                            setTimeout(function () {
-                                this.byId("usersTable").getBinding("items").refresh();
-                                sap.ui.core.BusyIndicator.hide();
-                            }.bind(this), 1500);
-
+                            this.byId("usersTable").getBinding("items").refresh();
+                            sap.ui.core.BusyIndicator.hide();
                         }.bind(this)).catch(function (oError) {
                             MessageBox.error("Error revoking role: " + oError.message);
                             sap.ui.core.BusyIndicator.hide();
