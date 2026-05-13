@@ -26,7 +26,6 @@
         <f:header>
             <f:DynamicPageHeader pinnable="true">
                 <layout:Grid defaultSpan="XL4 L4 M4 S12" hSpacing="1" vSpacing="1">
-                    
                     <f:Card width="100%" class="hoverableCard">
                         <f:content>
                             <List showSeparators="None">
@@ -92,7 +91,6 @@
                             </List>
                         </f:content>
                     </f:Card>
-
                 </layout:Grid>
             </f:DynamicPageHeader>
         </f:header>
@@ -102,55 +100,70 @@
                 
                 <f:Card id="cardLineChart">
                     <f:header>
-                        <card:Header title="Data Change Frequency" subtitle="Statistics of Create/Update/Delete over the last 7 days" iconSrc="sap-icon://line-chart"/>
+                        <card:Header title="Data Change Frequency" subtitle="Statistics of actions in the last 7 days" iconSrc="sap-icon://line-chart" />
                     </f:header>
                     <f:content>
-                        <viz:VizFrame id="idLineChart" uiConfig="{applicationSet:'fiori'}" vizType="line" width="100%" height="300px" vizProperties="{title: {visible: false}}">
-                            <viz:dataset>
-                                <viz.data:FlattenedDataset data="{dash>/lineData}">
-                                    <viz.data:dimensions>
-                                        <viz.data:DimensionDefinition name="Date" value="{dash>date}" />
-                                    </viz.data:dimensions>
-                                    <viz.data:measures>
-                                        <viz.data:MeasureDefinition name="Create" value="{dash>create}" />
-                                        <viz.data:MeasureDefinition name="Update" value="{dash>update}" />
-                                        <viz.data:MeasureDefinition name="Delete" value="{dash>delete}" />
-                                    </viz.data:measures>
-                                </viz.data:FlattenedDataset>
-                            </viz:dataset>
-                            <viz:feeds>
-                                <viz.feeds:FeedItem uid="valueAxis" type="Measure" values="Create,Update,Delete" />
-                                <viz.feeds:FeedItem uid="categoryAxis" type="Dimension" values="Date" />
-                            </viz:feeds>
-                        </viz:VizFrame>
+                        <VBox width="100%"> 
+                            <Toolbar style="Clear" class="sapUiSmallMarginBeginEnd">
+                                <ToolbarSpacer />
+                                <SearchField placeholder="Filter by User ID..." search=".onUserFilterChange" width="250px" class="sapUiTinyMarginTopBottom" />
+                            </Toolbar>
+                            <viz:VizFrame id="idLineChart" selectData=".onLineChartSelect" uiConfig="{applicationSet:'fiori'}" vizType="line" width="100%" height="300px" vizProperties="{title: {visible: false}}">
+                                <viz:dataset>
+                                    <viz.data:FlattenedDataset data="{dash>/lineData}">
+                                        <viz.data:dimensions>
+                                            <viz.data:DimensionDefinition name="Date" value="{dash>CHART_DATE}" />
+                                        </viz.data:dimensions>
+                                        <viz.data:measures>
+                                            <viz.data:MeasureDefinition name="Create" value="{dash>CREATE_COUNT}" />
+                                            <viz.data:MeasureDefinition name="Update" value="{dash>UPDATE_COUNT}" />
+                                            <viz.data:MeasureDefinition name="Delete" value="{dash>DELETE_COUNT}" />
+                                        </viz.data:measures>
+                                    </viz.data:FlattenedDataset>
+                                </viz:dataset>
+                                <viz:feeds>
+                                    <viz.feeds:FeedItem uid="valueAxis" type="Measure" values="Create,Update,Delete" />
+                                    <viz.feeds:FeedItem uid="categoryAxis" type="Dimension" values="Date" />
+                                </viz:feeds>
+                            </viz:VizFrame>
+                        </VBox>
                     </f:content>
                 </f:Card>
 
-                <f:Card id="cardBarChart">
+                <f:Card id="cardBarChart" height="450px">
+                    <f:layoutData>
+                        <layout:GridData span="XL6 L6 M12 S12" />
+                    </f:layoutData>
                     <f:header>
-                        <card:Header title="Top Users With Most Changes" subtitle="Based on the number of data changes" iconSrc="sap-icon://bar-chart"/>
+                        <card:Header title="Top Users" subtitle="Based on number of actions" iconSrc="sap-icon://bar-chart"/>
                     </f:header>
                     <f:content>
-                        <viz:VizFrame id="idBarChart" uiConfig="{applicationSet:'fiori'}" vizType="column" width="100%" height="300px" vizProperties="{title: {visible: false}}">
+                        <viz:VizFrame id="idBarChart" selectData=".onTopUserSelect" uiConfig="{applicationSet:'fiori'}" vizType="column" width="100%" height="350px" 
+                            vizProperties="{
+                                title: {visible: false}, 
+                                legend: {visible: false}, 
+                                valueAxis: {title: {visible: false}}, 
+                                categoryAxis: {title: {visible: false}}
+                            }">
                             <viz:dataset>
                                 <viz.data:FlattenedDataset data="{dash>/topUsers}">
                                     <viz.data:dimensions>
-                                        <viz.data:DimensionDefinition name="User" value="{dash>user}" />
+                                        <viz.data:DimensionDefinition name="Changed By" value="{dash>CHANGED_BY}" />
                                     </viz.data:dimensions>
                                     <viz.data:measures>
-                                        <viz.data:MeasureDefinition name="Action Count" value="{dash>actions}" />
+                                        <viz.data:MeasureDefinition name="Action Count" value="{dash>ACTION_COUNT}" />
                                     </viz.data:measures>
                                 </viz.data:FlattenedDataset>
                             </viz:dataset>
                             <viz:feeds>
                                 <viz.feeds:FeedItem uid="valueAxis" type="Measure" values="Action Count" />
-                                <viz.feeds:FeedItem uid="categoryAxis" type="Dimension" values="User" />
+                                <viz.feeds:FeedItem uid="categoryAxis" type="Dimension" values="Changed By" />
                             </viz:feeds>
                         </viz:VizFrame>
                     </f:content>
                 </f:Card>
 
-                <f:Card id="dataManagementCard" height="420px">
+                <f:Card id="dataManagementCard" height="450px">
                     <f:layoutData>
                         <layout:GridData span="XL6 L6 M12 S12" />
                     </f:layoutData>
@@ -158,26 +171,25 @@
                         <card:Header title="Data Management" subtitle="Manage and analyze your data" iconSrc="sap-icon://pie-chart" statusText="{= 'Measured ' + ${dash>/qualityPercentage} + '% valid'}"/>
                     </f:header>
                     <f:content>
-                        <VBox width="100%" height="100%">
+                        <VBox width="100%">
                             <Toolbar style="Clear" class="sapUiTinyMarginTop sapUiSmallMarginBeginEnd">
                                 <Input id="searchTableInput" 
                                        placeholder="Enter table name..." 
                                        showValueHelp="true" 
                                        valueHelpRequest=".onValueHelpRequest" 
                                        submit=".onSearchTableQuality" 
-                                       width="50%" />
-                                <Button icon="sap-icon://refresh" press=".onResetPieChart" type="Transparent" tooltip="Reload Default Chart"/>
+                                       width="60%" />
+                                <Button icon="sap-icon://refresh" press=".onResetPieChart" type="Transparent" tooltip="Reload Default"/>
                                 <ToolbarSpacer />
                             </Toolbar>
                             
-                            <HBox width="100%" alignItems="Center" justifyContent="SpaceBetween">
-                                <VBox width="65%">
-                                    <viz:VizFrame id="idPieChart" uiConfig="{applicationSet:'fiori'}" vizType="donut" width="100%" height="280px" 
+                            <HBox width="100%" class="sapUiSmallMarginTop sapUiSmallMarginBeginEnd">
+                                
+                                <VBox width="55%" class="sapUiSmallMarginEnd">
+                                    <viz:VizFrame id="idPieChart" uiConfig="{applicationSet:'fiori'}" vizType="donut" width="100%" height="220px" 
                                         vizProperties="{
                                             title: {visible: false},
-                                            legendGroup: {
-                                                layout: { position: 'bottom', alignment: 'center' }
-                                            }
+                                            legendGroup: { layout: { position: 'bottom', alignment: 'center' } }
                                         }">
                                         <viz:dataset>
                                             <viz.data:FlattenedDataset data="{dash>/pieData}">
@@ -194,61 +206,27 @@
                                             <viz.feeds:FeedItem uid="color" type="Dimension" values="Status" />
                                         </viz:feeds>
                                     </viz:VizFrame>
+                                    
+                                    <HBox width="100%" alignItems="Center" justifyContent="Center" class="sapUiTinyMarginTop">
+                                        <mc:RadialMicroChart alignContent="Center" size="M" percentage="{dash>/qualityPercentage}" valueColor="{dash>/qualityColor}" class="sapUiSmallMarginEnd"/>
+                                        <Label text="Data Quality" design="Bold" wrapping="true"/>
+                                    </HBox>
                                 </VBox>
 
-                                <VBox width="35%" alignItems="Center" justifyContent="Center">
-                                    <mc:RadialMicroChart 
-                                        alignContent="Center"
-                                        size="L" 
-                                        percentage="{dash>/qualityPercentage}" 
-                                        valueColor="{dash>/qualityColor}" />
-                                    <Label text="Data Quality Percentage" design="Bold" class="sapUiSmallMarginTop" textAlign="Center" wrapping="true"/>
+                                <VBox width="45%" visible="{= ${dash>/dataInsight/totalRows} > 0 }">
+                                    <Title text="Data Insight Information" level="H6" class="sapUiTinyMarginBottom" />
+                                    <ObjectStatus text="Total: {dash>/dataInsight/totalRows} records" state="Information" class="sapUiSmallMarginBottom" />
+                                    
+                                    <Label text="Top empty columns:" design="Bold" class="sapUiTinyMarginTop" />
+                                    <List items="{dash>/dataInsight/topMissingCols}" showSeparators="None" noDataText="Fully populated.">
+                                        <items>
+                                            <StandardListItem title="{dash>col}" description="{dash>count} missing fields" infoState="Warning" />
+                                        </items>
+                                    </List>
                                 </VBox>
+                                
                             </HBox>
                         </VBox>
-                    </f:content>
-                </f:Card>
-
-                <f:Card id="cardRecentLogs" height="420px">
-                    <f:layoutData>
-                        <layout:GridData span="XL6 L6 M12 S12" />
-                    </f:layoutData>
-                    <f:header>
-                        <card:Header title="Recent Changes" subtitle="Top 20 latest actions" iconSrc="sap-icon://history"/>
-                    </f:header>
-                    <f:content>
-                        <ScrollContainer width="100%" height="320px" vertical="true">
-                            <List items="{dash>/recentLogs}" showSeparators="Inner" width="100%">
-                                <CustomListItem type="Navigation" press=".onRecentLogPress" class="sapUiSmallMarginBottom sapUiShadow1">
-                                    <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
-                                        <HBox alignItems="Center">
-                                            <core:Icon 
-                                                src="{= ${dash>action} === 'CREATE' ? 'sap-icon://add-document' : (${dash>action} === 'UPDATE' ? 'sap-icon://edit' : 'sap-icon://delete') }"
-                                                size="1.5rem"
-                                                color="{= ${dash>action} === 'CREATE' ? '#2b7c2b' : (${dash>action} === 'UPDATE' ? '#e9730c' : '#bb0000') }"
-                                                class="sapUiMediumMarginEnd" />
-                                            <VBox>
-                                                <Title text="Table: {dash>tableName}" level="H5" />
-                                                <HBox class="sapUiTinyMarginTop">
-                                                    <Label text="By:" design="Bold" class="sapUiTinyMarginEnd"/>
-                                                    <Text text="{dash>user}" />
-                                                </HBox>
-                                                <HBox class="sapUiTinyMarginTop">
-                                                    <Label text="At:" design="Bold" class="sapUiTinyMarginEnd"/>
-                                                    <Text text="{dash>time}" />
-                                                </HBox>
-                                            </VBox>
-                                        </HBox>
-                                        <VBox alignItems="End">
-                                            <ObjectStatus 
-                                                text="{dash>action}" 
-                                                state="{= ${dash>action} === 'CREATE' ? 'Success' : (${dash>action} === 'UPDATE' ? 'Warning' : 'Error') }"
-                                                inverted="true" />
-                                        </VBox>
-                                    </HBox>
-                                </CustomListItem>
-                            </List>
-                        </ScrollContainer>
                     </f:content>
                 </f:Card>
 
@@ -256,37 +234,18 @@
         </f:content>
 
         <f:dependents>
-            <Popover 
-                id="kpiPopover" 
-                title="{dash>/popoverTitle}" 
-                contentWidth="320px" 
-                placement="Bottom">
+            <Popover id="kpiPopover" title="{dash>/popoverTitle}" contentWidth="320px" placement="Bottom">
                 <content>
                     <VBox visible="{= ${dash>/popoverType} === 'CHANGES' }" class="sapUiSmallMargin">
-                        <ObjectStatus text="Create: {dash>/popoverChanges/create}" state="Success" icon="sap-icon://add-document" class="sapUiTinyMarginBottom" />
-                        <ObjectStatus text="Update: {dash>/popoverChanges/update}" state="Warning" icon="sap-icon://edit" class="sapUiTinyMarginBottom" />
-                        <ObjectStatus text="Delete: {dash>/popoverChanges/delete}" state="Error" icon="sap-icon://delete" />
+                        <ObjectStatus text="Create: {dash>/popoverChanges/CREATE_COUNT}" state="Success" icon="sap-icon://add-document" class="sapUiTinyMarginBottom" />
+                        <ObjectStatus text="Update: {dash>/popoverChanges/UPDATE_COUNT}" state="Warning" icon="sap-icon://edit" class="sapUiTinyMarginBottom" />
+                        <ObjectStatus text="Delete: {dash>/popoverChanges/DELETE_COUNT}" state="Error" icon="sap-icon://delete" />
                     </VBox>
-
-                    <List 
-                        visible="{= ${dash>/popoverType} === 'TABLES' }" 
-                        items="{dash>/popoverTables}" 
-                        busy="{dash>/isPopoverTableBusy}" 
-                        busyIndicatorDelay="0" 
-                        showSeparators="Inner"
-                        noDataText="No recent activity">
+                    <List visible="{= ${dash>/popoverType} === 'TABLES' }" items="{dash>/popoverTables}" busy="{dash>/isPopoverTableBusy}" showSeparators="Inner" noDataText="No recent activity">
                         <items>
-                            <ObjectListItem title="{dash>name}" icon="sap-icon://table-chart">
-                                <attributes>
-                                    <ObjectAttribute text="{dash>desc}" />
-                                </attributes>
-                                <firstStatus>
-                                    <ObjectStatus text="{dash>cols} Cols" icon="sap-icon://add-column" state="Information" />
-                                </firstStatus>
-                            </ObjectListItem>
+                            <ObjectListItem title="{dash>name}" icon="sap-icon://table-chart" />
                         </items>
                     </List>
-
                     <VBox visible="{= ${dash>/popoverType} === 'RECORDS' }" class="sapUiSmallMargin">
                         <Text text="Average records per table:" class="sapUiTinyMarginBottom" />
                         <ObjectNumber number="{dash>/popoverAvg}" unit="Records / Table" state="Success" />
@@ -296,6 +255,24 @@
                     <Button icon="sap-icon://decline" type="Transparent" press=".onCloseKPIPopover" />
                 </endButton>
             </Popover>
+
+            <Dialog id="detailDialog" title="{dash>/detailTitle}" contentWidth="400px">
+                <content>
+                    <VBox class="sapUiSmallMargin" busy="{dash>/isDetailBusy}">
+                        <HBox visible="{= ${dash>/detailRejectRate} !== null }" class="sapUiSmallMarginBottom" alignItems="Center">
+                            <Label text="Request Reject Rate:" design="Bold" class="sapUiSmallMarginEnd"/>
+                            <ObjectStatus text="{dash>/detailRejectRate}%" state="{= ${dash>/detailRejectRate} > 10 ? 'Error' : 'Success' }" icon="sap-icon://sys-cancel-2" />
+                        </HBox>
+                        <Title text="List of affected tables" level="H6" />
+                        <List items="{dash>/detailTables}" showSeparators="Inner" noDataText="No tables found">
+                            <StandardListItem title="{dash>name}" description="{= ${dash>count} ? 'Number of changes: ' + ${dash>count} : ''}" icon="sap-icon://table-view"/>
+                        </List>
+                    </VBox>
+                </content>
+                <beginButton>
+                    <Button text="Close" type="Reject" press=".onCloseDetailDialog" />
+                </beginButton>
+            </Dialog>
         </f:dependents>
 
     </f:DynamicPage>
