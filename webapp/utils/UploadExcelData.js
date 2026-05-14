@@ -11,7 +11,7 @@ sap.ui.define([
     const ACTION_UPLOAD_EXCEL = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.uploadExcel(...)";
 
     var UploadExcelData = {
-        
+
         onUploadExcelPress: function (oEvent) {
             var aFiles = oEvent.getParameter("files"),
                 oFile = aFiles ? aFiles[0] : null,
@@ -60,7 +60,7 @@ sap.ui.define([
                 aPendingContexts.forEach(function (ctx) {
                     var oData = ctx.getObject(),
                         sTbl = oData.table_name || oData.TableName || "";
-                        
+
                     if (sTbl.toUpperCase() === sTableName.toUpperCase()) {
                         try {
                             aPendingData.push(JSON.parse(oData.data || oData.Data || "{}"));
@@ -173,6 +173,32 @@ sap.ui.define([
                         }));
                     }
                 });
+
+                oTable.addColumn(new sap.ui.table.Column({
+                    // label: new sap.m.Label({ text: "Delete", design: "Bold" }),
+                    template: new sap.m.Button({
+                        icon: "sap-icon://delete",
+                        type: "Reject",
+                        tooltip: "Remove this row",
+                        press: function (oEvent) {
+                            var oContext = oEvent.getSource().getBindingContext();
+                            var sPath = oContext.getPath();
+                            var iIndex = parseInt(sPath.substring(1), 10);
+
+                            aData.splice(iIndex, 1);
+                            oJSONModel.refresh(true);
+                            _performFullGridValidation();
+
+                            oDialog.setTitle("Check data before uploading - Table " + sTableName + " (" + aData.length + " line)");
+
+                            if (aData.length === 0) {
+                                sap.m.MessageToast.show("All rows have been removed!");
+                            }
+                        }
+                    }),
+                    width: "5rem",
+                    hAlign: "Center"
+                }));
             }
 
             oTable.setModel(oJSONModel);
@@ -346,7 +372,7 @@ sap.ui.define([
                 var sSuccessMsg = (bIsManager || bIsAdmin)
                     ? "Data saved directly to Physical Database!"
                     : "Excel Uploaded successfully! Waiting for approval.";
-                
+
                 BusyIndicator.hide();
                 MessageToast.show(sSuccessMsg);
 
