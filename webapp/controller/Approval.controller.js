@@ -31,6 +31,7 @@ sap.ui.define([
                 oRouter = this.getOwnerComponent().getRouter();
 
             this.getView().setModel(oApprovalModel, "approval");
+            this._reviewTimerId = null;
 
             if (oRouter.getRoute("RouteApproval")) {
                 oRouter.getRoute("RouteApproval").attachPatternMatched(this._onRouteMatched, this);
@@ -92,7 +93,6 @@ sap.ui.define([
 
         _formatData: function (aContexts, bIsPending) {
             var aFormattedList = [];
-
             aContexts.forEach(function (oContext) {
                 var oData = oContext.getObject(),
                     sActionCode = String(oData.action_type || oData.ActionType || oData.action || oData.Action || "").toUpperCase(),
@@ -103,10 +103,7 @@ sap.ui.define([
                     sOldDataStr = oData.old_data || oData.OldData || "",
                     sNewDataStr = oData.new_data || oData.NewData || "",
                     sTempData = oData.data || oData.Data || "",
-                    oParsedOld = {}, 
-                    oParsedNew = {},
-                    aAllKeys = [], 
-                    aDiff = [];
+                    oParsedOld = {}, oParsedNew = {}, aAllKeys = [], aDiff = [];
 
                 if (sActionCode === "C" || sActionCode === "CREATE") sActionText = "CREATE";
                 else if (sActionCode === "D" || sActionCode === "DELETE") sActionText = "DELETE";
@@ -227,22 +224,39 @@ sap.ui.define([
             oLockContext.execute().then(function () {
                 sap.ui.core.BusyIndicator.hide();
                 this._openDiffDialog(oRowData, oODataModel, oModel);
+                this._startReviewTimer();
 
             }.bind(this)).catch(function (oError) {
                 sap.ui.core.BusyIndicator.hide();
-                
                 var sErrorMsg = "This request is currently being reviewed by someone else";
                 var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
-                
                 if (aMessages && aMessages.length > 0) {
                     var aErrors = aMessages.filter(function (m) { return m.type === "Error"; });
                     if (aErrors.length > 0) {
-                        sErrorMsg = aErrors[aErrors.length - 1].message;
+                        sErrorMsg = aErrors[aErrors.length - 1].message; 
                     }
                 }
                 MessageBox.error(sErrorMsg);
-                sap.ui.getCore().getMessageManager().removeAllMessages();
+                sap.ui.getCore().getMessageManager().removeAllMessages(); 
             });
+        },
+
+        _startReviewTimer: function() {
+            this._clearReviewTimer();
+
+            this._reviewTimerId = setTimeout(function() {
+                MessageBox.warning("Your 5-minute review session has expired.\nThe lock has been released automatically for other managers.", {
+                    title: "Session Expired"
+                });
+                this.onCloseDiffDialog();
+            }.bind(this), 300000);
+        },
+
+        _clearReviewTimer: function() {
+            if (this._reviewTimerId) {
+                clearTimeout(this._reviewTimerId);
+                this._reviewTimerId = null;
+            }
         },
 
         _openDiffDialog: function(oRowData, oODataModel, oModel) {
@@ -259,11 +273,8 @@ sap.ui.define([
             LoadData.loadTableData(oODataModel, oRowData.tableName).then(function(oPayload) {
                 var aMasterData = oPayload.dataRows || oPayload.Data || [],
                     aMeta = oPayload.metadata || oPayload.Meta || [],
-                    oNewDataMapped = {},
-                    aKeyFields = [],
-                    oIdCol = null,
-                    oOldRow = null,
-                    aUpdatedDiff = [],
+                    oNewDataMapped = {}, aKeyFields = [], oIdCol = null,
+                    oOldRow = null, aUpdatedDiff = [],
                     i, j, row, oJson, bIsMatch, keyField, sVal1, sVal2, sOldValue, oOldJson;
 
                 oRowData.diff.forEach(function(d) {
@@ -290,22 +301,16 @@ sap.ui.define([
                     try { oJson = JSON.parse(row.data || "{}"); } catch(e) {}
                     
                     if (aKeyFields.length === 0) continue;
-
                     bIsMatch = true;
                     for (j = 0; j < aKeyFields.length; j++) {
                         keyField = aKeyFields[j];
                         sVal1 = String(oJson[keyField] || "").trim().toUpperCase();
                         sVal2 = String(oNewDataMapped[keyField] || "").trim().toUpperCase();
                         if (sVal1 !== sVal2 || sVal1 === "") {
-                            bIsMatch = false;
-                            break;
+                            bIsMatch = false; break;
                         }
                     }
-
-                    if (bIsMatch) {
-                        oOldRow = row;
-                        break;
-                    }
+                    if (bIsMatch) { oOldRow = row; break; }
                 }
 
                 oRowData.diff.forEach(function(d) {
@@ -331,6 +336,8 @@ sap.ui.define([
             var oModel = this.getView().getModel("approval"),
                 oCurrentReq = oModel.getProperty("/currentDetail"),
                 oODataModel = this.getOwnerComponent().getModel();
+
+            this._clearReviewTimer();
 
             if (this._oDiffDialog) {
                 this._oDiffDialog.close();
@@ -372,6 +379,7 @@ sap.ui.define([
             oActionContext.execute().then(function () {
                 sap.ui.core.BusyIndicator.hide();
                 MessageToast.show(sStatus === "APPROVED" ? "Approved!" : "Rejected!");
+                this._clearReviewTimer();
                 oModel.setProperty("/currentDetail", null);
                 this._oDiffDialog.close();
                 this._loadApprovalData();
@@ -436,12 +444,28 @@ sap.ui.define([
                         oActionContext.setParameter("uuids_json", sUuidsJson);
 
                         sap.ui.core.BusyIndicator.show(0);
+                        sap.ui.getCore().getMessageManager().removeAllMessages();
 
                         oActionContext.execute().then(function () {
-                            var oResult = oActionContext.getBoundContext().getObject();
-                            
                             sap.ui.core.BusyIndicator.hide();
-                            MessageToast.show(oResult.message || "Approved!");
+
+                            var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
+                            var aIssues = aMessages.filter(function (m) { 
+                                return m.type === sap.ui.core.MessageType.Error || m.type === sap.ui.core.MessageType.Warning; 
+                            });
+
+                            if (aIssues.length > 0) {
+                                var sIssueText = "Partial Success! Some requests were skipped because they are locked:\n\n";
+                                var aUniqueMsgs = [...new Set(aIssues.map(item => item.message))];
+                                aUniqueMsgs.forEach(function(msg) {
+                                    sIssueText += "- " + msg + "\n";
+                                });
+                                MessageBox.warning(sIssueText);
+                            } else {
+                                var oResult = oActionContext.getBoundContext().getObject();
+                                MessageToast.show(oResult.message || "All selected requests approved!");
+                            }
+
                             oTable.removeSelections(true);
                             this._loadApprovalData();
 
