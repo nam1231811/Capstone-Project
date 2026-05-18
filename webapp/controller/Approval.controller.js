@@ -13,6 +13,8 @@ sap.ui.define([
     const PATH_APPROVE = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.approve(...)";
     const PATH_REJECT = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.reject(...)";
     const PATH_MASS_APPROVE = "/Data/com.sap.gateway.srvd.zsd_dynamic_meta.v0001.massApprove(...)";
+    const PATH_LOCK = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.lockRequest(...)";
+    const PATH_UNLOCK = "com.sap.gateway.srvd.zsd_dynamic_meta.v0001.unlockRequest(...)";
 
     return Controller.extend("zapp.controller.Approval", {
 
@@ -213,11 +215,44 @@ sap.ui.define([
                 oModel = this.getView().getModel("approval"),
                 oODataModel = this.getOwnerComponent().getModel();
 
+            if (!oModel.getProperty("/isPendingMode")) {
+                this._openDiffDialog(oRowData, oODataModel, oModel);
+                return;
+            }
+
+            sap.ui.core.BusyIndicator.show(0);
+
+            var oLockContext = oODataModel.bindContext(PATH_LOCK, oRowData._odataContext);
+
+            oLockContext.execute().then(function () {
+                sap.ui.core.BusyIndicator.hide();
+                this._openDiffDialog(oRowData, oODataModel, oModel);
+
+            }.bind(this)).catch(function (oError) {
+                sap.ui.core.BusyIndicator.hide();
+                
+                var sErrorMsg = "This request is currently being reviewed by someone else";
+                var aMessages = sap.ui.getCore().getMessageManager().getMessageModel().getData();
+                
+                if (aMessages && aMessages.length > 0) {
+                    var aErrors = aMessages.filter(function (m) { return m.type === "Error"; });
+                    if (aErrors.length > 0) {
+                        sErrorMsg = aErrors[aErrors.length - 1].message;
+                    }
+                }
+                MessageBox.error(sErrorMsg);
+                sap.ui.getCore().getMessageManager().removeAllMessages();
+            });
+        },
+
+        _openDiffDialog: function(oRowData, oODataModel, oModel) {
             oModel.setProperty("/currentDetail", oRowData);
             this._oDiffDialog = this.byId("diffDialog");
             this._oDiffDialog.open();
 
-            if (oRowData.action === "CREATE") return;
+            if (oRowData.action === "CREATE") {
+                return;
+            }
 
             this._oDiffDialog.setBusy(true);
 
@@ -293,7 +328,22 @@ sap.ui.define([
         },
 
         onCloseDiffDialog: function() {
-            if (this._oDiffDialog) this._oDiffDialog.close();
+            var oModel = this.getView().getModel("approval"),
+                oCurrentReq = oModel.getProperty("/currentDetail"),
+                oODataModel = this.getOwnerComponent().getModel();
+
+            if (this._oDiffDialog) {
+                this._oDiffDialog.close();
+            }
+
+            if (oModel.getProperty("/isPendingMode") && oCurrentReq && oCurrentReq._odataContext) {
+                var oUnlockContext = oODataModel.bindContext(PATH_UNLOCK, oCurrentReq._odataContext);
+                oUnlockContext.execute().catch(function(e) {
+                    console.warn("Fail to unlock request", e);
+                });
+            }
+
+            oModel.setProperty("/currentDetail", null);
         },
 
         onApproveRequest: function () { 
@@ -322,6 +372,7 @@ sap.ui.define([
             oActionContext.execute().then(function () {
                 sap.ui.core.BusyIndicator.hide();
                 MessageToast.show(sStatus === "APPROVED" ? "Approved!" : "Rejected!");
+                oModel.setProperty("/currentDetail", null);
                 this._oDiffDialog.close();
                 this._loadApprovalData();
             }.bind(this)).catch(function (oError) {

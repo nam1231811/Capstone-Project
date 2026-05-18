@@ -130,7 +130,7 @@
                     </f:content>
                 </f:Card>
 
-                <f:Card id="cardBarChart" height="450px">
+                <f:Card id="cardBarChart" height="480px">
                     <f:layoutData>
                         <layout:GridData span="XL6 L6 M12 S12" />
                     </f:layoutData>
@@ -163,7 +163,7 @@
                     </f:content>
                 </f:Card>
 
-                <f:Card id="dataManagementCard" height="450px">
+                <f:Card id="dataManagementCard" height="480px">
                     <f:layoutData>
                         <layout:GridData span="XL6 L6 M12 S12" />
                     </f:layoutData>
