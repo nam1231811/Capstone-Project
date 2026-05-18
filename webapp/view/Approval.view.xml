@@ -110,7 +110,7 @@
                             <Column width="15%" demandPopin="true" minScreenWidth="Tablet"><Label text="Action" design="Bold"/></Column>
                             <Column width="20%"><Label text="Approval Status" design="Bold"/></Column>
                             <Column width="20%" demandPopin="true" minScreenWidth="Desktop"><Label text="Approved At" design="Bold"/></Column>
-                            <Column width="15%" demandPopin="true" minScreenWidth="Desktop"><Label text="Approver" design="Bold"/></Column>
+                            <Column width="15%" demandPopin="true" minScreenWidth="Desktop"><Label text="Requested By" design="Bold"/></Column>
                         </columns>
                         <items>
                             <ColumnListItem>
